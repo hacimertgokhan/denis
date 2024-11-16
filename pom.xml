@@ -6,7 +6,8 @@
 
     <groupId>github.hacimertgokhan</groupId>
     <artifactId>DenisDB</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>0.0.0.1alpha</version>
+
     <build>
         <plugins>
             <plugin>
@@ -45,11 +46,22 @@
             </plugin>
         </plugins>
     </build>
+
+
     <properties>
+        <java.version>17</java.version>
         <maven.compiler.source>23</maven.compiler.source>
         <maven.compiler.target>23</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
+
+    <repositories>
+        <repository>
+            <id>central</id>
+            <url>https://repo.maven.apache.org/maven2</url>
+        </repository>
+    </repositories>
+
     <dependencies>
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>

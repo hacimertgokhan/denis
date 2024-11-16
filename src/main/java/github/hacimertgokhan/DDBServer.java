@@ -24,8 +24,6 @@ public class DDBServer {
 
     public void handleClient(Socket clientSocket) {
         new DDBLogger(DDBServer.class).info("Connecting to DDB server...");
-        ConnectionInfo info = Telnet.analyzeConnection(clientSocket);
-        new DDBLogger(DDBServer.class).info("Connection type: " + info.toString());
         try {
             if (clientSocket==null) {
                 return;
@@ -35,7 +33,6 @@ public class DDBServer {
             }
             try (BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
                  PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true)) {
-
                 String inputLine;
                 while ((inputLine = in.readLine()) != null) {
                     if (clientSocket.isClosed()) {

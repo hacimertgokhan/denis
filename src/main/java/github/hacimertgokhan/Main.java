@@ -24,6 +24,7 @@ public class Main {
                 scanner.close();
                 try (ServerSocket serverSocket = new ServerSocket(PORT)) {
                     ddbLogger.info("Server running on port " + PORT);
+                    ddbLogger.info("Your full session token is " + TOKEN);
                     while (true) {
                         ddbLogger.info("Waiting for client connection...");
                         Socket clientSocket = serverSocket.accept();

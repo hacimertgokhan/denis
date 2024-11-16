@@ -13,12 +13,9 @@ public class ReadDDBProp {
                 System.out.println("Unable to find denis.properties");
                 return;
             }
-
             properties.load(input);
-
         } catch (IOException ex) {
             ex.printStackTrace();
-
         }
     }
 

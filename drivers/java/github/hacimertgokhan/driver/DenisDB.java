@@ -1,4 +1,4 @@
-package github.hacimertgokhan.api;
+package github.hacimertgokhan.driver;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -8,7 +8,6 @@ import java.net.Socket;
 
 public class DenisDB {
     public DenisHost denisHost;
-
 
     public DenisDB(DenisHost denisHost) {
         this.denisHost=denisHost;

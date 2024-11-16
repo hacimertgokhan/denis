@@ -1,4 +1,4 @@
-package github.hacimertgokhan.denisdb.protocols;
+package github.hacimertgokhan.denisdb;
 
 import java.util.HashMap;
 import java.util.Map;

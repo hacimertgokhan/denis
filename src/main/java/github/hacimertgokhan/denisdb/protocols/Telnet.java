@@ -1,5 +1,7 @@
 package github.hacimertgokhan.denisdb.protocols;
 
+import github.hacimertgokhan.denisdb.ConnectionInfo;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.Socket;

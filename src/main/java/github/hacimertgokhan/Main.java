@@ -1,19 +1,25 @@
 package github.hacimertgokhan;
 
 import github.hacimertgokhan.denisdb.CreateSecureToken;
+import github.hacimertgokhan.json.JsonFile;
 import github.hacimertgokhan.logger.DDBLogger;
+import github.hacimertgokhan.pointers.Any;
 import github.hacimertgokhan.readers.ReadDDBProp;
 
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Scanner;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class Main {
     static DDBLogger ddbLogger = new DDBLogger(Main.class);
     static ReadDDBProp readDDBProp = new ReadDDBProp();
+    static String TOKEN = String.valueOf(readDDBProp.getProperty("ddb-main-token"));
     static int PORT = Integer.parseInt(readDDBProp.getProperty("ddb-port"));
-    static String TOKEN = String.valueOf(readDDBProp.getProperty("ddb-token"));
+    static JsonFile ddb = new JsonFile("ddb.json");
 
     public static void main(String[] args) {
         ddbLogger.warn("Welcome to DDB, create cache based database with '-use' or manage your ddb with '-man'");
@@ -22,18 +28,30 @@ public class Main {
         if (mode.equalsIgnoreCase("-use")) {
             if (TOKEN.length() == 128) {
                 scanner.close();
+                ConcurrentHashMap<String, Any> store = new ConcurrentHashMap<>();
                 try (ServerSocket serverSocket = new ServerSocket(PORT)) {
                     ddbLogger.info("Server running on port " + PORT);
-                    ddbLogger.info("Your full session token is " + TOKEN);
+                    ddbLogger.info("Your main ddb token is " + TOKEN);
+                    if(ddb.fileExists()) {
+                        ddbLogger.info("ddb.json loading...");
+                        ddb.onDenisPreload();
+                    } else {
+                        ddbLogger.info("ddb.json is not found, making one.");
+                        ddb.createEmptyJson();
+                        List<String> tokens = Arrays.asList("");
+                        ddb.writeArray("tokens", tokens);
+                        ddb.onDenisPreload();
+                    }
                     while (true) {
                         ddbLogger.info("Waiting for client connection...");
                         Socket clientSocket = serverSocket.accept();
                         ddbLogger.info("Client connected: " + clientSocket.getInetAddress());
                         new Thread(() -> {
-                            DDBServer ddbServer = new DDBServer(clientSocket);
-                            ddbServer.handleClient(clientSocket);
+                            DDBServer ddbServer = new DDBServer(clientSocket, store);
+                            ddbServer.handleClient(clientSocket, store);
                         }).start();
                     }
+
                 } catch (IOException e) {
                     ddbLogger.error("IOException occurred: " + e.getMessage());
                     e.printStackTrace();

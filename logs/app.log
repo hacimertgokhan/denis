@@ -1,0 +1,16 @@
+2024-11-17 01:52:58 [main] WARN  github.hacimertgokhan.Main - Welcome to DDB, create cache based database with '-use' or manage your ddb with '-man'
+2024-11-17 01:52:59 [main] INFO  github.hacimertgokhan.Main - Server running on port 5142
+2024-11-17 01:52:59 [main] INFO  github.hacimertgokhan.Main - Your main ddb token is EkmgdnjxnRxNEq42wab3jTF8vQn1dLnR4Tsu4gz09O6eb7ig0JdRJ8WPUhRPNxzAs0xZSx9njy2GE3BMNzGYOgnfGtuQixRRnej61zFBL9jmK2ZxbZqxp4GqtIMZafPy
+2024-11-17 01:52:59 [main] INFO  github.hacimertgokhan.Main - ddb.json loading...
+2024-11-17 01:52:59 [main] WARN  github.hacimertgokhan.json.JsonFile - ddb.json dosyasında 'token' anahtarı bulunamadı!
+2024-11-17 01:52:59 [main] INFO  github.hacimertgokhan.Main - Waiting for client connection...
+2024-11-17 01:53:06 [main] INFO  github.hacimertgokhan.Main - Client connected: /127.0.0.1
+2024-11-17 01:53:06 [main] INFO  github.hacimertgokhan.Main - Waiting for client connection...
+2024-11-17 01:53:06 [Thread-0] INFO  github.hacimertgokhan.Main - Connecting to DDB server...
+2024-11-17 01:53:12 [Thread-0] INFO  github.hacimertgokhan.Main - [CLIENT ACTION] 127.0.0.1 action: SET DATA GET
+2024-11-17 01:53:16 [Thread-0] INFO  github.hacimertgokhan.Main - [CLIENT ACTION] 127.0.0.1 action: AUTH 1234
+2024-11-17 01:53:19 [Thread-0] INFO  github.hacimertgokhan.Main - [CLIENT ACTION] 127.0.0.1 action: SET DATA GET
+2024-11-17 01:53:32 [Thread-0] INFO  github.hacimertgokhan.Main - [CLIENT ACTION] 127.0.0.1 action: AUTH 5678
+2024-11-17 01:53:36 [Thread-0] INFO  github.hacimertgokhan.Main - [CLIENT ACTION] 127.0.0.1 action: GET DATA
+2024-11-17 01:53:39 [Thread-0] INFO  github.hacimertgokhan.Main - [CLIENT ACTION] 127.0.0.1 action: SET DATA GET
+2024-11-17 01:53:41 [Thread-0] INFO  github.hacimertgokhan.Main - [CLIENT ACTION] 127.0.0.1 action: GET DATA

@@ -1,4 +1,4 @@
-package github.hacimertgokhan.api;
+package github.hacimertgokhan.driver;
 
 public class DenisHost {
     private String host;

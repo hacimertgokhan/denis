@@ -4,7 +4,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class actListring {
+public class actStrist {
     private final ConcurrentHashMap<String, List<String>> store = new ConcurrentHashMap<>();
 
     public ConcurrentHashMap<String, List<String>> getStore() {

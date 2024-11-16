@@ -1,9 +1,13 @@
-package github.hacimertgokhan.modals;
+package github.hacimertgokhan.modals.concurrent;
 
 import java.util.concurrent.ConcurrentHashMap;
 
 public class actString {
     private final ConcurrentHashMap<String, String> store = new ConcurrentHashMap<>();
+
+    public ConcurrentHashMap<String, String> getStore() {
+        return store;
+    }
 
     public void set(String key, String value) {
         store.put(key, value);

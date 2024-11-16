@@ -1,16 +1,14 @@
 package github.hacimertgokhan;
 
-import github.hacimertgokhan.denisdb.protocols.TelnetHandler;
+import github.hacimertgokhan.denisdb.protocols.ConnectionInfo;
+import github.hacimertgokhan.denisdb.protocols.Telnet;
 import github.hacimertgokhan.logger.DDBLogger;
-import github.hacimertgokhan.modals.GlobalModal;
 import github.hacimertgokhan.pointers.Any;
 import github.hacimertgokhan.readers.ReadDDBProp;
 
 import java.io.*;
 import java.net.Socket;
-import java.net.SocketException;
 import java.util.Arrays;
-import java.util.HashMap;
 
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -26,8 +24,15 @@ public class DDBServer {
 
     public void handleClient(Socket clientSocket) {
         new DDBLogger(DDBServer.class).info("Connecting to DDB server...");
+        ConnectionInfo info = Telnet.analyzeConnection(clientSocket);
+        new DDBLogger(DDBServer.class).info("Connection type: " + info.toString());
         try {
-            if (clientSocket==null) {return;}
+            if (clientSocket==null) {
+                return;
+            }
+            if (clientSocket.isClosed()) {
+                return;
+            }
             try (BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
                  PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true)) {
 

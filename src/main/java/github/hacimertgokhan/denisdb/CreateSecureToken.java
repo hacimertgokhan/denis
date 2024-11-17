@@ -15,7 +15,7 @@ public class CreateSecureToken {
                 .withoutPadding()
                 .encodeToString(randomBytes)
                 .replaceAll("[^a-zA-Z0-9]", "x");
-        while (token.length() < 128) {
+        while (token.length() < 32) {
             byte[] additionalBytes = new byte[8];
             secureRandom.nextBytes(additionalBytes);
             token += Base64.getUrlEncoder()

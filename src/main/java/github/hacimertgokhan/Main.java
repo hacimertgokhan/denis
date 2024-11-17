@@ -34,13 +34,9 @@ public class Main {
                     ddbLogger.info("Your main ddb token is " + TOKEN);
                     if(ddb.fileExists()) {
                         ddbLogger.info("ddb.json loading...");
-                        ddb.onDenisPreload();
                     } else {
-                        ddbLogger.info("ddb.json is not found, making one.");
+                        ddbLogger.info("ddb.json is not found, creating...");
                         ddb.createEmptyJson();
-                        List<String> tokens = Arrays.asList("");
-                        ddb.writeArray("tokens", tokens);
-                        ddb.onDenisPreload();
                     }
                     while (true) {
                         ddbLogger.info("Waiting for client connection...");

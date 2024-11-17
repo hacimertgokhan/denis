@@ -84,11 +84,12 @@ public class JsonFile {
     }
 
 
+
     /**
      * ddb.json dosyasından token dizisini okuyup listeler
      * @return token dizisindeki tüm elementlerin listesi
      */
-    public List<String> onDenisPreload() throws IOException {
+    public List<String> tokenList() throws IOException {
         List<String> tokens = new ArrayList<>();
 
         try {

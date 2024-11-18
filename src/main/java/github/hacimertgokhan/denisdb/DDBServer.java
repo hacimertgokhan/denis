@@ -1,6 +1,6 @@
-package github.hacimertgokhan;
+package github.hacimertgokhan.denisdb;
 
-import github.hacimertgokhan.denisdb.CreateSecureToken;
+import github.hacimertgokhan.Main;
 import github.hacimertgokhan.json.JsonFile;
 import github.hacimertgokhan.logger.DDBLogger;
 import github.hacimertgokhan.pointers.Any;
@@ -10,8 +10,10 @@ import org.json.JSONObject;
 
 import java.io.*;
 import java.net.Socket;
-import java.util.UUID;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class DDBServer {
     static ReadDDBProp readDDBProp = new ReadDDBProp();
@@ -19,9 +21,12 @@ public class DDBServer {
     static DDBLogger DDBServer = new DDBLogger(Main.class);
     static JsonFile ddb = new JsonFile("ddb.json");
     static File storageDir = new File("storage");
+    private final ReentrantLock lock = new ReentrantLock();
 
     private final ConcurrentHashMap<String, Authories> projects;
     private String currentProjectToken = null;
+
+    private final BlockingQueue<Runnable> taskQueue = new LinkedBlockingQueue<>();
 
     public DDBServer(Socket socket, ConcurrentHashMap<String, Any> store) {
         this.projects = new ConcurrentHashMap<>();
@@ -31,8 +36,8 @@ public class DDBServer {
         }
 
         try {
-            if(ddb.tokenList().size() > 1) {
-                for(String tkn : ddb.tokenList()) {
+            if (!ddb.tokenList().isEmpty()) {
+                for (String tkn : ddb.tokenList()) {
                     registerProject(tkn, tkn);
                     DDBServer.info("Storage loaded with specified token: " + tkn);
                 }
@@ -42,8 +47,26 @@ public class DDBServer {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+
+        // Yeni bir işçi thread'i oluştur
+        Thread workerThread = new Thread(this::processTasks);
+        workerThread.start();
+
         handleClient(socket, store);
     }
+
+    private void processTasks() {
+        while (true) {
+            try {
+                // Kuyruktan bir işi al ve çalıştır
+                Runnable task = taskQueue.take();
+                task.run();
+            } catch (InterruptedException e) {
+                DDBServer.error("Task processing interrupted: " + e.getMessage());
+            }
+        }
+    }
+
 
     private void registerProject(String token, String tokenKey) {
         projects.put(token, new Authories(token, tokenKey));
@@ -75,7 +98,6 @@ public class DDBServer {
             JSONObject storage = data.getJSONObject("storage");
             storage.put(key, value);
             projectFile.writeJson(data);
-
         } catch (IOException e) {
             DDBServer.error("Error saving to JSON: " + e.getMessage());
         }
@@ -124,7 +146,7 @@ public class DDBServer {
     }
 
     public void handleClient(Socket clientSocket, ConcurrentHashMap<String, Any> store) {
-        DDBServer.info("Connecting to DDB server...");
+        DDBServer.info("Waiting for client connection...");
         try {
             if (clientSocket == null || clientSocket.isClosed()) {
                 return;
@@ -143,12 +165,11 @@ public class DDBServer {
                     String command = parts[0].toUpperCase();
 
                     if (CLIENT_ACTIONS) {
-                        DDBServer.info(String.format("[CLIENT ACTION] %s action: %s",
+                        DDBServer.info(String.format("[CLIENT] %s action: %s",
                                 clientSocket.getInetAddress().getHostAddress(),
                                 String.join(" ", parts)));
                     }
 
-                    // Auth komutları
                     if (command.equals("AUTH")) {
                         if (parts.length < 2) {
                             out.println("ERROR: Usage: AUTH <CREATE|token>");
@@ -157,118 +178,95 @@ public class DDBServer {
 
                         String subCommand = parts[1].toUpperCase();
                         if (subCommand.equals("CREATE")) {
-                            CreateSecureToken createSecureToken = new CreateSecureToken();
-                            String newToken = createSecureToken.getToken();
-                            registerProject(newToken, newToken);
-
-                            try {
-                                JsonFile projectFile = new JsonFile("storage/" + newToken + ".json");
-                                if (!projectFile.fileExists()) {
-                                    projectFile.createEmptyJson();
-                                    JSONObject initialData = new JSONObject();
-                                    initialData.put("storage", new JSONObject());
-                                    projectFile.writeJson(initialData);
+                            taskQueue.add(() -> {
+                                String newToken = new CreateSecureToken().getToken();
+                                registerProject(newToken, newToken);
+                                try {
+                                    JsonFile projectFile = new JsonFile("storage/" + newToken + ".json");
+                                    if (!projectFile.fileExists()) {
+                                        projectFile.createEmptyJson();
+                                        JSONObject initialData = new JSONObject();
+                                        initialData.put("storage", new JSONObject());
+                                        projectFile.writeJson(initialData);
+                                    }
+                                    ddb.appendToArray("tokens", newToken);
+                                    out.println("Project created successfully! Token: " + newToken);
+                                } catch (IOException e) {
+                                    DDBServer.error("Error saving new token: " + e.getMessage());
+                                    out.println("ERROR: Could not create project");
                                 }
-
-                                ddb.appendToArray("tokens", newToken);
-                            } catch (IOException e) {
-                                DDBServer.error("Error saving new token: " + e.getMessage());
-                                out.println("ERROR: Could not create project");
-                                continue;
-                            }
-                            projects.put(newToken, new Authories(newToken, newToken));
-                            out.println(String.format("Project created successfully! Token: %s", newToken));
-                            currentProjectToken = newToken;
-                            continue;
+                            });
                         } else {
-                            String token = parts[1];
-                            if (authenticateProject(token)) {
-                                loadStorageFromJson(store);
-                                out.println("Authenticated to project: " + token);
-                                continue;
-                            } else {
-                                out.println("ERROR: Invalid token");
-                                continue;
-                            }
+                            taskQueue.add(() -> {
+                                String token = parts[1];
+                                if (authenticateProject(token)) {
+                                    loadStorageFromJson(store);
+                                    out.println("Authenticated to project: " + token);
+                                } else {
+                                    out.println("ERROR: Invalid token");
+                                }
+                            });
                         }
+                        continue;
                     }
+
                     if (currentProjectToken == null && !command.equals("EXIT")) {
                         out.println("ERROR: Please authenticate first using AUTH command");
                         continue;
                     }
 
-                    switch (command) {
-                        case "SET":
-                            if (parts.length == 3) {
-                                String key = getProjectPrefix() + parts[1];
-                                String value = parts[2];
-                                store.put(key, new Any(value));
-                                saveToJson(parts[1], value);
-
-                                out.println("SETTED!");
-                            } else {
-                                out.println("ERROR: Usage SET key value");
-                            }
-                            break;
-
-                        case "UPDATE":
-                            if (parts.length == 3) {
-                                String key = getProjectPrefix() + parts[1];
-                                String value = parts[2];
-                                if (store.containsKey(key)) {
+                    taskQueue.add(() -> {
+                        switch (command) {
+                            case "SET":
+                                if (parts.length == 3) {
+                                    String key = getProjectPrefix() + parts[1];
+                                    String value = parts[2];
                                     store.put(key, new Any(value));
                                     saveToJson(parts[1], value);
-
-                                    out.println("UPDATED!");
-                                    DDBServer.info("UPDATE command executed: " + key + " = " + value);
+                                    out.println("SETTED!");
                                 } else {
-                                    out.println("ERROR: Key not found");
+                                    out.println("ERROR: Usage SET key value");
                                 }
-                            } else {
-                                out.println("ERROR: Usage UPDATE key value");
-                            }
-                            break;
+                                break;
 
-                        case "GET":
-                            if (parts.length == 2) {
-                                String key = getProjectPrefix() + parts[1];
-                                Any value = store.get(key);
-                                out.println(value != null ? value.getValue().toString() :
-                                        String.format("Key %s not found", parts[1]));
-                            } else {
-                                out.println("ERROR: Usage GET key");
-                            }
-                            break;
+                            case "GET":
+                                if (parts.length == 2) {
+                                    String key = getProjectPrefix() + parts[1];
+                                    Any value = store.get(key);
+                                    out.println(value != null ? value.getValue().toString() : "Key not found");
+                                } else {
+                                    out.println("ERROR: Usage GET key");
+                                }
+                                break;
 
-                        case "DEL":
-                            if (parts.length == 2) {
-                                String key = getProjectPrefix() + parts[1];
-                                store.remove(key);
-                                deleteFromJson(parts[1]);
+                            case "DEL":
+                                if (parts.length == 2) {
+                                    String key = getProjectPrefix() + parts[1];
+                                    store.remove(key);
+                                    deleteFromJson(parts[1]);
+                                    out.println("DELETED!");
+                                } else {
+                                    out.println("ERROR: Usage DEL key");
+                                }
+                                break;
 
-                                out.println("DELETED!");
-                            } else {
-                                out.println("ERROR: Usage DEL key");
-                            }
-                            break;
+                            case "LOGOUT":
+                                currentProjectToken = null;
+                                out.println("Logged out successfully");
+                                break;
 
-                        case "LOGOUT":
-                            currentProjectToken = null;
-                            out.println("Logged out successfully");
-                            break;
+                            case "EXIT":
+                                out.println("Bye!");
+                                return;
 
-                        case "EXIT":
-                            out.println("Bye!");
-                            return;
-
-                        default:
-                            out.println("ERROR: Unknown command");
-                    }
+                            default:
+                                out.println("ERROR: Unknown command");
+                        }
+                    });
                 }
             }
         } catch (IOException e) {
             DDBServer.error("IOException occurred: " + e.getMessage());
-            e.printStackTrace();
         } finally {
             try {
                 if (!clientSocket.isClosed()) {

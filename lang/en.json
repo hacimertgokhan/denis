@@ -1,0 +1,24 @@
+{
+  "created_by": "Denis Cache and Protobuff-Based Database Language, All rights reserved.\nDeveloped by Hacı Mert Gökhan\n\nFor more information: https://github.com/hacimertgokhan/denis.",
+  "help": [
+    "> Denis Cache and Protobuff-Based Database Language",
+    "--version: Version information.",
+    "--about: Information about the database.",
+    "--mu: Monitor the memory usage of DenisDB.",
+    "--lm: Monitor the memory usage of DenisDB (With process).",
+    "--token: Usage of data tokens.",
+    "\t-l: Preview the token list.",
+    "\t-c: Create a new token (data retention section).",
+    "\t-i: Provides information about tokens (data retention sections).",
+    "--opt: Quickly change DenisDB settings and user preferences.",
+    "\t-lang:",
+    "\t\t-slfs: <tr,en> Makes a language change that will only last for the current session.",
+    "\t\t-slfg: <tr,en> Makes a language change that will last across all active sessions.",
+    "\t-smts: <Number> Adjust the maximum number of tokens (data retention sections) that can be created.",
+    "\t-ctea: <t/f> Enable/disable the new token system for each entry in the selected token (data retention section).",
+    "\t-umte: <t/f> Enable/disable the global token system. (Warning: When this option is enabled, access to all projects can be provided with the main token.)",
+    "--exit: Exit man mode",
+    "",
+    "All changes made here can also be done manually; the operations are saved in denis.properties"
+  ]
+}

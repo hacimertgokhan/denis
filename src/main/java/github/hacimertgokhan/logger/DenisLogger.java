@@ -3,10 +3,10 @@ package github.hacimertgokhan.logger;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-public class DDBLogger {
+public class DenisLogger {
     final Logger logger;
 
-    public DDBLogger(Class<?> clazz) {
+    public DenisLogger(Class<?> clazz) {
         logger = LogManager.getLogger(clazz);
     }
     public void info(String msg) {

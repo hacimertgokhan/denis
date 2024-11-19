@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package database;
+
+message TokenData {
+  string token = 1;
+  map<string, string> keyValues = 2;
+}
+
+message Database {
+  repeated TokenData tokens = 1;
+}

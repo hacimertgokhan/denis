@@ -1,7 +1,7 @@
 package github.hacimertgokhan.pointers;
 
 import github.hacimertgokhan.json.JsonFile;
-import github.hacimertgokhan.logger.DDBLogger;
+import github.hacimertgokhan.logger.DenisLogger;
 import github.hacimertgokhan.readers.ReadDDBProp;
 
 import java.io.IOException;
@@ -11,7 +11,7 @@ public class Tokens {
     static ReadDDBProp readDDBProp = new ReadDDBProp();
     static String TOKEN = String.valueOf(readDDBProp.getProperty("ddb-main-token"));
     static int MAX_TOKEN_SIZE = Integer.parseInt(readDDBProp.getProperty("max-token-size"));
-    static DDBLogger ddbLogger = new DDBLogger(Tokens.class);
+    static DenisLogger denisLogger = new DenisLogger(Tokens.class);
 
     ConcurrentHashMap<String, String> tokens = new ConcurrentHashMap<>();
 
@@ -34,16 +34,16 @@ public class Tokens {
                     tokens.put(TOKEN, auth);
                     try {
                         int totalCount = jsonFS.updateArrayWithNewValue("tokens", auth);
-                        ddbLogger.info("New token just created, (" + totalCount + "/" + MAX_TOKEN_SIZE + ")");
+                        denisLogger.info("New token just created, (" + totalCount + "/" + MAX_TOKEN_SIZE + ")");
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
                 } else {
-                    ddbLogger.info("A token found with this value.");
+                    denisLogger.info("A token found with this value.");
                 }
             }
         } else {
-            ddbLogger.info("You cannot create token, (Reached maximum token amount) ");
+            denisLogger.info("You cannot create token, (Reached maximum token amount) ");
         }
     }
 

@@ -1,0 +1,24 @@
+{
+  "created_by": "Denis Önbellek ve Protobuff Tabanlı Veritabanı Dili, Bütün hakları saklıdır.\nHacı Mert Gökhan tarafından geliştirildi\n\nDaha fazla bilgi için: https://github.com/hacimertgokhan/denis.",
+  "help": [
+    "> Denis Önbellek ve Protobuff Tabanlı Veritabanı Dili",
+    "--version: Sürüm bilgileri.",
+    "--about: Veritabanı hakkında bilgilendirme metni.",
+    "--mu: DenisDB`nin bellek kullanımını izlersiniz.",
+    "--lm: DenisDB`nin bellek kullanımını izlersiniz (Süreç yapısı).",
+    "--token: Veri tokenleri kullanımı.",
+    "\t-l: Token listesini önizlersiniz.",
+    "\t-c: Yeni bir token (Veri tutum bölümü) oluşturursunuz.",
+    "\t-i: Tokenler (Veri tutum bölümleri) hakkında bilgi verir.",
+    "--opt: DenisDB`nin ayarları ve kullanıcı tercihlerini hızlıca değiştirebilirsiniz.",
+    "\t-lang:",
+    "\t\t-slfs: <tr,en> Sadece aktif oturumunuz boyunca sürecek olan bir dil değişikliği gerçekleştirirsiniz.",
+    "\t\t-slfg: <tr,en> Bütün aktif oturumlarınız boyunca sürecek olan bir dil değişikliği gerçekleştirirsiniz.",
+    "\t-smts: <Sayı> Oluşturulabilecek maximum token (veri tutum bölümü) miktarını düzenlersiniz.",
+    "\t-ctea: <t/f> Seçilen token (veri tutum bölümü) için her girişte yeni token sistemini aktif/deaktif edersiniz.",
+    "\t-umte: <t/f> Genel token sistemini aktif/deaktif edersiniz. (Dikkat: Bu opsiyon aktif edildiğinde ana token ile bütün projelere erişim sağlanabilir.).",
+    "--exit: Man moddan çıkış yaparsınız",
+    "",
+    "Burada yaptığınız bütün değişiklikleri manuel olarakda yapabilirsiniz, yapılan işlemler denis.properties üzerinden işlenir."
+  ]
+}

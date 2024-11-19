@@ -1,6 +1,6 @@
 package github.hacimertgokhan.json;
 
-import github.hacimertgokhan.logger.DDBLogger;
+import github.hacimertgokhan.logger.DenisLogger;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.json.JSONTokener;
@@ -101,10 +101,35 @@ public class JsonFile {
                     tokens.add(token);
                 }
             } else {
-                new DDBLogger(JsonFile.class).warn("ddb.json dosyasında 'token' anahtarı bulunamadı!");
+                new DenisLogger(JsonFile.class).warn("ddb.json dosyasında 'token' anahtarı bulunamadı!");
             }
         } catch (Exception e) {
-            new DDBLogger(JsonFile.class).warn("Token listesi okunurken hata oluştu: " + e.getMessage());
+            new DenisLogger(JsonFile.class).warn("Token listesi okunurken hata oluştu: " + e.getMessage());
+        }
+
+        return tokens;
+    }
+
+
+    /**
+     * String yapıda olan dizileri döndürür.
+     * @return token dizisindeki tüm elementlerin listesi
+     */
+    public List<String> getList(String key) throws IOException {
+        List<String> tokens = new ArrayList<>();
+        try {
+            JSONObject json = readJson();
+            if (json.has(key)) {
+                JSONArray tokenArray = json.getJSONArray(key);
+                for (int i = 0; i < tokenArray.length(); i++) {
+                    String token = tokenArray.getString(i);
+                    tokens.add(token);
+                }
+            } else {
+                new DenisLogger(JsonFile.class).warn(String.format("Json dosyasında '%s' anahtarı bulunamadı!", key));
+            }
+        } catch (Exception e) {
+            new DenisLogger(JsonFile.class).warn("Token listesi okunurken hata oluştu: " + e.getMessage());
         }
 
         return tokens;

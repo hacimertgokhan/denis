@@ -1,5 +1,28 @@
 {
+  "monitoring-started": "Hafiza monitorüne giriş yapıldı, çıkış yapmak için: (--finish)",
+  "max-token-size": "Maximum oluşturulabilecek token miktari %s olarak değiştirildi.",
+  "starts-with-details": "Açılış bilgilendirme metni %s olarak değiştirildi.",
+  "invalid-parametre": "Girilen değer geçersiz.",
+  "language-changed": "Dil %s olarak değiştirildi.",
+  "token_creation_error": "Token oluşturulamadı, hata nedeni: %s",
+  "token_created_successfuly": "Token başarıyla oluşturuldu, proje tokeni: %s",
+  "cli-help": "Bilinmeyen komut girdiniz, --help yazarak komutlar hakkında detaylı bilgi edinebilirsiniz.",
+  "exiting_memory_monitoring": "Hafıza monitoründen çıkış yapılıyor...",
   "created_by": "Denis Önbellek ve Protobuff Tabanlı Veritabanı Dili, Bütün hakları saklıdır.\nHacı Mert Gökhan tarafından geliştirildi\n\nDaha fazla bilgi için: https://github.com/hacimertgokhan/denis.",
+  "listen-memory": [
+    "",
+    "> Runtime Memory Usage",
+    "\tTotal: <total_memory>",
+    "\tFree: <free_memory>",
+    "\tUsed: <used_memory>",
+    "",
+    "> Heap Memory Usage",
+    "\tInitial: <heap_usage_initial>",
+    "\tUsed: <heap_usage_used>",
+    "\tCommitted: <heap_usage_free>",
+    "\tMax: <heap_usage_max>",
+    ""
+  ],
   "help": [
     "> Denis Önbellek ve Protobuff Tabanlı Veritabanı Dili",
     "--version: Sürüm bilgileri.",

@@ -1,5 +1,5 @@
-2024-11-19 16:51:03 [main] WARN  github.hacimertgokhan.Main - Denis Cache Based Database Language, All rights reserved.
-2024-11-19 16:51:03 [main] WARN  github.hacimertgokhan.Main - Welcome to DDB, sttart cache based database with '-start'
-2024-11-19 16:51:03 [main] WARN  github.hacimertgokhan.Main - You can read whole database.bin file with '-read' and you can manage whole DDB (Denis Database) with '-ddb'
-2024-11-19 16:51:03 [main] INFO  github.hacimertgokhan.Main - Denis started with detail mode, close detail mode with '-ddb --opt -swd f'
-2024-11-19 16:51:03 [main] INFO  github.hacimertgokhan.Main - Host: localhost, Port: 5142
+2024-11-19 21:01:31 [main] WARN  github.hacimertgokhan.Main - Denis Cache Based Database Language, All rights reserved.
+2024-11-19 21:01:31 [main] WARN  github.hacimertgokhan.Main - Welcome to DDB, sttart cache based database with '-start'
+2024-11-19 21:01:31 [main] WARN  github.hacimertgokhan.Main - You can read whole database.bin file with '-read' and you can manage whole DDB (Denis Database) with '-ddb'
+2024-11-19 21:01:31 [main] INFO  github.hacimertgokhan.Main - Denis started with detail mode, close detail mode with '-ddb --opt -swd f'
+2024-11-19 21:01:31 [main] INFO  github.hacimertgokhan.Main - Host: localhost, Port: 5142

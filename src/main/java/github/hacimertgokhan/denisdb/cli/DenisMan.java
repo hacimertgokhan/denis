@@ -73,35 +73,24 @@ public class DenisMan implements Runnable {
             if (command.equalsIgnoreCase("--lm")) {
                 Runtime runtime = Runtime.getRuntime();
                 MemoryMXBean memoryBean = ManagementFactory.getMemoryMXBean();
-                System.out.println("Memory monitoring started. Type '--finish' to stop.");
+                try {
+                    System.out.println(denisLanguage.getLanguageFile().readJson().get("monitoring-started"));
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
                 while (true) {
-                    long totalMemory = runtime.totalMemory();
-                    long freeMemory = runtime.freeMemory();
-                    long usedMemory = totalMemory - freeMemory;
-                    MemoryUsage heapUsage = memoryBean.getHeapMemoryUsage();
-                    System.out.println("------------------------------");
-                    System.out.println("Runtime Memory Usage:");
-                    System.out.println("  Total Memory: " + (totalMemory / 1024 / 1024) + " MB");
-                    System.out.println("  Free Memory: " + (freeMemory / 1024 / 1024) + " MB");
-                    System.out.println("  Used Memory: " + (usedMemory / 1024 / 1024) + " MB");
-                    System.out.println("Heap Memory Usage:");
-                    System.out.println("  Initial: " + (heapUsage.getInit() / 1024 / 1024) + " MB");
-                    System.out.println("  Used: " + (heapUsage.getUsed() / 1024 / 1024) + " MB");
-                    System.out.println("  Committed: " + (heapUsage.getCommitted() / 1024 / 1024) + " MB");
-                    System.out.println("  Max: " + (heapUsage.getMax() / 1024 / 1024) + " MB");
-                    System.out.println("------------------------------");
                     try {
                         if (System.in.available() > 0) { // Giriş var mı kontrol et
                             String input = scanner.nextLine();
                             if (input.equalsIgnoreCase("--finish")) {
-                                System.out.println("Exiting memory monitoring...");
+                                System.out.println(new DenisLanguage().getLanguageFile().readJson().get("exiting_memory_monitoring"));
                                 break; // Döngüyü sonlandır
                             }
                         }
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
-
+                    listenMemoryUsage(denisLanguage, runtime, memoryBean);
                     try {
                         Thread.sleep(1000);
                     } catch (InterruptedException e) {
@@ -120,13 +109,7 @@ public class DenisMan implements Runnable {
                 }
             } else if (command.equalsIgnoreCase("--mu")) {
                 Runtime runtime = Runtime.getRuntime();
-                long totalMemory = runtime.totalMemory();
-                long freeMemory = runtime.freeMemory();
-                long usedMemory = totalMemory - freeMemory;
-                System.out.println("Denis Cache Based Database Current Memory Usage: ");
-                System.out.println(" - Total memory: " + (totalMemory / 1024 / 1024) + " MB");
-                System.out.println(" - Empty memory: " + (freeMemory / 1024 / 1024) + " MB");
-                System.out.println(" - Used memory: " + (usedMemory / 1024 / 1024) + " MB");
+                listenMemoryUsage(denisLanguage, runtime);
             } else if (command.startsWith("--token")) {
                 processTokenCommand(command);
             } else if (command.startsWith("--help")) {
@@ -137,9 +120,17 @@ public class DenisMan implements Runnable {
                     if (parts.length > 1) {
                         try {
                             int maxSize = Integer.parseInt(parts[1]);
-                            System.out.println("Setting maximum token size to: " + maxSize);
+                            try {
+                                System.out.println(String.format(String.valueOf(new DenisLanguage().getLanguageFile().readJson().get("max-token-size")), maxSize));
+                            } catch (IOException e) {
+                                throw new RuntimeException(e);
+                            }
                         } catch (NumberFormatException e) {
-                            System.out.println("Invalid number for maximum token size.");
+                            try {
+                                System.out.println(new DenisLanguage().getLanguageFile().readJson().get("invalid-parametre"));
+                            } catch (IOException a) {
+                                throw new RuntimeException(a);
+                            }
                         }
                     }
                 } else if (command.contains("-swd")) {
@@ -148,10 +139,18 @@ public class DenisMan implements Runnable {
                         try {
                             String answ = (parts[1]);
                             if (answ != null) {
-                                System.out.println("Setting maximum token size to: " + answ);
+                                try {
+                                    System.out.println(String.format(String.valueOf(new DenisLanguage().getLanguageFile().readJson().get("starts-with-details")), answ));
+                                } catch (IOException e) {
+                                    throw new RuntimeException(e);
+                                }
                             }
                         } catch (NumberFormatException e) {
-                            System.out.println("Invalid number for maximum token size.");
+                            try {
+                                System.out.println(new DenisLanguage().getLanguageFile().readJson().get("invalid-parametre"));
+                            } catch (IOException a) {
+                                throw new RuntimeException(a);
+                            }
                         }
                     }
                 } else if (command.contains("-lang")) {
@@ -160,9 +159,17 @@ public class DenisMan implements Runnable {
                         if (parts[2].equalsIgnoreCase("-slfs")) {
                             try {
                                 denisLanguage.setSelected(parts[3]);
-                                System.out.println(String.format("Language changed for active session: %s", parts[3]));
+                                try {
+                                    System.out.println(String.format(String.valueOf(new DenisLanguage().getLanguageFile().readJson().get("language-changed")), parts[3]));
+                                } catch (IOException e) {
+                                    throw new RuntimeException(e);
+                                }
                             } catch (NumberFormatException e) {
-                                System.out.println("Invalid string type.");
+                                try {
+                                    System.out.println(new DenisLanguage().getLanguageFile().readJson().get("invalid-parametre"));
+                                } catch (IOException a) {
+                                    throw new RuntimeException(a);
+                                }
                             }
                         }
                     } else {
@@ -172,11 +179,60 @@ public class DenisMan implements Runnable {
                     help(denisLanguage);
                 }
             } else {
-                System.out.println("Unknown command. Use --help for more information.");
+                try {
+                    System.out.println(new DenisLanguage().getLanguageFile().readJson().get("cli-help"));
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
             }
         }
 
         scanner.close();
+    }
+
+    private void listenMemoryUsage(DenisLanguage denisLanguage, Runtime runtime, MemoryMXBean memoryBean) {
+        long totalMemory = runtime.totalMemory();
+        long freeMemory = runtime.freeMemory();
+        long usedMemory = totalMemory - freeMemory;
+        MemoryUsage heapUsage = memoryBean.getHeapMemoryUsage();
+        List<String> list;
+        try {
+            list = denisLanguage.getLanguageFile().getList("listen-memory");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        for(String s : list) {
+            System.out.println(s
+                    .replace("<total_memory>", String.valueOf((totalMemory / 1024 / 1024)))
+                    .replace("<free_memory>", String.valueOf((freeMemory / 1024 / 1024)))
+                    .replace("<used_memory>", String.valueOf((usedMemory / 1024 / 1024)))
+                    .replace("<heap_usage_initial>", String.valueOf((heapUsage.getInit() / 1024 / 1024)))
+                    .replace("<heap_usage_max>", String.valueOf((heapUsage.getMax() / 1024 / 1024)))
+                    .replace("<heap_usage_used>", String.valueOf((usedMemory / 1024 / 1024)))
+                    .replace("<heap_usage_free>", String.valueOf((freeMemory / 1024 / 1024)))
+            );
+        }
+    }
+
+    private void listenMemoryUsage(DenisLanguage denisLanguage, Runtime runtime) {
+        long totalMemory = runtime.totalMemory();
+        long freeMemory = runtime.freeMemory();
+        long usedMemory = totalMemory - freeMemory;
+        List<String> list;
+        try {
+            list = denisLanguage.getLanguageFile().getList("listen-memory");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        for(String s : list) {
+            System.out.println(s
+                    .replace("<total_memory>", String.valueOf((totalMemory / 1024 / 1024)))
+                    .replace("<free_memory>", String.valueOf((freeMemory / 1024 / 1024)))
+                    .replace("<used_memory>", String.valueOf((usedMemory / 1024 / 1024)))
+                    .replace("<heap_usage_used>", String.valueOf((usedMemory / 1024 / 1024)))
+                    .replace("<heap_usage_free>", String.valueOf((freeMemory / 1024 / 1024)))
+            );
+        }
     }
 
     private void help(DenisLanguage denisLanguage) {
@@ -197,23 +253,32 @@ public class DenisMan implements Runnable {
         } else if (command.contains("-c")) {
             String newToken = new CreateSecureToken().getToken();
             try {
-                JsonFile projectFile = new JsonFile("storage/" + newToken + ".json");
-                if (!projectFile.fileExists()) {
-                    projectFile.createEmptyJson();
-                    JSONObject initialData = new JSONObject();
-                    initialData.put("storage", new JSONObject());
-                    projectFile.writeJson(initialData);
-                }
+                /*
+                    JsonFile projectFile = new JsonFile("storage/" + newToken + ".json");
+                    if (!projectFile.fileExists()) {
+                        projectFile.createEmptyJson();
+                        JSONObject initialData = new JSONObject();
+                        initialData.put("storage", new JSONObject());
+                        projectFile.writeJson(initialData);
+                    }
+                 */
                 ddb.appendToArray("tokens", newToken);
-                System.out.println("Project created successfully! Token: " + newToken);
+                System.out.println(String.format(String.valueOf(new DenisLanguage().getLanguageFile().readJson().get("token_created_successfuly")), newToken));
             } catch (IOException e) {
-                System.out.println("Error saving new token: " + e.getMessage());
-                System.out.println("ERROR: Could not create project");
+                try {
+                    System.out.println(String.format(String.valueOf(new DenisLanguage().getLanguageFile().readJson().get("token_creation_error")), e.getMessage()));
+                } catch (IOException ex) {
+                    throw new RuntimeException(ex);
+                }
             }
         } else if (command.contains("-i")) {
             System.out.println("Showing token info...");
         } else {
-            System.out.println("Unknown token command.");
+            try {
+                System.out.println(new DenisLanguage().getLanguageFile().readJson().get("cli-help"));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 

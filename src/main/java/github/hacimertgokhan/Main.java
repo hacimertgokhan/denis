@@ -29,7 +29,7 @@ public class Main {
     static int PORT = Integer.parseInt(readDDBProp.getProperty("ddb-port"));
     static String host = String.valueOf(readDDBProp.getProperty("ddb-address"));
     static JsonFile ddb = new JsonFile("ddb.json");
-    static final int THREAD_POOL_SIZE = 100000; // Maksimum eşzamanlı istemci bağlantısı
+    static final int THREAD_POOL_SIZE = 100; // Maksimum eşzamanlı istemci bağlantısı
     static ExecutorService executor = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
     static ConcurrentHashMap<String, Any> store = new ConcurrentHashMap<>();
 

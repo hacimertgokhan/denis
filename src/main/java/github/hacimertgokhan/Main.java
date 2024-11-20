@@ -3,6 +3,7 @@ package github.hacimertgokhan;
 import github.hacimertgokhan.denisdb.DenisTerminal;
 import github.hacimertgokhan.denisdb.cli.DenisMan;
 import github.hacimertgokhan.denisdb.DenisClient;
+import github.hacimertgokhan.denisdb.language.DenisLanguage;
 import github.hacimertgokhan.proto.ReadProtoFile;
 import github.hacimertgokhan.json.JsonFile;
 import github.hacimertgokhan.logger.DenisLogger;
@@ -13,12 +14,10 @@ import picocli.CommandLine;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.Date;
-import java.util.Locale;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.Scanner;
 
 public class Main {
     static DenisLogger denisLogger = new DenisLogger(Main.class);
@@ -29,22 +28,43 @@ public class Main {
     static int PORT = Integer.parseInt(readDDBProp.getProperty("ddb-port"));
     static String host = String.valueOf(readDDBProp.getProperty("ddb-address"));
     static JsonFile ddb = new JsonFile("ddb.json");
-    static final int THREAD_POOL_SIZE = 100; // Maksimum eşzamanlı istemci bağlantısı
+    static final int THREAD_POOL_SIZE = 1000; // Maksimum eşzamanlı istemci bağlantısı
     static ExecutorService executor = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
     static ConcurrentHashMap<String, Any> store = new ConcurrentHashMap<>();
 
     public static void main(String[] args) {
-        denisLogger.warn("Denis Cache Based Database Language, All rights reserved.");
-        denisLogger.warn("Welcome to DDB, sttart cache based database with '-start'");
-        denisLogger.warn("You can read whole database.bin file with '-read' and you can manage whole DDB (Denis Database) with '-ddb'");
-        if (swd)
-            denisLogger.info("Denis started with detail mode, close detail mode with '-ddb --opt -swd f'");
-            denisLogger.info(String.format("Host: %s, Port: %s", host, PORT));
-            if (delogg) denisLogger.info("Delogg (Denis Logg) mode enabled, every actions that server and client logs in 'logs/'");
+        List<String> list;
+        try {
+            list = new DenisLanguage().getLanguageFile().getList("startup-information");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        for(String s : list) {
+            denisLogger.info(s);
+        }
+        if (swd) {
+            List<String> swdList;
+            try {
+                swdList = new DenisLanguage().getLanguageFile().getList("startup-swd");
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            for(String s : swdList) {
+                denisLogger.info(s.replace("<host>", host).replace("<port>", String.valueOf(PORT)));
+            }
+            if (delogg) {
+                try {
+                    denisLogger.info(String.valueOf(new DenisLanguage().getLanguageFile().readJson().get("denis-global-logger")));
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+
+            }
+        }
         Scanner scanner = new Scanner(System.in);
         String mode = scanner.nextLine();
         switch (mode.toLowerCase()) {
-            case "-start" -> handleUseMode(scanner);
+            case "-start" -> handleUseMode();
             case "-ddb" -> {
                 handleCLIMode();
             }
@@ -53,21 +73,27 @@ public class Main {
                 readProtoFile.Read("database.bin");
             }
             default -> {
-                denisLogger.error("Invalid mode selected. Use '-start' or '-ddb'.");
+                try {
+                    denisLogger.error(String.valueOf(new DenisLanguage().getLanguageFile().readJson().get("invalid-denis-logger")));
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
             }
         }
     }
-
-    private static void handleUseMode(Scanner scanner) {
+    private static void handleUseMode() {
         if (TOKEN.length() == 128) {
-            scanner.close();
             try (ServerSocket serverSocket = new ServerSocket(PORT)) {
-                denisLogger.info("Server running on port " + PORT);
-                denisLogger.info("Your main ddb token is " + TOKEN);
-                if (ddb.fileExists()) {
-                    denisLogger.info("ddb.json loading...");
-                } else {
-                    denisLogger.info("ddb.json is not found, creating...");
+                List<String> swdList;
+                try {
+                    swdList = new DenisLanguage().getLanguageFile().getList("startup-port-and-token-information");
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+                for(String s : swdList) {
+                    denisLogger.info(s.replace("<port>", String.valueOf(PORT)).replace("<token>", TOKEN));
+                }
+                if (!ddb.fileExists()) {
                     ddb.createEmptyJson();
                 }
                 DenisTerminal logTerminal = new DenisTerminal();
@@ -78,9 +104,9 @@ public class Main {
                     logTerminal.closeLogTerminal();
                 }));
                 while (true) {
-                    denisLogger.info("Waiting for client connection...");
+                    denisLogger.info(String.valueOf(new DenisLanguage().getLanguageFile().readJson().get("waiting-for-client-connection")));
                     Socket clientSocket = serverSocket.accept();
-                    denisLogger.info("Client connected: " + clientSocket.getInetAddress());
+                    denisLogger.info(String.valueOf(new DenisLanguage().getLanguageFile().readJson().get("client-connected")).replace("<socket>", String.valueOf(clientSocket.getInetAddress())));
                     logTerminal.writeLog(String.format("Client connected: %s", clientSocket.getInetAddress()));
                     executor.execute(() -> {
                         DenisClient ddbServer = new DenisClient(clientSocket, store, logTerminal);

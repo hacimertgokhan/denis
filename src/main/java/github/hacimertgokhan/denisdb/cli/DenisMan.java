@@ -159,10 +159,18 @@ public class DenisMan implements Runnable {
                         if (parts[2].equalsIgnoreCase("-slfs")) {
                             try {
                                 denisLanguage.setSelected(parts[3]);
-                                try {
-                                    System.out.println(String.format(String.valueOf(new DenisLanguage().getLanguageFile().readJson().get("language-changed")), parts[3]));
-                                } catch (IOException e) {
-                                    throw new RuntimeException(e);
+                                if (parts[3].equalsIgnoreCase("tr") || parts[3].equalsIgnoreCase("fi") || parts[3].equalsIgnoreCase("en") || parts[3].equalsIgnoreCase("fr") || parts[3].equalsIgnoreCase("de") || parts[3].equalsIgnoreCase("da") || parts[3].equalsIgnoreCase("el") || parts[3].equalsIgnoreCase("es")) {
+                                    try {
+                                        System.out.println(String.format(String.valueOf(new DenisLanguage().getLanguageFile().readJson().get("language-changed")), parts[3]));
+                                    } catch (IOException e) {
+                                        throw new RuntimeException(e);
+                                    }
+                                } else {
+                                    try {
+                                        System.out.println(new DenisLanguage().getLanguageFile().readJson().get("invalid-parametre"));
+                                    } catch (IOException e) {
+                                        throw new RuntimeException(e);
+                                    }
                                 }
                             } catch (NumberFormatException e) {
                                 try {

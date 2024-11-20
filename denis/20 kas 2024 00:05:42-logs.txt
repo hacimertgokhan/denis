@@ -1,0 +1,10 @@
+Denis started at wed nov 20 00:05:42 gmt+03:00 2024
+Client connected: /127.0.0.1
+[CLIENT] 127.0.0.1 action: AUTH CREATE
+[CLIENT] 127.0.0.1 action: AUTH foGAKE68moXgNg6ZbJmMAOB3zZCg79OxzhGuxDjOZ3rqB4vegDhwsXcDBTsRszlDIUK9FfKd4IQuIR7RoofvKxm4qcHwdgx9398o1MsY1J3tUqVFiQLs39KyYGVUxwGN
+[CLIENT] 127.0.0.1 action: SET DATA DATA
+[CLIENT] 127.0.0.1 action: GET DATA
+[CLIENT] 127.0.0.1 action: GET DATA
+[CLIENT] 127.0.0.1 action: SET DATA DATA
+[CLIENT] 127.0.0.1 action: GET DATA
+Denis stopped at wed nov 20 00:07:07 gmt+03:00 2024

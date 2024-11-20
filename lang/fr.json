@@ -1,0 +1,64 @@
+{
+  "monitoring-started": "Surveillance de la mémoire démarrée, pour terminer : (--finish)",
+  "max-token-size": "Le nombre maximal de jetons pouvant être créés est défini sur %s.",
+  "starts-with-details": "Les informations de démarrage ont été modifiées en %s.",
+  "invalid-parametre": "La valeur saisie est invalide.",
+  "language-changed": "La langue a été changée en %s.",
+  "token_creation_error": "Impossible de créer le jeton, cause de l'erreur : %s",
+  "token_created_successfuly": "Jeton créé avec succès, jeton du projet : %s",
+  "cli-help": "Vous avez saisi une commande inconnue. Pour des informations détaillées sur les commandes, saisissez --help.",
+  "exiting_memory_monitoring": "Arrêt de la surveillance de la mémoire...",
+  "created_by": "Denis Cache et langage de base de données basé sur Protocol Buffers. Tous droits réservés.\nDéveloppé par Hacı Mert Gökhan.\n\nPour plus d'informations : https://github.com/hacimertgokhan/denis.",
+  "startup-information": [
+    "Langage de base de données basé sur Denis Cache, Tous droits réservés.",
+    "Bienvenue dans DDB, utilisez '-start' pour initialiser la base de données en cache.",
+    "Vous pouvez lire l'intégralité du fichier database.bin avec '-read' et gérer toutes les DDB (Denis Database) avec '-ddb'."
+  ],
+  "startup-swd": [
+    "Denis a été démarré en mode détaillé, pour désactiver le mode détaillé utilisez '-ddb --opt -swd f'.",
+    "Hôte : <host>, Port : <port>"
+  ],
+  "startup-port-and-token-information": [
+    "Le serveur fonctionne sur le port <port>.",
+    "Votre jeton principal DDB : <token>"
+  ],
+  "client-connected": "Client connecté : <socket>",
+  "waiting-for-client-connection": "En attente de connexion client...",
+  "invalid-denis-mode": "Mode invalide sélectionné. Utilisez '-start' ou '-ddb'.",
+  "denis-global-logger": "Le mode Delogg (Denis Logg) a été activé. Toutes les actions effectuées par le serveur et le client sont enregistrées dans le dossier 'logs/'.",
+  "listen-memory": [
+    "",
+    "> Utilisation de la mémoire en cours d'exécution",
+    "\tTotal : <total_memory>",
+    "\tLibre : <free_memory>",
+    "\tUtilisé : <used_memory>",
+    "",
+    "> Utilisation de la mémoire Heap",
+    "\tInitiale : <heap_usage_initial>",
+    "\tUtilisée : <heap_usage_used>",
+    "\tAllouée : <heap_usage_free>",
+    "\tMaximum : <heap_usage_max>",
+    ""
+  ],
+  "help": [
+    "> Denis Cache et langage de base de données basé sur Protocol Buffers",
+    "--version : Affiche les informations sur la version.",
+    "--about : Fournit des informations sur la base de données.",
+    "--mu : Surveille l'utilisation de la mémoire de DenisDB.",
+    "--lm : Surveille l'utilisation de la mémoire de DenisDB sous forme de structure de processus.",
+    "--token : Utilisation des jetons de données.",
+    "\t-l : Affiche la liste des jetons.",
+    "\t-c : Crée un nouveau jeton (segment de données).",
+    "\t-i : Fournit des informations sur les jetons (segments de données).",
+    "--opt : Modifie rapidement les paramètres et préférences utilisateur de DenisDB.",
+    "\t-lang :",
+    "\t\t-slfs : <tr,en> Change la langue temporairement pour la session active.",
+    "\t\t-slfg : <tr,en> Change la langue de façon permanente pour toutes les sessions.",
+    "\t-smts : <Nombre> Définit le nombre maximal de jetons (segments de données) pouvant être créés.",
+    "\t-ctea : <t/f> Active/désactive le nouveau système de jetons pour chaque requête sur le jeton sélectionné.",
+    "\t-umte : <t/f> Active/désactive le système de jetons global. (Remarque : Lorsque cette option est activée, tous les projets peuvent être accessibles avec le jeton principal.)",
+    "--exit : Quitte le mode manuel.",
+    "",
+    "Toutes les modifications effectuées ici peuvent également être effectuées manuellement ; les actions sont enregistrées dans le fichier denis.properties."
+  ]
+}

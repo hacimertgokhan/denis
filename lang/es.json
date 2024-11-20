@@ -1,0 +1,64 @@
+{
+  "monitoring-started": "Se ha iniciado el monitoreo de memoria, para finalizar: (--finish)",
+  "max-token-size": "El número máximo de tokens que se pueden crear se ha establecido en %s.",
+  "starts-with-details": "La información de inicio se ha cambiado a %s.",
+  "invalid-parametre": "El valor ingresado no es válido.",
+  "language-changed": "El idioma se ha cambiado a %s.",
+  "token_creation_error": "Error al crear el token, motivo del error: %s",
+  "token_created_successfuly": "Token creado exitosamente, token del proyecto: %s",
+  "cli-help": "Has ingresado un comando desconocido. Para información detallada sobre los comandos, ingresa --help.",
+  "exiting_memory_monitoring": "Finalizando el monitoreo de memoria...",
+  "created_by": "Denis Cache y lenguaje de base de datos basado en Protocol Buffers. Todos los derechos reservados.\nDesarrollado por Hacı Mert Gökhan.\n\nMás información: https://github.com/hacimertgokhan/denis.",
+  "startup-information": [
+    "Lenguaje de base de datos basado en Denis Cache, todos los derechos reservados.",
+    "Bienvenido a DDB, utiliza '-start' para iniciar la base de datos basada en caché.",
+    "Puedes leer todo el archivo database.bin con '-read' y gestionar todas las bases de datos DDB con '-ddb'."
+  ],
+  "startup-swd": [
+    "Denis se inició en modo detallado, para desactivar el modo detallado utiliza '-ddb --opt -swd f'.",
+    "Host: <host>, Puerto: <port>"
+  ],
+  "startup-port-and-token-information": [
+    "El servidor está funcionando en el puerto <port>.",
+    "Tu token principal de DDB: <token>"
+  ],
+  "client-connected": "Cliente conectado: <socket>",
+  "waiting-for-client-connection": "Esperando conexión del cliente...",
+  "invalid-denis-mode": "Modo inválido seleccionado. Usa '-start' o '-ddb'.",
+  "denis-global-logger": "El modo Delogg (Denis Logg) ha sido activado. Todas las acciones del servidor y del cliente se guardarán en el directorio 'logs/'.",
+  "listen-memory": [
+    "",
+    "> Uso de memoria en tiempo de ejecución",
+    "\tTotal: <total_memory>",
+    "\tLibre: <free_memory>",
+    "\tUsada: <used_memory>",
+    "",
+    "> Uso de memoria Heap",
+    "\tInicial: <heap_usage_initial>",
+    "\tUsada: <heap_usage_used>",
+    "\tReservada: <heap_usage_free>",
+    "\tMáxima: <heap_usage_max>",
+    ""
+  ],
+  "help": [
+    "> Denis Cache y lenguaje de base de datos basado en Protocol Buffers",
+    "--version: Muestra información de la versión.",
+    "--about: Proporciona información sobre la base de datos.",
+    "--mu: Monitorea el uso de memoria de DenisDB.",
+    "--lm: Monitorea el uso de memoria de DenisDB en formato de estructura de procesos.",
+    "--token: Uso de tokens de datos.",
+    "\t-l: Muestra la lista de tokens.",
+    "\t-c: Crea un nuevo token (segmento de datos).",
+    "\t-i: Proporciona información sobre tokens (segmentos de datos).",
+    "--opt: Cambia rápidamente configuraciones y preferencias del usuario en DenisDB.",
+    "\t-lang:",
+    "\t\t-slfs: <tr,en> Cambia el idioma solo para la sesión activa.",
+    "\t\t-slfg: <tr,en> Cambia el idioma de forma permanente para todas las sesiones.",
+    "\t-smts: <Número> Establece el número máximo de tokens (segmentos de datos) que se pueden crear.",
+    "\t-ctea: <t/f> Activa/desactiva el nuevo sistema de tokens para el token seleccionado.",
+    "\t-umte: <t/f> Activa/desactiva el sistema global de tokens. (Nota: Si esta opción está activada, todos los proyectos son accesibles con el token principal.)",
+    "--exit: Finaliza el modo manual.",
+    "",
+    "Todos los cambios realizados aquí también pueden hacerse manualmente; las acciones se registran en el archivo denis.properties."
+  ]
+}

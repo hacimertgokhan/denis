@@ -1,0 +1,64 @@
+{
+  "monitoring-started": "Muistin seuranta aloitettu, lopettaaksesi: (--finish)",
+  "max-token-size": "Luotavien tokenien maksimimäärä asetettu arvoon %s.",
+  "starts-with-details": "Käynnistystiedot muutettu arvoon %s.",
+  "invalid-parametre": "Syötetty arvo on virheellinen.",
+  "language-changed": "Kieli on vaihdettu arvoksi %s.",
+  "token_creation_error": "Tokenin luominen epäonnistui, virheen syy: %s",
+  "token_created_successfuly": "Token luotiin onnistuneesti, projektitoken: %s",
+  "cli-help": "Annoit tuntemattoman komennon. Lisätietoja komennoista saat kirjoittamalla --help.",
+  "exiting_memory_monitoring": "Muistin seuranta suljetaan...",
+  "created_by": "Denis Välimuisti ja Protocol Buffers -pohjainen tietokantakieli. Kaikki oikeudet pidätetään.\nKehittäjä: Hacı Mert Gökhan.\n\nLisätietoja: https://github.com/hacimertgokhan/denis.",
+  "startup-information": [
+    "Denis Välimuisti-pohjainen tietokantakieli, Kaikki oikeudet pidätetään.",
+    "Tervetuloa DDB:hen, käytä '-start' välimuistipohjaisen tietokannan käynnistämiseen.",
+    "Voit lukea koko database.bin-tiedoston komennolla '-read' ja hallita kaikkia DDB-tietokantoja komennolla '-ddb'."
+  ],
+  "startup-swd": [
+    "Denis käynnistetty yksityiskohtaisessa tilassa, poista yksityiskohtainen tila komennolla '-ddb --opt -swd f'.",
+    "Isäntä: <host>, Portti: <port>"
+  ],
+  "startup-port-and-token-information": [
+    "Palvelin toimii portissa <port>.",
+    "Pää-DDB-tokenisi: <token>"
+  ],
+  "client-connected": "Asiakas yhdistetty: <socket>",
+  "waiting-for-client-connection": "Odotetaan asiakasliitäntää...",
+  "invalid-denis-mode": "Virheellinen tila valittu. Käytä '-start' tai '-ddb'.",
+  "denis-global-logger": "Delogg (Denis Logg) tila aktivoitu. Kaikki palvelimen ja asiakkaan tekemät toiminnot tallennetaan 'logs/'-kansioon.",
+  "listen-memory": [
+    "",
+    "> Ajoaikainen muistin käyttö",
+    "\tYhteensä: <total_memory>",
+    "\tVapaa: <free_memory>",
+    "\tKäytetty: <used_memory>",
+    "",
+    "> Keko-muistin käyttö",
+    "\tAlku: <heap_usage_initial>",
+    "\tKäytetty: <heap_usage_used>",
+    "\tVarattu: <heap_usage_free>",
+    "\tMaksimi: <heap_usage_max>",
+    ""
+  ],
+  "help": [
+    "> Denis Välimuisti ja Protocol Buffers -pohjainen Tietokantakieli",
+    "--version: Näyttää version tiedot.",
+    "--about: Antaa tietoa tietokannasta.",
+    "--mu: Tarkkailee DenisDB:n muistin käyttöä.",
+    "--lm: Tarkkailee DenisDB:n muistin käyttöä prosessirakenneformaatissa.",
+    "--token: Data-tokenien käyttö.",
+    "\t-l: Esikatselee token-listan.",
+    "\t-c: Luo uuden tokenin (datasegmentin).",
+    "\t-i: Näyttää tietoja tokeneista (datasegmenteistä).",
+    "--opt: Muuttaa nopeasti DenisDB:n asetuksia ja käyttäjävalintoja.",
+    "\t-lang:",
+    "\t\t-slfs: <tr,en> Vaihtaa kielen vain aktiivisen istunnon aikana.",
+    "\t\t-slfg: <tr,en> Vaihtaa kielen pysyvästi kaikille istunnoille.",
+    "\t-smts: <Numero> Määrittää maksimimäärän luotavia tokeneita (datasegmenttejä).",
+    "\t-ctea: <t/f> Ottaa käyttöön/poistaa käytöstä uuden token-järjestelmän valitulle tokenille.",
+    "\t-umte: <t/f> Ottaa käyttöön/poistaa käytöstä yleisen token-järjestelmän. (Huomautus: Kun tämä asetus on käytössä, kaikkia projekteja voidaan käyttää pää-tokenilla.)",
+    "--exit: Poistuu manuaalisesta tilasta.",
+    "",
+    "Kaikki täällä tehdyt muutokset voidaan tehdä myös manuaalisesti; toiminnot tallennetaan denis.properties-tiedostoon."
+  ]
+}

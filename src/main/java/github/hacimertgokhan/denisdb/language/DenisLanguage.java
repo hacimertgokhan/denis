@@ -44,6 +44,12 @@ public class DenisLanguage implements DenisLanguageHandler {
     @Override
     public boolean isSupportedLanguage(SupportedLanguages language) {
         return (language == SupportedLanguages.ENGLISH) ||
+                (language == SupportedLanguages.FRANCE) ||
+                (language == SupportedLanguages.DENMARK) ||
+                (language == SupportedLanguages.FINLAND) ||
+                (language == SupportedLanguages.GREECE) ||
+                (language == SupportedLanguages.SPANISH) ||
+                (language == SupportedLanguages.GERMANY) ||
                 (language == SupportedLanguages.TURKISH);
     }
 
@@ -54,6 +60,12 @@ public class DenisLanguage implements DenisLanguageHandler {
     @Override
     public boolean isSupportedLocale(SupportedLocales locale) {
         return (locale == SupportedLocales.US) ||
+                (locale == SupportedLocales.ES) ||
+                (locale == SupportedLocales.FR) ||
+                (locale == SupportedLocales.FI) ||
+                (locale == SupportedLocales.EL) ||
+                (locale == SupportedLocales.DA) ||
+                (locale == SupportedLocales.DE) ||
                 (locale == SupportedLocales.TR);
     }
 

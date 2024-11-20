@@ -1,0 +1,64 @@
+{
+  "monitoring-started": "Hukommelsesovervågning er startet, for at afslutte: (--finish)",
+  "max-token-size": "Det maksimale antal tokens, der kan oprettes, er indstillet til %s.",
+  "starts-with-details": "Opstartsoplysninger er ændret til %s.",
+  "invalid-parametre": "Den indtastede værdi er ugyldig.",
+  "language-changed": "Sprog er blevet ændret til %s.",
+  "token_creation_error": "Token kunne ikke oprettes, fejlagtig årsag: %s",
+  "token_created_successfuly": "Token blev oprettet med succes, projekttoken: %s",
+  "cli-help": "Du indtastede en ukendt kommando. For detaljerede oplysninger om kommandoer kan du skrive --help.",
+  "exiting_memory_monitoring": "Hukommelsesovervågning afsluttes...",
+  "created_by": "Denis Cache og Protocol Buffers baserede databasessprog. Alle rettigheder forbeholdes.\nUdviklet af Hacı Mert Gökhan.\n\nFor mere information: https://github.com/hacimertgokhan/denis.",
+  "startup-information": [
+    "Denis Cache-baserede Databasessprog, Alle rettigheder forbeholdes.",
+    "Velkommen til DDB, brug '-start' for at initialisere den cache-baserede database.",
+    "Du kan læse hele database.bin-filen med '-read' og administrere alle DDB'er (Denis Database) med '-ddb'."
+  ],
+  "startup-swd": [
+    "Denis blev startet i detaljeret tilstand, for at deaktivere detaljeret tilstand brug '-ddb --opt -swd f'.",
+    "Vært: <host>, Port: <port>"
+  ],
+  "startup-port-and-token-information": [
+    "Serveren kører på port <port>.",
+    "Dit hoved-DDB-token: <token>"
+  ],
+  "client-connected": "Klient tilsluttet: <socket>",
+  "waiting-for-client-connection": "Venter på klientforbindelse...",
+  "invalid-denis-mode": "Ugyldig tilstand valgt. Brug '-start' eller '-ddb'.",
+  "denis-global-logger": "Delogg (Denis Logg) tilstand er blevet aktiveret. Alle handlinger udført af serveren og klienten logges i mappen 'logs/'.",
+  "listen-memory": [
+    "",
+    "> Hukommelsesbrug under kørsel",
+    "\tTotal: <total_memory>",
+    "\tFri: <free_memory>",
+    "\tBrugt: <used_memory>",
+    "",
+    "> Heap Hukommelsesbrug",
+    "\tInitial: <heap_usage_initial>",
+    "\tBrugt: <heap_usage_used>",
+    "\tTildelt: <heap_usage_free>",
+    "\tMaksimum: <heap_usage_max>",
+    ""
+  ],
+  "help": [
+    "> Denis Cache og Protocol Buffers baserede Databasessprog",
+    "--version: Viser versionsoplysninger.",
+    "--about: Giver information om databasen.",
+    "--mu: Overvåger DenisDB's hukommelsesbrug.",
+    "--lm: Overvåger DenisDB's hukommelsesbrug i processtrukturform.",
+    "--token: Brug af datatokens.",
+    "\t-l: Forhåndsviser tokenlisten.",
+    "\t-c: Opretter en ny token (datasegment).",
+    "\t-i: Giver oplysninger om tokens (datasegmenter).",
+    "--opt: Ændrer hurtigt DenisDB's indstillinger og brugerpræferencer.",
+    "\t-lang:",
+    "\t\t-slfs: <tr,en> Ændrer sproget midlertidigt for den aktive session.",
+    "\t\t-slfg: <tr,en> Ændrer sproget permanent for alle sessioner.",
+    "\t-smts: <Nummer> Angiver det maksimale antal tokens (datasegmenter), der kan oprettes.",
+    "\t-ctea: <t/f> Aktiverer/deaktiverer det nye tokensystem for hvert opslag for den valgte token.",
+    "\t-umte: <t/f> Aktiverer/deaktiverer det globale tokensystem. (Bemærk: Når denne mulighed er aktiveret, kan alle projekter tilgås med hovedtokenet.)",
+    "--exit: Afslutter manuel tilstand.",
+    "",
+    "Alle ændringer, der foretages her, kan også foretages manuelt; handlingerne gemmes i denis.properties-filen."
+  ]
+}

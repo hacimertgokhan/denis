@@ -334,13 +334,13 @@ public class DenisClient {
                                     try {
                                         ProtoDatabase finalDb = new ProtoDatabase("database.bin");
                                         if(finalDb.getData(getProjectPrefix(), key) != null) {
-                                            out.println("Protobuff: " + finalDb.getData(getProjectPrefix(), key));
+                                            out.println("pbuff:" + finalDb.getData(getProjectPrefix(), key));
                                         }
                                     } catch (IOException e) {
                                         throw new RuntimeException(e);
                                     }
                                     if (data != null) {
-                                        out.println("Cache: " + data.getValue());
+                                        out.println("cache:"+data.getValue());
                                     } else {
                                         out.println("ERROR: No data found for key: " + key);
                                     }
@@ -359,7 +359,7 @@ public class DenisClient {
                                     } catch (IOException e) {
                                         throw new RuntimeException(e);
                                     }
-                                    out.println("DATA SAVED!");
+                                    out.println("Ok.");
                                 } else {
                                     out.println("ERROR: USAGE: SET key value [<-save>]");
                                 }
@@ -375,7 +375,7 @@ public class DenisClient {
                                         throw new RuntimeException(e);
                                     }
                                     store.remove(key);
-                                    out.println("DATA DELETED!");
+                                    out.println("Ok.");
                                 } else {
                                     out.println("ERROR: USAGE: DEL key [<-save>]");
                                 }
@@ -386,7 +386,7 @@ public class DenisClient {
                                     String key = getProjectPrefix() + parts[1];
                                     String newValue = parts[2];
                                     store.put(key, new Any(newValue));
-                                    out.println("DATA UPDATED!");
+                                    out.println("Ok.");
                                 } else {
                                     out.println("ERROR: USAGE: UPDATE key newValue [<-save>]");
                                 }

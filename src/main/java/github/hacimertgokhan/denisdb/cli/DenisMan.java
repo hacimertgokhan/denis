@@ -3,8 +3,6 @@ package github.hacimertgokhan.denisdb.cli;
 import github.hacimertgokhan.denisdb.CreateSecureToken;
 import github.hacimertgokhan.denisdb.language.DenisLanguage;
 import github.hacimertgokhan.json.JsonFile;
-import org.json.JSONObject;
-import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 

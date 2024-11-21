@@ -61,25 +61,7 @@ public class Main {
 
             }
         }
-        Scanner scanner = new Scanner(System.in);
-        String mode = scanner.nextLine();
-        switch (mode.toLowerCase()) {
-            case "-start" -> handleUseMode();
-            case "-ddb" -> {
-                handleCLIMode();
-            }
-            case "-read" -> {
-                ReadProtoFile readProtoFile = new ReadProtoFile();
-                readProtoFile.Read("database.bin");
-            }
-            default -> {
-                try {
-                    denisLogger.error(String.valueOf(new DenisLanguage().getLanguageFile().readJson().get("invalid-denis-logger")));
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-        }
+        handleUseMode();
     }
     private static void handleUseMode() {
         if (TOKEN.length() == 128) {
@@ -125,9 +107,4 @@ public class Main {
             denisLogger.error("You cannot use DDB without correct token value. (Token length must be 128)");
         }
     }
-
-    private static void handleCLIMode() {
-        new CommandLine(new DenisMan()).execute();
-    }
-
 }

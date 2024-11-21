@@ -7,7 +7,6 @@
     <groupId>github.hacimertgokhan</groupId>
     <artifactId>denis</artifactId>
     <version>0.0.0.1alpha</version>
-
     <build>
         <plugins>
             <plugin>

@@ -12,6 +12,7 @@ import org.json.JSONObject;
 
 import java.io.*;
 import java.net.Socket;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -180,21 +181,58 @@ public class DenisClient {
                         switch (command) {
                             case "GET":
 
-                                if (parts.length == 2) {
+                                if (parts.length > 2) {
+                                    String key = getProjectPrefix() + parts[1];
+                                    Any data = store.get(key);
+                                    for (String subs : (parts)) {
+                                        if (subs.contains("-only-pbuff")) {
+                                            try {
+                                                ProtoDatabase finalDb = new ProtoDatabase("database.bin");
+                                                if (finalDb.getData(getProjectPrefix(), key) != null) {
+                                                    out.println(finalDb.getData(getProjectPrefix(), key));
+                                                } else {
+                                                    out.println(String.format("err: %s not found ", key));
+                                                }
+                                            } catch (IOException e) {
+                                                throw new RuntimeException(e);
+                                            }
+                                        } else if (subs.contains("-only-cache")) {
+                                            if (data != null) {
+                                                out.println(data.getValue());
+                                            } else {
+                                                out.println(String.format("err: %s not found ", key));
+                                            }
+                                        } else {
+                                            try {
+                                                ProtoDatabase finalDb = new ProtoDatabase("database.bin");
+                                                if (finalDb.getData(getProjectPrefix(), key) != null) {
+                                                    out.println("pbuff: " + finalDb.getData(getProjectPrefix(), key));
+                                                }
+                                            } catch (IOException e) {
+                                                throw new RuntimeException(e);
+                                            }
+                                            if (data != null) {
+                                                out.println("cache:" + data.getValue());
+                                            } else {
+                                                out.println(String.format("err: %s not found ", key));
+                                            }
+                                        }
+                                    }
+                                } else if (parts.length == 2) {
                                     String key = getProjectPrefix() + parts[1];
                                     Any data = store.get(key);
                                     try {
                                         ProtoDatabase finalDb = new ProtoDatabase("database.bin");
-                                        if(finalDb.getData(getProjectPrefix(), key) != null) {
-                                            out.println("Protobuff: " + finalDb.getData(getProjectPrefix(), key));
+                                        if (finalDb.getData(getProjectPrefix(), key) != null) {
+                                            out.println("pbuff: " + finalDb.getData(getProjectPrefix(), key));
                                         }
                                     } catch (IOException e) {
                                         throw new RuntimeException(e);
                                     }
                                     if (data != null) {
-                                        out.println("Cache: " + data.getValue());
+                                        out.println("cache:" + data.getValue());
                                     } else {
-                                        out.println("ERROR: No data found for key: " + key);
+                                        out.println(String.format("err: %s not found ", key));
                                     }
                                 } else {
                                     out.println("ERROR: USAGE: GET key");
@@ -211,7 +249,7 @@ public class DenisClient {
                                     } catch (IOException e) {
                                         throw new RuntimeException(e);
                                     }
-                                    out.println("DATA SAVED!");
+                                    out.println("Ok!");
                                 } else {
                                     out.println("ERROR: USAGE: SET key value [<-save>]");
                                 }
@@ -227,7 +265,7 @@ public class DenisClient {
                                         throw new RuntimeException(e);
                                     }
                                     store.remove(key);
-                                    out.println("DATA DELETED!");
+                                    out.println("Ok!");
                                 } else {
                                     out.println("ERROR: USAGE: DEL key [<-save>]");
                                 }
@@ -238,7 +276,7 @@ public class DenisClient {
                                     String key = getProjectPrefix() + parts[1];
                                     String newValue = parts[2];
                                     store.put(key, new Any(newValue));
-                                    out.println("DATA UPDATED!");
+                                    out.println("Ok!");
                                 } else {
                                     out.println("ERROR: USAGE: UPDATE key newValue [<-save>]");
                                 }

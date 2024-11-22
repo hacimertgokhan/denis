@@ -16,7 +16,7 @@
   ],
   "startup-swd": [
     "Denis detaylı modda başlatıldı, detay modunu kapatmak için 'denis --opt -swd f' komutunu kullanın.",
-    "Kullanılan adres: <host>:<port>"
+    "Kullanılan adres <host>:<port>"
   ],
   "startup-port-and-token-information": [
     "Sunucu <port> portunda çalışıyor.",

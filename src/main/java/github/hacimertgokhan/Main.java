@@ -12,6 +12,9 @@ import github.hacimertgokhan.readers.ReadDDBProp;
 import picocli.CommandLine;
 
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
+import java.lang.management.MemoryMXBean;
+import java.lang.management.MemoryUsage;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.*;
@@ -63,6 +66,7 @@ public class Main {
         }
         handleUseMode();
     }
+
     private static void handleUseMode() {
         if (TOKEN.length() == 128) {
             try (ServerSocket serverSocket = new ServerSocket(PORT)) {
@@ -86,6 +90,7 @@ public class Main {
                     logTerminal.closeLogTerminal();
                 }));
                 while (true) {
+                    Runtime.getRuntime().gc();
                     denisLogger.info(String.valueOf(new DenisLanguage().getLanguageFile().readJson().get("waiting-for-client-connection")));
                     Socket clientSocket = serverSocket.accept();
                     denisLogger.info(String.valueOf(new DenisLanguage().getLanguageFile().readJson().get("client-connected")).replace("<socket>", String.valueOf(clientSocket.getInetAddress())));

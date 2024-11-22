@@ -1,20 +1,8 @@
-2024-11-22 10:14:52 [main] INFO  github.hacimertgokhan.Main - Denis Önbellek Tabanlı Veritabanı Dili, Tüm hakları saklıdır.
-2024-11-22 10:14:52 [main] INFO  github.hacimertgokhan.Main - Veritabanını yönetmek için lütfen Denis CLI'ı kurunuz.
-2024-11-22 10:14:52 [main] INFO  github.hacimertgokhan.Main - https://github.com/hacimertgokhan/denis-cli
-2024-11-22 10:14:52 [main] INFO  github.hacimertgokhan.Main - Denis detaylı modda başlatıldı, detay modunu kapatmak için 'denis --opt -swd f' komutunu kullanın.
-2024-11-22 10:14:52 [main] INFO  github.hacimertgokhan.Main - Kullanılan adres: localhost:5142
-2024-11-22 10:14:52 [main] INFO  github.hacimertgokhan.Main - Sunucu 5142 portunda çalışıyor.
-2024-11-22 10:14:52 [main] INFO  github.hacimertgokhan.Main - Ana DDB tokeniniz: EkmgdnjxnRxNEq42wab3jTF8vQn1dLnR4Tsu4gz09O6eb7ig0JdRJ8WPUhRPNxzAs0xZSx9njy2GE3BMNzGYOgnfGtuQixRRnej61zFBL9jmK2ZxbZqxp4GqtIMZafPy
-2024-11-22 10:14:52 [main] INFO  github.hacimertgokhan.Main - İstemci bağlantısı bekleniyor...
-2024-11-22 10:14:54 [main] INFO  github.hacimertgokhan.Main - Bağlanan istemci: /127.0.0.1
-2024-11-22 10:14:54 [main] INFO  github.hacimertgokhan.Main - İstemci bağlantısı bekleniyor...
-2024-11-22 10:14:54 [pool-2-thread-1] INFO  github.hacimertgokhan.Main - Storage loaded with specified token: foGAKE68moXgNg6ZbJmMAOB3zZCg79OxzhGuxDjOZ3rqB4vegDhwsXcDBTsRszlDIUK9FfKd4IQuIR7RoofvKxm4qcHwdgx9398o1MsY1J3tUqVFiQLs39KyYGVUxwGN
-2024-11-22 10:14:54 [pool-2-thread-1] INFO  github.hacimertgokhan.Main - Waiting for client connection...
-2024-11-22 10:14:56 [pool-2-thread-1] INFO  github.hacimertgokhan.Main - [CLIENT] 127.0.0.1 action: AUTH foGAKE68moXgNg6ZbJmMAOB3zZCg79OxzhGuxDjOZ3rqB4vegDhwsXcDBTsRszlDIUK9FfKd4IQuIR7RoofvKxm4qcHwdgx9398o1MsY1J3tUqVFiQLs39KyYGVUxwGN
-2024-11-22 10:14:56 [Thread-1] ERROR github.hacimertgokhan.Main - Error loading from Protobuf: Protocol message had invalid UTF-8.
-2024-11-22 10:15:00 [pool-2-thread-1] INFO  github.hacimertgokhan.Main - [CLIENT] 127.0.0.1 action: GET DATA -pbuff
-2024-11-22 10:15:23 [pool-2-thread-1] INFO  github.hacimertgokhan.Main - [CLIENT] 127.0.0.1 action: GET DATA -only-pbuff
-2024-11-22 10:15:31 [pool-2-thread-1] INFO  github.hacimertgokhan.Main - [CLIENT] 127.0.0.1 action: GET DATA -only-cache
-2024-11-22 10:17:22 [pool-2-thread-1] INFO  github.hacimertgokhan.Main - [CLIENT] 127.0.0.1 action: GET DATA -only-pbuff
-2024-11-22 10:17:33 [pool-2-thread-1] INFO  github.hacimertgokhan.Main - [CLIENT] 127.0.0.1 action: GET DATA
-2024-11-22 10:17:37 [pool-2-thread-1] INFO  github.hacimertgokhan.Main - [CLIENT] 127.0.0.1 action: GET DATA DATA
+2024-11-22 11:33:32 [main] INFO  github.hacimertgokhan.Main - Denis Önbellek Tabanlı Veritabanı Dili, Tüm hakları saklıdır.
+2024-11-22 11:33:32 [main] INFO  github.hacimertgokhan.Main - Veritabanını yönetmek için lütfen Denis CLI'ı kurunuz.
+2024-11-22 11:33:32 [main] INFO  github.hacimertgokhan.Main - https://github.com/hacimertgokhan/denis-cli
+2024-11-22 11:33:32 [main] INFO  github.hacimertgokhan.Main - Denis detaylı modda başlatıldı, detay modunu kapatmak için 'denis --opt -swd f' komutunu kullanın.
+2024-11-22 11:33:32 [main] INFO  github.hacimertgokhan.Main - Kullanılan adres: localhost:5142
+2024-11-22 11:33:32 [main] INFO  github.hacimertgokhan.Main - Sunucu 5142 portunda çalışıyor.
+2024-11-22 11:33:32 [main] INFO  github.hacimertgokhan.Main - Ana DDB tokeniniz: EkmgdnjxnRxNEq42wab3jTF8vQn1dLnR4Tsu4gz09O6eb7ig0JdRJ8WPUhRPNxzAs0xZSx9njy2GE3BMNzGYOgnfGtuQixRRnej61zFBL9jmK2ZxbZqxp4GqtIMZafPy
+2024-11-22 11:33:32 [main] INFO  github.hacimertgokhan.Main - İstemci bağlantısı bekleniyor...

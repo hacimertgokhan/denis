@@ -1,8 +1,4 @@
-2024-11-22 11:33:32 [main] INFO  github.hacimertgokhan.Main - Denis Önbellek Tabanlı Veritabanı Dili, Tüm hakları saklıdır.
-2024-11-22 11:33:32 [main] INFO  github.hacimertgokhan.Main - Veritabanını yönetmek için lütfen Denis CLI'ı kurunuz.
-2024-11-22 11:33:32 [main] INFO  github.hacimertgokhan.Main - https://github.com/hacimertgokhan/denis-cli
-2024-11-22 11:33:32 [main] INFO  github.hacimertgokhan.Main - Denis detaylı modda başlatıldı, detay modunu kapatmak için 'denis --opt -swd f' komutunu kullanın.
-2024-11-22 11:33:32 [main] INFO  github.hacimertgokhan.Main - Kullanılan adres: localhost:5142
-2024-11-22 11:33:32 [main] INFO  github.hacimertgokhan.Main - Sunucu 5142 portunda çalışıyor.
-2024-11-22 11:33:32 [main] INFO  github.hacimertgokhan.Main - Ana DDB tokeniniz: EkmgdnjxnRxNEq42wab3jTF8vQn1dLnR4Tsu4gz09O6eb7ig0JdRJ8WPUhRPNxzAs0xZSx9njy2GE3BMNzGYOgnfGtuQixRRnej61zFBL9jmK2ZxbZqxp4GqtIMZafPy
-2024-11-22 11:33:32 [main] INFO  github.hacimertgokhan.Main - İstemci bağlantısı bekleniyor...
+2024-11-23 00:09:52 [main] INFO  github.hacimertgokhan.Main - Denis Önbellek Tabanlı Veritabanı Dili, Tüm hakları saklıdır.
+2024-11-23 00:09:52 [main] INFO  github.hacimertgokhan.Main - Veritabanını yönetmek için lütfen Denis CLI'ı kurunuz. (https://github.com/hacimertgokhan/denis-cli)
+2024-11-23 00:09:52 [main] INFO  github.hacimertgokhan.Main - Sunucu 5142 portunda çalışıyor.
+2024-11-23 00:09:52 [main] INFO  github.hacimertgokhan.Main - İstemci bağlantısı bekleniyor...

@@ -1,4 +1,0 @@
-Denis started at fri nov 22 10:32:46 gmt+03:00 2024
-Client connected: /127.0.0.1
-[CLIENT] 127.0.0.1 action: AUTH foGAKE68moXgNg6ZbJmMAOB3zZCg79OxzhGuxDjOZ3rqB4vegDhwsXcDBTsRszlDIUK9FfKd4IQuIR7RoofvKxm4qcHwdgx9398o1MsY1J3tUqVFiQLs39KyYGVUxwGN
-Denis stopped at fri nov 22 10:33:34 gmt+03:00 2024

@@ -11,16 +11,14 @@
   "created_by": "Denis Önbellek ve Protobuff Tabanlı Veritabanı Dili. Tüm hakları saklıdır.\nHacı Mert Gökhan tarafından geliştirilmiştir.\n\nDaha fazla bilgi için: https://github.com/hacimertgokhan/denis.",
   "startup-information": [
     "Denis Önbellek Tabanlı Veritabanı Dili, Tüm hakları saklıdır.",
-    "Veritabanını yönetmek için lütfen Denis CLI'ı kurunuz.",
-    "https://github.com/hacimertgokhan/denis-cli"
+    "Veritabanını yönetmek için lütfen Denis CLI'ı kurunuz. (https://github.com/hacimertgokhan/denis-cli)"
   ],
   "startup-swd": [
     "Denis detaylı modda başlatıldı, detay modunu kapatmak için 'denis --opt -swd f' komutunu kullanın.",
     "Kullanılan adres <host>:<port>"
   ],
   "startup-port-and-token-information": [
-    "Sunucu <port> portunda çalışıyor.",
-    "Ana DDB tokeniniz: <token>"
+    "Sunucu <port> portunda çalışıyor."
   ],
   "client-connected": "Bağlanan istemci: <socket>",
   "waiting-for-client-connection": "İstemci bağlantısı bekleniyor...",

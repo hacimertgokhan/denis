@@ -13,6 +13,7 @@ import org.json.JSONObject;
 import java.io.*;
 import java.net.Socket;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -105,6 +106,21 @@ public class DenisClient {
         return currentProjectToken != null ? currentProjectToken + ":" : null;
     }
 
+    public void clientLogg(int level, PrintWriter printWriter, String message) {
+        switch (level) {
+            case 0 -> {
+                printWriter.println(String.format("[Info - %s]: %s",new Date(), message));
+            }
+            case 1 -> {
+                printWriter.println(String.format("[Debug - %s]: %s",new Date(), message));
+            }
+            case 2 -> {
+                printWriter.println(String.format("[Error - %s]: %s",new Date(), message));
+            }
+            default -> throw new IllegalStateException("Unexpected value: " + level);
+        }
+    }
+
     public void handleClient(Socket clientSocket, ConcurrentHashMap<String, Any> store, DenisTerminal logTerminal) {
         DDBServer.info("Waiting for client connection...");
         try {
@@ -135,7 +151,7 @@ public class DenisClient {
 
                     if (command.equals("AUTH")) {
                         if (parts.length < 2) {
-                            out.println("ERROR: Usage: AUTH <CREATE|token>");
+                            clientLogg(2, out, "ERROR: Usage: AUTH <CREATE|token>");
                             continue;
                         }
 
@@ -153,10 +169,10 @@ public class DenisClient {
                                         projectFile.writeJson(initialData);
                                     }
                                     ddb.appendToArray("tokens", newToken);
-                                    out.println("Project created successfully! Token: " + newToken);
+                                    clientLogg(2, out, "Project created successfully! Token: " + newToken);
                                 } catch (IOException e) {
                                     DDBServer.error("Error saving new token: " + e.getMessage());
-                                    out.println("ERROR: Could not create project");
+                                    clientLogg(2, out, "Could not create project");
                                 }
                             });
                         } else {
@@ -164,9 +180,9 @@ public class DenisClient {
                                 String token = parts[1];
                                 if (authenticateProject(token)) {
                                     loadStorageFromProtobuf(store, token);
-                                    out.println("Authenticated to project: " + token);
+                                    clientLogg(0, out, "Authenticated to project: " + token);
                                 } else {
-                                    out.println("ERROR: Invalid token");
+                                    clientLogg(2, out, "Invalid token: " + token);
                                 }
                             });
                         }
@@ -174,7 +190,7 @@ public class DenisClient {
                     }
 
                     if (currentProjectToken == null && !command.equals("EXIT")) {
-                        out.println("ERROR: Please authenticate first using AUTH command");
+                        clientLogg(2, out, "Please authenticate first using AUTH command");
                         continue;
                     }
                     taskQueue.add(() -> {
@@ -185,28 +201,48 @@ public class DenisClient {
                                     String key = getProjectPrefix() + parts[1];
                                     Any data = store.get(key);
                                     for (String subs : (parts)) {
-                                        if (subs.contains("-only-pbuff")) {
+                                        if (subs.contains("-&only-pbuff")) {
                                             try {
                                                 ProtoDatabase finalDb = new ProtoDatabase("database.bin");
                                                 if (finalDb.getData(getProjectPrefix(), key) != null) {
-                                                    out.println(finalDb.getData(getProjectPrefix(), key));
+                                                    if (subs.contains("-&json")) {
+                                                        out.println(String.format(
+                                                                "{\"key\": \"%s\", \"data\": \"%s\"}",
+                                                                key,
+                                                                finalDb.getData(getProjectPrefix(), key)
+                                                        ));
+
+                                                    } else {
+                                                        out.println(finalDb.getData(getProjectPrefix(), key));
+                                                    }
                                                 } else {
-                                                    out.println(String.format("err: %s not found ", key));
+                                                    out.println(String.format("pbuff-err: %s not found ", key));
                                                 }
                                             } catch (IOException e) {
                                                 throw new RuntimeException(e);
                                             }
-                                        } else if (subs.contains("-only-cache")) {
+                                        } else if (subs.contains("-&only-cache")) {
                                             if (data != null) {
-                                                out.println(data.getValue());
+                                                if (subs.contains("-&json")) {
+                                                    out.println(String.format(
+                                                            "{\"key\": \"%s\", \"data\": \"%s\"}",
+                                                            key,
+                                                            data.getValue()
+                                                    ));
+
+                                                } else {
+                                                    out.println(data.getValue());
+                                                }
                                             } else {
-                                                out.println(String.format("err: %s not found ", key));
+                                                out.println(String.format("cache-err: %s not found ", key));
                                             }
                                         } else {
                                             try {
                                                 ProtoDatabase finalDb = new ProtoDatabase("database.bin");
                                                 if (finalDb.getData(getProjectPrefix(), key) != null) {
                                                     out.println("pbuff: " + finalDb.getData(getProjectPrefix(), key));
+                                                } else {
+                                                    out.println(String.format("pbuff-err: %s not found ", key));
                                                 }
                                             } catch (IOException e) {
                                                 throw new RuntimeException(e);
@@ -214,7 +250,7 @@ public class DenisClient {
                                             if (data != null) {
                                                 out.println("cache:" + data.getValue());
                                             } else {
-                                                out.println(String.format("err: %s not found ", key));
+                                                out.println(String.format("cache-err: %s not found ", key));
                                             }
                                         }
                                     }
@@ -240,18 +276,23 @@ public class DenisClient {
                                 break;
                             case "SET":
                                 if (parts.length >= 3) {
-                                    String key = getProjectPrefix() + parts[1];
-                                    String value = parts[2];
-                                    store.put(key, new Any(value));
-                                    try {
-                                        ProtoDatabase finalDb = new ProtoDatabase("database.bin");
-                                        finalDb.setData(getProjectPrefix(), key, new Any(value));
-                                    } catch (IOException e) {
-                                        throw new RuntimeException(e);
+                                    for (String subs : (parts)) {
+                                        String key = getProjectPrefix() + parts[1];
+                                        String value = parts[2];
+                                        store.put(key, new Any(value));
+                                        if (subs.contains("-&save")) {
+                                            try {
+                                                ProtoDatabase finalDb = new ProtoDatabase("database.bin");
+                                                subs.replaceAll("-&save", "");
+                                                finalDb.setData(getProjectPrefix(), key, new Any(value));
+                                            } catch (IOException e) {
+                                                throw new RuntimeException(e);
+                                            }
+                                        }
+                                        clientLogg(0, out, "Ok.");
                                     }
-                                    out.println("Ok!");
                                 } else {
-                                    out.println("ERROR: USAGE: SET key value [<-save>]");
+                                    out.println("ERROR: USAGE: SET <key> <value> [-&save]");
                                 }
                                 break;
 
@@ -265,7 +306,7 @@ public class DenisClient {
                                         throw new RuntimeException(e);
                                     }
                                     store.remove(key);
-                                    out.println("Ok!");
+                                    clientLogg(0, out, "Ok.");
                                 } else {
                                     out.println("ERROR: USAGE: DEL key [<-save>]");
                                 }
@@ -276,7 +317,7 @@ public class DenisClient {
                                     String key = getProjectPrefix() + parts[1];
                                     String newValue = parts[2];
                                     store.put(key, new Any(newValue));
-                                    out.println("Ok!");
+                                    clientLogg(0, out, "Ok.");
                                 } else {
                                     out.println("ERROR: USAGE: UPDATE key newValue [<-save>]");
                                 }
@@ -320,7 +361,7 @@ public class DenisClient {
 
                     if (command.equals("AUTH")) {
                         if (parts.length < 2) {
-                            out.println("ERROR: Usage: AUTH <CREATE|token>");
+                            clientLogg(2, out, "ERROR: Usage: AUTH <CREATE|token>");
                             continue;
                         }
 
@@ -338,10 +379,10 @@ public class DenisClient {
                                         projectFile.writeJson(initialData);
                                     }
                                     ddb.appendToArray("tokens", newToken);
-                                    out.println("Project created successfully! Token: " + newToken);
+                                    clientLogg(2, out, "Project created successfully! Token: " + newToken);
                                 } catch (IOException e) {
                                     DDBServer.error("Error saving new token: " + e.getMessage());
-                                    out.println("ERROR: Could not create project");
+                                    clientLogg(2, out, "Could not create project");
                                 }
                             });
                         } else {
@@ -349,9 +390,9 @@ public class DenisClient {
                                 String token = parts[1];
                                 if (authenticateProject(token)) {
                                     loadStorageFromProtobuf(store, token);
-                                    out.println("Authenticated to project: " + token);
+                                    clientLogg(0, out, "Authenticated to project: " + token);
                                 } else {
-                                    out.println("ERROR: Invalid token");
+                                    clientLogg(2, out, "Invalid token: " + token);
                                 }
                             });
                         }
@@ -359,28 +400,94 @@ public class DenisClient {
                     }
 
                     if (currentProjectToken == null && !command.equals("EXIT")) {
-                        out.println("ERROR: Please authenticate first using AUTH command");
+                        clientLogg(2, out, "Please authenticate first using AUTH command");
                         continue;
                     }
                     taskQueue.add(() -> {
                         switch (command) {
+                            case "DNS":
+                                if (parts.length > 1) {
+                                    if (parts[0].equalsIgnoreCase("FLUSH")) {
+                                        store.clear();
+                                        clientLogg(0, out, "Ok.");
+                                    } else {
+                                        out.println("Arguments: FLUSH");
+                                    }
+                                } else {
+                                    out.println("USAGE: DNS <FLUSH>");
+                                }
                             case "GET":
 
-                                if (parts.length == 2) {
+                                if (parts.length > 2) {
+                                    String key = getProjectPrefix() + parts[1];
+                                    Any data = store.get(key);
+                                    for (String subs : (parts)) {
+                                        if (subs.contains("-&only-pbuff")) {
+                                            try {
+                                                ProtoDatabase finalDb = new ProtoDatabase("database.bin");
+                                                if (finalDb.getData(getProjectPrefix(), key) != null) {
+                                                    if (subs.contains("-&json")) {
+                                                        out.println(String.format(
+                                                                "{\"key\": \"%s\", \"data\": \"%s\"}",
+                                                                key,
+                                                                finalDb.getData(getProjectPrefix(), key)
+                                                        ));
+
+                                                    } else {
+                                                        out.println(finalDb.getData(getProjectPrefix(), key));
+                                                    }
+                                                } else {
+                                                    out.println(String.format("err: %s not found ", key));
+                                                }
+                                            } catch (IOException e) {
+                                                throw new RuntimeException(e);
+                                            }
+                                        } else if (subs.contains("-&only-cache")) {
+                                            if (data != null) {
+                                                if (subs.contains("-&json")) {
+                                                    out.println(String.format(
+                                                            "{\"key\": \"%s\", \"data\": \"%s\"}",
+                                                            key,
+                                                            data.getValue()
+                                                    ));
+
+                                                } else {
+                                                    out.println(data.getValue());
+                                                }
+                                            } else {
+                                                out.println(String.format("err: %s not found ", key));
+                                            }
+                                        } else {
+                                            try {
+                                                ProtoDatabase finalDb = new ProtoDatabase("database.bin");
+                                                if (finalDb.getData(getProjectPrefix(), key) != null) {
+                                                    out.println("pbuff: " + finalDb.getData(getProjectPrefix(), key));
+                                                }
+                                            } catch (IOException e) {
+                                                throw new RuntimeException(e);
+                                            }
+                                            if (data != null) {
+                                                out.println("cache:" + data.getValue());
+                                            } else {
+                                                out.println(String.format("err: %s not found ", key));
+                                            }
+                                        }
+                                    }
+                                } else if (parts.length == 2) {
                                     String key = getProjectPrefix() + parts[1];
                                     Any data = store.get(key);
                                     try {
                                         ProtoDatabase finalDb = new ProtoDatabase("database.bin");
-                                        if(finalDb.getData(getProjectPrefix(), key) != null) {
-                                            out.println("pbuff:" + finalDb.getData(getProjectPrefix(), key));
+                                        if (finalDb.getData(getProjectPrefix(), key) != null) {
+                                            out.println("pbuff: " + finalDb.getData(getProjectPrefix(), key));
                                         }
                                     } catch (IOException e) {
                                         throw new RuntimeException(e);
                                     }
                                     if (data != null) {
-                                        out.println("cache:"+data.getValue());
+                                        out.println("cache:" + data.getValue());
                                     } else {
-                                        out.println("ERROR: No data found for key: " + key);
+                                        out.println(String.format("err: %s not found ", key));
                                     }
                                 } else {
                                     out.println("ERROR: USAGE: GET key");
@@ -388,18 +495,23 @@ public class DenisClient {
                                 break;
                             case "SET":
                                 if (parts.length >= 3) {
-                                    String key = getProjectPrefix() + parts[1];
-                                    String value = parts[2];
-                                    store.put(key, new Any(value));
-                                    try {
-                                        ProtoDatabase finalDb = new ProtoDatabase("database.bin");
-                                        finalDb.setData(getProjectPrefix(), key, new Any(value));
-                                    } catch (IOException e) {
-                                        throw new RuntimeException(e);
+                                    for (String subs : (parts)) {
+                                        String key = getProjectPrefix() + parts[1];
+                                        String value = parts[2];
+                                        store.put(key, new Any(value));
+                                        if (subs.contains("-&save")) {
+                                            try {
+                                                ProtoDatabase finalDb = new ProtoDatabase("database.bin");
+                                                subs.replaceAll("-&save", "");
+                                                finalDb.setData(getProjectPrefix(), key, new Any(value));
+                                            } catch (IOException e) {
+                                                throw new RuntimeException(e);
+                                            }
+                                        }
+                                        clientLogg(0, out, "Ok.");
                                     }
-                                    out.println("Ok.");
                                 } else {
-                                    out.println("ERROR: USAGE: SET key value [<-save>]");
+                                    out.println("ERROR: USAGE: SET <key> <value> [-&save]");
                                 }
                                 break;
 
@@ -413,7 +525,7 @@ public class DenisClient {
                                         throw new RuntimeException(e);
                                     }
                                     store.remove(key);
-                                    out.println("Ok.");
+                                    clientLogg(0, out, "Ok.");
                                 } else {
                                     out.println("ERROR: USAGE: DEL key [<-save>]");
                                 }
@@ -424,7 +536,7 @@ public class DenisClient {
                                     String key = getProjectPrefix() + parts[1];
                                     String newValue = parts[2];
                                     store.put(key, new Any(newValue));
-                                    out.println("Ok.");
+                                    clientLogg(0, out, "Ok.");
                                 } else {
                                     out.println("ERROR: USAGE: UPDATE key newValue [<-save>]");
                                 }

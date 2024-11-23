@@ -144,8 +144,6 @@ exists = actstrist.exists(key);
 System.out.println(exists); // false
 ```
 
-[The rest of the document follows the same translation pattern, maintaining technical terminology and code structure. Would you like me to continue with the translation of the remaining sections?]
-
 ## Roadmap
 
 - User system

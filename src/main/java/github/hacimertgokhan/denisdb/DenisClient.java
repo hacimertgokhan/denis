@@ -407,17 +407,9 @@ public class DenisClient {
                         String key = getProjectPrefix() + parts[1];
                         Any data = store.get(key);
                         switch (command) {
-                            case "DNS":
-                                if (parts.length > 1) {
-                                    if (parts[0].equalsIgnoreCase("FLUSH")) {
-                                        store.clear();
-                                        clientLogg(0, out, "Ok.");
-                                    } else {
-                                        out.println("Arguments: FLUSH");
-                                    }
-                                } else {
-                                    out.println("USAGE: DNS <FLUSH>");
-                                }
+                            case "HEAVEN":
+                                store.clear();
+                                clientLogg(0, out, "Ok.");
                             case "GET":
                                 try {
                                     ProtoDatabase finalDb = new ProtoDatabase("database.bin");
@@ -436,6 +428,17 @@ public class DenisClient {
                             case "GC":
                                 if (data != null) {
                                     out.println("cache:" + data.getValue());
+                                } else {
+                                    out.println(String.format("err: %s not found ", key));
+                                }
+                                break;
+                            case "GCJ":
+                                if (data != null) {
+                                    out.println(String.format(
+                                            "{\"key\": \"%s\", \"data\": \"%s\"}",
+                                            key,
+                                            data.getValue()
+                                    ));
                                 } else {
                                     out.println(String.format("err: %s not found ", key));
                                 }

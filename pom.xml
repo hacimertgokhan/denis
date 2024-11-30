@@ -6,7 +6,7 @@
 
     <groupId>github.hacimertgokhan</groupId>
     <artifactId>denis</artifactId>
-    <version>0.0.0.2alpha</version>
+    <version>0.0.0.2-alpha</version>
     <build>
         <plugins>
             <plugin>
@@ -58,6 +58,34 @@
                             <goal>compile</goal>
                             <goal>test-compile</goal>
                         </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.4.1</version>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <mainClass>github.hacimertgokhan.Main</mainClass>
+                        </manifest>
+                    </archive>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.5.0</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <createDependencyReducedPom>true</createDependencyReducedPom>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
@@ -118,7 +146,6 @@
             <artifactId>picocli</artifactId>
             <version>4.7.4</version> <!-- En son sürümü kontrol edin -->
         </dependency>
-
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-api</artifactId>

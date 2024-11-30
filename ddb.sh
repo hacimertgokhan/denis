@@ -1,3 +1,3 @@
-VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+VERSION=0.0.0.2
 echo "Denis $VERSION, All rights reserved."
-java -Dfile.encoding=UTF-8 -jar DenisDB-$VERSION-jwd.jar
+java -Dfile.encoding=UTF-8 -cp "denis-$VERSION-alpha.jar:lib/*" github.hacimertgokhan.Main

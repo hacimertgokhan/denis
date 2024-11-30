@@ -23,6 +23,7 @@
             <includes>
                 <include>lang/**</include>
                 <include>denis/**</include>
+                <include>lib/**</include>
                 <include>logs/**</include>
                 <include>ddb.sh</include>
                 <include>ddb.json</include>

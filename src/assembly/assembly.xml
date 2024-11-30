@@ -26,6 +26,7 @@
                 <include>lib/**</include>
                 <include>logs/**</include>
                 <include>ddb.sh</include>
+                <include>start_ddb_cli.sh</include>
                 <include>ddb.json</include>
             </includes>
             <outputDirectory>/</outputDirectory>

@@ -65,6 +65,9 @@ public class DenisMan implements Runnable {
 
             if (command.equalsIgnoreCase("--exit")) {
                 System.out.println("Goodbye!");
+                Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                    System.out.println("\nShutting down gracefully...");
+                }));
                 break;
             }
 

@@ -1,20 +1,14 @@
 package github.hacimertgokhan;
 
 import github.hacimertgokhan.denisdb.DenisTerminal;
-import github.hacimertgokhan.denisdb.cli.DenisMan;
 import github.hacimertgokhan.denisdb.DenisClient;
 import github.hacimertgokhan.denisdb.language.DenisLanguage;
-import github.hacimertgokhan.proto.ReadProtoFile;
 import github.hacimertgokhan.json.JsonFile;
 import github.hacimertgokhan.logger.DenisLogger;
 import github.hacimertgokhan.pointers.Any;
 import github.hacimertgokhan.readers.ReadDDBProp;
-import picocli.CommandLine;
 
 import java.io.IOException;
-import java.lang.management.ManagementFactory;
-import java.lang.management.MemoryMXBean;
-import java.lang.management.MemoryUsage;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.*;

@@ -371,15 +371,8 @@ public class DenisClient {
                                 String newToken = new CreateSecureToken().getToken();
                                 registerProject(newToken, newToken);
                                 try {
-                                    JsonFile projectFile = new JsonFile("storage/" + newToken + ".json");
-                                    if (!projectFile.fileExists()) {
-                                        projectFile.createEmptyJson();
-                                        JSONObject initialData = new JSONObject();
-                                        initialData.put("storage", new JSONObject());
-                                        projectFile.writeJson(initialData);
-                                    }
                                     ddb.appendToArray("tokens", newToken);
-                                    clientLogg(2, out, "Project created successfully! Token: " + newToken);
+                                    clientLogg(2, out, "Project created! Token: " + newToken);
                                 } catch (IOException e) {
                                     DDBServer.error("Error saving new token: " + e.getMessage());
                                     clientLogg(2, out, "Could not create project");
@@ -398,8 +391,7 @@ public class DenisClient {
                         }
                         continue;
                     }
-
-                    if (currentProjectToken == null && !command.equals("EXIT")) {
+            if (currentProjectToken == null && !command.equals("EXIT")) {
                         clientLogg(2, out, "Please authenticate first using AUTH command");
                         continue;
                     }

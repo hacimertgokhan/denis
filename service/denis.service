@@ -1,0 +1,14 @@
+[Unit]
+Description=Denis
+After=network.target
+
+[Service]
+User=hacimertgokhan
+WorkingDirectory=/opt/denis
+ExecStart=env DISPLAY=:0 SSH_ASKPASS=/usr/lib/ssh/ssh-askpass sudo -A /opt/denis/ddb.sh -start
+SuccessExitStatus=143
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

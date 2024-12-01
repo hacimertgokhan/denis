@@ -143,9 +143,3 @@ actstrist.del(key);
 exists = actstrist.exists(key);
 System.out.println(exists); // false
 ```
-
-## Roadmap
-
-- User system
-- Burn function
-- Transaction cycles with privacy protocols

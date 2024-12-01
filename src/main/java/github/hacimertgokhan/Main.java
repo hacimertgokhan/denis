@@ -9,6 +9,7 @@ import github.hacimertgokhan.pointers.Any;
 import github.hacimertgokhan.readers.ReadDDBProp;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.*;
@@ -19,15 +20,17 @@ import java.util.concurrent.Executors;
 public class Main {
     static DenisLogger denisLogger = new DenisLogger(Main.class);
     static ReadDDBProp readDDBProp = new ReadDDBProp();
-    static String TOKEN = String.valueOf(readDDBProp.getProperty("ddb-main-token"));
-    static boolean delogg = Boolean.parseBoolean((readDDBProp.getProperty("use-delogg")));
-    static boolean swd = Boolean.parseBoolean((readDDBProp.getProperty("start-with-details")));
+    static String TOKEN = readDDBProp.getProperty("ddb-main-token");
+    static boolean delogg = Boolean.parseBoolean(readDDBProp.getProperty("use-delogg"));
+    static boolean swd = Boolean.parseBoolean(readDDBProp.getProperty("start-with-details"));
     static int PORT = Integer.parseInt(readDDBProp.getProperty("ddb-port"));
-    static String host = String.valueOf(readDDBProp.getProperty("ddb-address"));
+    static String host = readDDBProp.getProperty("ddb-address");
     static JsonFile ddb = new JsonFile("ddb.json");
-    static final int THREAD_POOL_SIZE = 1000; // Maksimum eşzamanlı istemci bağlantısı
+    static final int THREAD_POOL_SIZE = 100;
     static ExecutorService executor = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
     static ConcurrentHashMap<String, Any> store = new ConcurrentHashMap<>();
+    static final int MAX_CONNECTIONS_PER_IP = Integer.parseInt(readDDBProp.getProperty("max-connections-per-ip"));
+    static ConcurrentHashMap<InetAddress, Integer> ipConnectionCount = new ConcurrentHashMap<>();
 
     public static void main(String[] args) {
         List<String> list;
@@ -83,18 +86,36 @@ public class Main {
                     logTerminal.writeLog(String.format("Denis stopped at %s", new Date().toString().toLowerCase(Locale.ROOT)));
                     logTerminal.closeLogTerminal();
                 }));
+
                 while (true) {
                     Runtime.getRuntime().gc();
-                    denisLogger.info(String.valueOf(new DenisLanguage().getLanguageFile().readJson().get("waiting-for-client-connection")));
+                    denisLogger.info((String) new DenisLanguage().getLanguageFile().readJson().get("waiting-for-client-connection"));
                     Socket clientSocket = serverSocket.accept();
-                    denisLogger.info(String.valueOf(new DenisLanguage().getLanguageFile().readJson().get("client-connected")).replace("<socket>", String.valueOf(clientSocket.getInetAddress())));
-                    logTerminal.writeLog(String.format("Client connected: %s", clientSocket.getInetAddress()));
+                    InetAddress clientAddress = clientSocket.getInetAddress();
+                    int currentConnections = ipConnectionCount.getOrDefault(clientAddress, 0);
+                    if (currentConnections >= MAX_CONNECTIONS_PER_IP) {
+                        denisLogger.warn("Connection limit reached for IP address: " + clientAddress);
+                        clientSocket.close(); // Close the socket immediately
+                        continue;
+                    }
+                    ipConnectionCount.put(clientAddress, currentConnections + 1);
+                    denisLogger.info((new DenisLanguage().getLanguageFile().readJson().get("client-connected").toString()).replace("<socket>", clientAddress.toString()));
+                    logTerminal.writeLog(String.format("Client connected: %s", clientAddress));
                     executor.execute(() -> {
                         DenisClient ddbServer = new DenisClient(clientSocket, store, logTerminal);
-                        if (delogg) {
-                            ddbServer.handleClient(clientSocket, store, logTerminal);
-                        } else {
-                            ddbServer.handleClient(clientSocket, store);
+                        try {
+                            if (delogg) {
+                                ddbServer.handleClient(clientSocket, store, logTerminal);
+                            } else {
+                                ddbServer.handleClient(clientSocket, store);
+                            }
+                        } finally {
+                            ipConnectionCount.put(clientAddress, Math.max(0, ipConnectionCount.get(clientAddress) - 1));
+                            try {
+                                clientSocket.close();
+                            } catch (IOException e) {
+                                denisLogger.error("Error closing socket: " + e.getMessage());
+                            }
                         }
                     });
                 }
@@ -106,4 +127,5 @@ public class Main {
             denisLogger.error("You cannot use DDB without correct token value. (Token length must be 128)");
         }
     }
+
 }

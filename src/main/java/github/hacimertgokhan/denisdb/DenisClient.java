@@ -12,8 +12,10 @@ import org.json.JSONObject;
 
 import java.io.*;
 import java.net.Socket;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -260,25 +262,29 @@ public class DenisClient {
                                 break;
                             case "SET":
                                 if (parts.length >= 3) {
-                                    for (String subs : (parts)) {
-                                        String value = parts[2];
-                                        store.put(key, new Any(value));
-                                        if (subs.contains("-&save")) {
-                                            try {
-                                                ProtoDatabase finalDb = new ProtoDatabase("database.bin");
-                                                subs.replaceAll("-&save", "");
-                                                finalDb.setData(getProjectPrefix(), key, new Any(value));
-                                            } catch (IOException e) {
-                                                throw new RuntimeException(e);
-                                            }
+                                    String valueAndFlags = parts[2];
+                                    String[] valueParts = valueAndFlags.split(" ");
+                                    String value = valueParts[0]; // İlk parça gerçek değer
+                                    boolean save = Arrays.stream(valueParts).anyMatch(s -> s.equalsIgnoreCase("-&save"));
+                                    store.put(key, new Any(value));
+                                    clientLogg(0, out, "Ok.");
+                                    if (save) {
+                                        try {
+                                            ProtoDatabase finalDb = new ProtoDatabase("database.bin");
+                                            finalDb.setData(getProjectPrefix(), key, new Any(value));
+                                            clientLogg(0, out, "Saved to protobuff.");
+                                        } catch (IOException e) {
+                                            throw new RuntimeException(e);
                                         }
-                                        clientLogg(0, out, "Ok.");
+                                    } else {
+                                        String newValue = parts[2];
+                                        store.put(key, new Any(newValue));
+                                        clientLogg(0, out, "Saved to cache.");
                                     }
                                 } else {
                                     out.println("ERROR: USAGE: SET <key> <value> [-&save]");
                                 }
                                 break;
-
                             case "DEL":
                                 if (parts.length >= 2) {
                                     try {

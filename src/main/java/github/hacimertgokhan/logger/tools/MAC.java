@@ -3,12 +3,12 @@ package github.hacimertgokhan.logger.tools;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
-import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
 public class MAC {
+
     public static String getMacAddress(InetAddress localhost) {
         try {
             NetworkInterface networkInterface = NetworkInterface.getByInetAddress(localhost);
@@ -43,4 +43,5 @@ public class MAC {
 
         return hexString.toString();
     }
+
 }

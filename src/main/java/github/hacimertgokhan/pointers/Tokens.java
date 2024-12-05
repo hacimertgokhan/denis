@@ -2,15 +2,15 @@ package github.hacimertgokhan.pointers;
 
 import github.hacimertgokhan.json.JsonFile;
 import github.hacimertgokhan.logger.DenisLogger;
-import github.hacimertgokhan.readers.ReadDDBProp;
+import github.hacimertgokhan.readers.DenisProperties;
 
 import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class Tokens {
-    static ReadDDBProp readDDBProp = new ReadDDBProp();
-    static String TOKEN = String.valueOf(readDDBProp.getProperty("ddb-main-token"));
-    static int MAX_TOKEN_SIZE = Integer.parseInt(readDDBProp.getProperty("max-token-size"));
+    static DenisProperties denisProperties = new DenisProperties();
+    static String TOKEN = String.valueOf(denisProperties.getProperty("ddb-main-token"));
+    static int MAX_TOKEN_SIZE = Integer.parseInt(denisProperties.getProperty("max-token-size"));
     static DenisLogger denisLogger = new DenisLogger(Tokens.class);
 
     ConcurrentHashMap<String, String> tokens = new ConcurrentHashMap<>();

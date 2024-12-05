@@ -6,7 +6,7 @@ import github.hacimertgokhan.denisdb.language.DenisLanguage;
 import github.hacimertgokhan.json.JsonFile;
 import github.hacimertgokhan.logger.DenisLogger;
 import github.hacimertgokhan.pointers.Any;
-import github.hacimertgokhan.readers.ReadDDBProp;
+import github.hacimertgokhan.readers.DenisProperties;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -19,17 +19,17 @@ import java.util.concurrent.Executors;
 
 public class Main {
     static DenisLogger denisLogger = new DenisLogger(Main.class);
-    static ReadDDBProp readDDBProp = new ReadDDBProp();
-    static String TOKEN = readDDBProp.getProperty("ddb-main-token");
-    static boolean delogg = Boolean.parseBoolean(readDDBProp.getProperty("use-delogg"));
-    static boolean swd = Boolean.parseBoolean(readDDBProp.getProperty("start-with-details"));
-    static int PORT = Integer.parseInt(readDDBProp.getProperty("ddb-port"));
-    static String host = readDDBProp.getProperty("ddb-address");
+    static DenisProperties denisProperties = new DenisProperties();
+    static String TOKEN = denisProperties.getProperty("ddb-main-token");
+    static boolean delogg = Boolean.parseBoolean(denisProperties.getProperty("use-delogg"));
+    static boolean swd = Boolean.parseBoolean(denisProperties.getProperty("start-with-details"));
+    static int PORT = Integer.parseInt(denisProperties.getProperty("ddb-port"));
+    static String host = denisProperties.getProperty("ddb-address");
     static JsonFile ddb = new JsonFile("ddb.json");
     static final int THREAD_POOL_SIZE = 100;
     static ExecutorService executor = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
     static ConcurrentHashMap<String, Any> store = new ConcurrentHashMap<>();
-    static final int MAX_CONNECTIONS_PER_IP = Integer.parseInt(readDDBProp.getProperty("max-connections-per-ip"));
+    static final int MAX_CONNECTIONS_PER_IP = Integer.parseInt(denisProperties.getProperty("max-connections-per-ip"));
     static ConcurrentHashMap<InetAddress, Integer> ipConnectionCount = new ConcurrentHashMap<>();
 
     public static void main(String[] args) {

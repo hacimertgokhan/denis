@@ -7,22 +7,20 @@ import github.hacimertgokhan.logger.DenisLogger;
 import github.hacimertgokhan.pointers.Any;
 import github.hacimertgokhan.pointers.Authories;
 import github.hacimertgokhan.proto.ProtoDatabase;
-import github.hacimertgokhan.readers.ReadDDBProp;
-import org.json.JSONObject;
+import github.hacimertgokhan.readers.DenisProperties;
 
 import java.io.*;
 import java.net.Socket;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
 public class DenisClient {
-    static ReadDDBProp readDDBProp = new ReadDDBProp();
-    static boolean CLIENT_ACTIONS = Boolean.parseBoolean((readDDBProp.getProperty("send-client-actions")));
+    static DenisProperties denisProperties = new DenisProperties();
+    static boolean CLIENT_ACTIONS = Boolean.parseBoolean((denisProperties.getProperty("send-client-actions")));
     static DenisLogger DDBServer = new DenisLogger(Main.class);
     static JsonFile ddb = new JsonFile("ddb.json");
     static File storageDir = new File("storage");

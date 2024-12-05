@@ -3,6 +3,7 @@ package github.hacimertgokhan.denisdb.cli;
 import github.hacimertgokhan.denisdb.CreateSecureToken;
 import github.hacimertgokhan.denisdb.language.DenisLanguage;
 import github.hacimertgokhan.json.JsonFile;
+import github.hacimertgokhan.readers.DenisProperties;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
@@ -101,7 +102,7 @@ public class DenisMan implements Runnable {
             }
 
             if (command.equalsIgnoreCase("--version")) {
-                System.out.println("v0.001a");
+                System.out.println("v1.0.1alpha");
             } else if (command.equalsIgnoreCase("--about")) {
                 try {
                     System.out.println(denisLanguage.getLanguageFile().readJson().get("created_by"));
@@ -160,6 +161,31 @@ public class DenisMan implements Runnable {
                         if (parts[2].equalsIgnoreCase("-slfs")) {
                             try {
                                 denisLanguage.setSelected(parts[3]);
+                                if (parts[3].equalsIgnoreCase("tr") || parts[3].equalsIgnoreCase("fi") || parts[3].equalsIgnoreCase("en") || parts[3].equalsIgnoreCase("fr") || parts[3].equalsIgnoreCase("de") || parts[3].equalsIgnoreCase("da") || parts[3].equalsIgnoreCase("el") || parts[3].equalsIgnoreCase("es")) {
+                                    try {
+                                        System.out.println(String.format(String.valueOf(new DenisLanguage().getLanguageFile().readJson().get("language-changed")), parts[3]));
+                                    } catch (IOException e) {
+                                        throw new RuntimeException(e);
+                                    }
+                                } else {
+                                    try {
+                                        System.out.println(new DenisLanguage().getLanguageFile().readJson().get("invalid-parametre"));
+                                    } catch (IOException e) {
+                                        throw new RuntimeException(e);
+                                    }
+                                }
+                            } catch (NumberFormatException e) {
+                                try {
+                                    System.out.println(new DenisLanguage().getLanguageFile().readJson().get("invalid-parametre"));
+                                } catch (IOException a) {
+                                    throw new RuntimeException(a);
+                                }
+                            }
+                        } else if (parts[2].equalsIgnoreCase("-slfg")) {
+                            try {
+                                denisLanguage.setSelected(parts[3]);
+                                DenisProperties denisProperties = new DenisProperties();
+                                denisProperties.setProperty("language", parts[3]);
                                 if (parts[3].equalsIgnoreCase("tr") || parts[3].equalsIgnoreCase("fi") || parts[3].equalsIgnoreCase("en") || parts[3].equalsIgnoreCase("fr") || parts[3].equalsIgnoreCase("de") || parts[3].equalsIgnoreCase("da") || parts[3].equalsIgnoreCase("el") || parts[3].equalsIgnoreCase("es")) {
                                     try {
                                         System.out.println(String.format(String.valueOf(new DenisLanguage().getLanguageFile().readJson().get("language-changed")), parts[3]));
@@ -262,15 +288,6 @@ public class DenisMan implements Runnable {
         } else if (command.contains("-c")) {
             String newToken = new CreateSecureToken().getToken();
             try {
-                /*
-                    JsonFile projectFile = new JsonFile("storage/" + newToken + ".json");
-                    if (!projectFile.fileExists()) {
-                        projectFile.createEmptyJson();
-                        JSONObject initialData = new JSONObject();
-                        initialData.put("storage", new JSONObject());
-                        projectFile.writeJson(initialData);
-                    }
-                 */
                 ddb.appendToArray("tokens", newToken);
                 System.out.println(String.format(String.valueOf(new DenisLanguage().getLanguageFile().readJson().get("token_created_successfuly")), newToken));
             } catch (IOException e) {

@@ -5,16 +5,16 @@ import github.hacimertgokhan.denisdb.language.enums.SupportedLocales;
 import github.hacimertgokhan.denisdb.language.interfaces.DenisLanguageHandler;
 import github.hacimertgokhan.json.JsonFile;
 import github.hacimertgokhan.logger.DenisLogger;
-import github.hacimertgokhan.readers.ReadDDBProp;
+import github.hacimertgokhan.readers.DenisProperties;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
 
 public class DenisLanguage implements DenisLanguageHandler {
-    static ReadDDBProp readDDBProp = new ReadDDBProp();
-    static boolean LANG = String.valueOf(readDDBProp.getProperty("language")).equals("auto");
-    static String SELECTED_LANGUAGE = String.valueOf(readDDBProp.getProperty("language"));
+    static DenisProperties denisProperties = new DenisProperties();
+    static boolean LANG = String.valueOf(denisProperties.getProperty("language")).equals("auto");
+    static String SELECTED_LANGUAGE = String.valueOf(denisProperties.getProperty("language"));
 
     DenisLogger denisLogger = new DenisLogger(DenisLanguage.class);
     private final Locale systemLocale = Locale.getDefault();

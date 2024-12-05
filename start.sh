@@ -1,5 +1,5 @@
 VERSION=0.0.0.4
-echo "Denis Database $VERSION-alpha, All rights reserved. (https://denisdb.agnozia.com)"
+echo "Denis Database $VERSION-alpha, All rights reserved. (https://denisdb.vercel.app)"
 if lsof -i:5142 > /dev/null; then
   echo "Denis Database runs on 5142 port but this port currently using from another application or services."
   echo "Stop the other service (If its not important)"

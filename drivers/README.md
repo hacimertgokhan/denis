@@ -66,8 +66,6 @@ mvn test
 ## Dependencies
 
 - Java 11 or higher
-- JUnit 5.8.2 (for testing)
-- Mockito 4.5.1 (for unit testing)
 
 ## License
 

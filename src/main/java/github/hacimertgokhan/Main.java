@@ -1,8 +1,8 @@
 package github.hacimertgokhan;
 
-import github.hacimertgokhan.denisdb.DenisTerminal;
-import github.hacimertgokhan.denisdb.DenisClient;
-import github.hacimertgokhan.denisdb.language.DenisLanguage;
+import github.hacimertgokhan.denis.DenisTerminal;
+import github.hacimertgokhan.denis.DenisClient;
+import github.hacimertgokhan.denis.language.DenisLanguage;
 import github.hacimertgokhan.json.JsonFile;
 import github.hacimertgokhan.logger.DenisLogger;
 import github.hacimertgokhan.pointers.Any;

@@ -7,11 +7,11 @@ import github.hacimertgokhan.readers.DenisProperties;
 import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class Tokens {
+public class Token {
     static DenisProperties denisProperties = new DenisProperties();
     static String TOKEN = String.valueOf(denisProperties.getProperty("ddb-main-token"));
     static int MAX_TOKEN_SIZE = Integer.parseInt(denisProperties.getProperty("max-token-size"));
-    static DenisLogger denisLogger = new DenisLogger(Tokens.class);
+    static DenisLogger denisLogger = new DenisLogger(Token.class);
 
     ConcurrentHashMap<String, String> tokens = new ConcurrentHashMap<>();
 
@@ -26,7 +26,7 @@ public class Tokens {
         return size > MAX_TOKEN_SIZE;
     }
 
-    public Tokens(String auth) {
+    public Token(String auth) {
         if (ableToCreate()) {
             JsonFile jsonFS = new JsonFile("ddb.json");
             if (auth != null) {
@@ -34,7 +34,7 @@ public class Tokens {
                     tokens.put(TOKEN, auth);
                     try {
                         int totalCount = jsonFS.updateArrayWithNewValue("tokens", auth);
-                        denisLogger.info("New token just created, (" + totalCount + "/" + MAX_TOKEN_SIZE + ")");
+                        denisLogger.info("New token created, (" + totalCount + "/" + MAX_TOKEN_SIZE + ")");
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }

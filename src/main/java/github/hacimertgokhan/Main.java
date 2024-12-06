@@ -7,7 +7,9 @@ import github.hacimertgokhan.json.JsonFile;
 import github.hacimertgokhan.logger.DenisLogger;
 import github.hacimertgokhan.pointers.Any;
 import github.hacimertgokhan.readers.DenisProperties;
+import github.hacimertgokhan.readers.DenisToml;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
@@ -31,6 +33,7 @@ public class Main {
     static ConcurrentHashMap<String, Any> store = new ConcurrentHashMap<>();
     static final int MAX_CONNECTIONS_PER_IP = Integer.parseInt(denisProperties.getProperty("max-connections-per-ip"));
     static ConcurrentHashMap<InetAddress, Integer> ipConnectionCount = new ConcurrentHashMap<>();
+    static DenisToml denisToml = new DenisToml("denis.toml");
 
     public static void main(String[] args) {
         List<String> list;
@@ -78,6 +81,9 @@ public class Main {
                 }
                 if (!ddb.fileExists()) {
                     ddb.createEmptyJson();
+                }
+                for (Object obj : denisToml.toml().getList("groups")) {
+                    denisLogger.info(obj.toString());
                 }
                 DenisTerminal logTerminal = new DenisTerminal();
                 logTerminal.startLogTerminal(null);

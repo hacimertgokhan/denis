@@ -2,6 +2,7 @@ package github.hacimertgokhan;
 
 import github.hacimertgokhan.denis.DenisTerminal;
 import github.hacimertgokhan.denis.DenisClient;
+import github.hacimertgokhan.denis.calculators.ThreadPoolCalculator;
 import github.hacimertgokhan.denis.language.DenisLanguage;
 import github.hacimertgokhan.json.JsonFile;
 import github.hacimertgokhan.logger.DenisLogger;
@@ -9,7 +10,6 @@ import github.hacimertgokhan.pointers.Any;
 import github.hacimertgokhan.readers.DenisProperties;
 import github.hacimertgokhan.readers.DenisToml;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
@@ -28,7 +28,8 @@ public class Main {
     static int PORT = Integer.parseInt(denisProperties.getProperty("ddb-port"));
     static String host = denisProperties.getProperty("ddb-address");
     static JsonFile ddb = new JsonFile("ddb.json");
-    static final int THREAD_POOL_SIZE = 100;
+    static ThreadPoolCalculator threadPoolCalculator = new ThreadPoolCalculator();
+    static final int THREAD_POOL_SIZE = threadPoolCalculator.calculateCacheDatabaseThreads(0.7, 0.3);
     static ExecutorService executor = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
     static ConcurrentHashMap<String, Any> store = new ConcurrentHashMap<>();
     static final int MAX_CONNECTIONS_PER_IP = Integer.parseInt(denisProperties.getProperty("max-connections-per-ip"));
@@ -61,9 +62,9 @@ public class Main {
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
-
             }
         }
+        denisLogger.info(String.format("Thread Pool Size %s", THREAD_POOL_SIZE));
         handleUseMode();
     }
 
@@ -81,9 +82,6 @@ public class Main {
                 }
                 if (!ddb.fileExists()) {
                     ddb.createEmptyJson();
-                }
-                for (Object obj : denisToml.toml().getList("groups")) {
-                    denisLogger.info(obj.toString());
                 }
                 DenisTerminal logTerminal = new DenisTerminal();
                 logTerminal.startLogTerminal(null);

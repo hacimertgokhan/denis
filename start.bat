@@ -1,6 +1,6 @@
 @echo off
 chcp 65001 > nul
-set VERSION=0.0.2.5
+set VERSION=0.0.2.6.1
 echo Denis Veritabanı %VERSION%-alpha, Tüm hakları saklıdır. (https://denisdb.vercel.app)
 
 rem Daha güvenilir port kontrolü

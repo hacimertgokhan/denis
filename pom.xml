@@ -6,7 +6,7 @@
 
     <groupId>github.hacimertgokhan</groupId>
     <artifactId>denis</artifactId>
-    <version>0.0.2.5-alpha</version>
+    <version>0.0.2.6.1-alpha</version>
     <build>
         <plugins>
             <plugin>
@@ -47,6 +47,24 @@
                         <arg>-Aproject=${project.groupId}/${project.artifactId}</arg>
                     </compilerArgs>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.5.0</version>
+                <executions>
+                    <execution>
+                        <id>copy-dependencies</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.basedir}/lib</outputDirectory>
+                            <includeScope>runtime</includeScope>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.xolstice.maven.plugins</groupId>

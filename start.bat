@@ -1,6 +1,13 @@
 @echo off
 chcp 65001 > nul
-set VERSION=0.0.2.6.1
+setlocal enabledelayedexpansion
+
+for /f "tokens=1,2 delims==" %%A in (denis.conf) do (
+    if "%%A"=="sem_ver" (
+        set VERSION=%%B
+    )
+)
+
 echo Denis Veritabanı %VERSION%-alpha, Tüm hakları saklıdır. (https://denisdb.vercel.app)
 
 rem Daha güvenilir port kontrolü

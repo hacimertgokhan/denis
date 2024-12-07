@@ -30,6 +30,7 @@
                 <include>start_jcli.sh</include>
                 <include>start_jcli.bat</include>
                 <include>ddb.json</include>
+                <include>denis.conf</include>
                 <include>denis.toml</include>
             </includes>
             <outputDirectory>/</outputDirectory>

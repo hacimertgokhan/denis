@@ -32,6 +32,9 @@ public class DenisMan implements Runnable {
     @Option(names = {"--exit"}, description = "Exits from denis man mode.")
     private boolean exit;
 
+    @Option(names = {"--access"}, description = "Manage everything about access tokens and groups.")
+    private boolean access;
+
     @Option(names = {"--mu"}, description = "Shows ddb memory usage.")
     private boolean memoryUsage;
     @Option(names = {"--lm"}, description = "Shows ddb memory usage (More detail).")
@@ -107,7 +110,7 @@ public class DenisMan implements Runnable {
             }
 
             if (command.equalsIgnoreCase("--version")) {
-                System.out.println("v1.0.1alpha");
+                System.out.println("v0.0.2.8-alpha");
             } else if (command.equalsIgnoreCase("--about")) {
                 try {
                     System.out.println(denisLanguage.getLanguageFile().readJson().get("created_by"));
@@ -161,14 +164,40 @@ public class DenisMan implements Runnable {
                     } else {
                         help(denisLanguage);
                     }
-                } else if (command.contains("-ag")) {
+                } else if (command.contains("-l")) {
+                    Accessibility accessibility = new Accessibility(true);
+                } else if (command.contains("-astg")) {
                     String[] parts = command.split(" ");
-                    if (parts.length > 2) {
+                    if (parts.length > 3) {
                         String group = parts[2];
                         String storage_section = parts[3];
                         GroupHandler groupHandler = new GroupHandler(group);
                         if (groupHandler.isExists()) {
-
+                            boolean add_group = groupHandler.addAccessibility(group, storage_section);
+                            if (add_group) {
+                                System.out.println(String.format("%s added to %s", storage_section, group));
+                            } else {
+                                System.out.println("The value already exists in the accessibility list.");
+                            }
+                        } else {
+                            System.out.printf("Group %s not found.\n", parts[2]);
+                        }
+                    } else {
+                        help(denisLanguage);
+                    }
+                } else if (command.contains("-rsfg")) {
+                    String[] parts = command.split(" ");
+                    if (parts.length > 3) {
+                        String group = parts[2];
+                        String storage_section = parts[3];
+                        GroupHandler groupHandler = new GroupHandler(group);
+                        if (groupHandler.isExists()) {
+                            boolean rem_group = groupHandler.removeAccessibility(group, storage_section);
+                            if (rem_group) {
+                                System.out.println(String.format("%s removed from %s", storage_section, group));
+                            } else {
+                                System.out.println("The value doesn't exist in the accessibility list.");
+                            }
                         } else {
                             System.out.printf("Group %s not found.\n", parts[2]);
                         }
@@ -181,15 +210,15 @@ public class DenisMan implements Runnable {
                         GroupHandler groupHandler = new GroupHandler(parts[2]);
                         if (groupHandler.isExists()) {
                             Access access = new Access(parts[2], groupHandler.getAccessList());
-                            System.out.printf("Group: %s", parts[2]);
+                            System.out.printf("Group: %s\n", parts[2]);
                             for (String a : groupHandler.getAccessList()) {
-                                System.out.printf("|-> %s", a);
+                                System.out.printf("|-> %s\n", a);
                             }
                         } else {
                             System.out.printf("Group %s not found.\n", parts[2]);
                         }
                     } else {
-                        Accessibility accessibility = new Accessibility();
+                        Accessibility accessibility = new Accessibility(false);
                     }
                 } else {
                     help(denisLanguage);

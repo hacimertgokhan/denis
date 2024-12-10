@@ -3,7 +3,9 @@ package github.hacimertgokhan.denis.cli;
 import github.hacimertgokhan.denis.CreateSecureToken;
 import github.hacimertgokhan.denis.fingerprint.tools.GenToHashSalter;
 import github.hacimertgokhan.denis.language.DenisLanguage;
+import github.hacimertgokhan.denis.sections.Access;
 import github.hacimertgokhan.denis.sections.Accessibility;
+import github.hacimertgokhan.denis.sections.group.GroupHandler;
 import github.hacimertgokhan.json.JsonFile;
 import github.hacimertgokhan.readers.DenisProperties;
 import github.hacimertgokhan.readers.DenisToml;
@@ -126,6 +128,7 @@ public class DenisMan implements Runnable {
                         DenisToml denisToml = new DenisToml("denis.toml");
                         GenToHashSalter genToHashSalter = new GenToHashSalter();
                         String salt = genToHashSalter.generateSalt();
+                        String pwd = genToHashSalter.generatePwd();
                         String hash = genToHashSalter.hashPassword(parts[2], salt);
                         if (denisToml.get(parts[2]) == null) {
                             if (denisToml.get(hash) == null) {
@@ -136,10 +139,11 @@ public class DenisMan implements Runnable {
                                     new_group_data.put("group", parts[2]);
                                     new_group_data.put("hash", hash);
                                     new_group_data.put("salt", salt);
+                                    new_group_data.put("access", pwd);
                                     new_group_data.put("unix", Instant.now().getEpochSecond());
                                     new_group_data.put("accessibility", empty_list);
                                     denisToml.set(parts[2], new_group_data);
-                                    System.out.println(String.format("Group %s created.\n # Hashed: %s\n # Salted: %s", parts[2], hash, salt));
+                                    System.out.printf("Group %s created.\n # Hashed: %s\n # Salted: %s\n # Password: %s%n", parts[2], hash, salt, pwd);
                                     try {
                                         denisToml.save();
                                     } catch (IOException e) {
@@ -157,8 +161,36 @@ public class DenisMan implements Runnable {
                     } else {
                         help(denisLanguage);
                     }
+                } else if (command.contains("-ag")) {
+                    String[] parts = command.split(" ");
+                    if (parts.length > 2) {
+                        String group = parts[2];
+                        String storage_section = parts[3];
+                        GroupHandler groupHandler = new GroupHandler(group);
+                        if (groupHandler.isExists()) {
+
+                        } else {
+                            System.out.printf("Group %s not found.\n", parts[2]);
+                        }
+                    } else {
+                        help(denisLanguage);
+                    }
                 } else if (command.contains("-aa")) {
-                    Accessibility accessibility = new Accessibility();
+                    String[] parts = command.split(" ");
+                    if (parts.length > 2) {
+                        GroupHandler groupHandler = new GroupHandler(parts[2]);
+                        if (groupHandler.isExists()) {
+                            Access access = new Access(parts[2], groupHandler.getAccessList());
+                            System.out.printf("Group: %s", parts[2]);
+                            for (String a : groupHandler.getAccessList()) {
+                                System.out.printf("|-> %s", a);
+                            }
+                        } else {
+                            System.out.printf("Group %s not found.\n", parts[2]);
+                        }
+                    } else {
+                        Accessibility accessibility = new Accessibility();
+                    }
                 } else {
                     help(denisLanguage);
                 }

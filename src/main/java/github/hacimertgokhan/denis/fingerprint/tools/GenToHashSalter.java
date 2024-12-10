@@ -14,6 +14,14 @@ public class GenToHashSalter {
         return Base64.getEncoder().encodeToString(salt);
     }
 
+
+    public String generatePwd() {
+        SecureRandom secureRandom = new SecureRandom();
+        byte[] salt = new byte[16];
+        secureRandom.nextBytes(salt);
+        return Base64.getEncoder().encodeToString(salt);
+    }
+
     public boolean verifyPassword(String inputPassword, String storedSalt, String storedHash) {
         String inputHash = hashPassword(inputPassword, storedSalt);
         return storedHash.equals(inputHash);

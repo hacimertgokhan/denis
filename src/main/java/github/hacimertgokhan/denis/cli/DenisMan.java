@@ -5,7 +5,7 @@ import github.hacimertgokhan.denis.fingerprint.tools.GenToHashSalter;
 import github.hacimertgokhan.denis.language.DenisLanguage;
 import github.hacimertgokhan.denis.sections.Access;
 import github.hacimertgokhan.denis.sections.Accessibility;
-import github.hacimertgokhan.denis.sections.group.GroupHandler;
+import github.hacimertgokhan.denis.sections.group.Group;
 import github.hacimertgokhan.json.JsonFile;
 import github.hacimertgokhan.readers.DenisProperties;
 import github.hacimertgokhan.readers.DenisToml;
@@ -133,6 +133,7 @@ public class DenisMan implements Runnable {
                         String salt = genToHashSalter.generateSalt();
                         String pwd = genToHashSalter.generatePwd();
                         String hash = genToHashSalter.hashPassword(parts[2], salt);
+                        String hash_pwd = genToHashSalter.hashPassword(pwd, salt);
                         if (denisToml.get(parts[2]) == null) {
                             if (denisToml.get(hash) == null) {
                                 if (denisToml.get(salt) == null) {
@@ -142,24 +143,43 @@ public class DenisMan implements Runnable {
                                     new_group_data.put("group", parts[2]);
                                     new_group_data.put("hash", hash);
                                     new_group_data.put("salt", salt);
-                                    new_group_data.put("access", pwd);
+                                    new_group_data.put("access", hash_pwd);
                                     new_group_data.put("unix", Instant.now().getEpochSecond());
                                     new_group_data.put("accessibility", empty_list);
                                     denisToml.set(parts[2], new_group_data);
-                                    System.out.printf("Group %s created.\n # Hashed: %s\n # Salted: %s\n # Password: %s%n", parts[2], hash, salt, pwd);
+                                    System.out.printf("Group %s created.\n # Hashed: %s\n # Salted: %s\n # Password: %s\n # Hashed Password: %s\n", parts[2], hash, salt, pwd, hash_pwd);
                                     try {
                                         denisToml.save();
                                     } catch (IOException e) {
                                         throw new RuntimeException(e);
                                     }
                                 } else {
-                                    System.out.println("Salt already exists!.");
+                                    System.out.println("Salt already exists?");
                                 }
                             } else {
-                                System.out.println("Hash already exists!.");
+                                System.out.println("Hash already exists?");
                             }
                         } else {
-                            System.out.println("You cannot use that string.");
+                            System.out.println("You cannot use that string!");
+                        }
+                    } else {
+                        help(denisLanguage);
+                    }
+                } else if (command.contains("-test")) {
+                    String[] parts = command.split(" ");
+                    if (parts.length > 3) {
+                        String group = parts[2];
+                        String pawd = parts[3];
+                        Group groupHandler = new Group(group);
+                        if (groupHandler.isExists()) {
+                            boolean log_in = groupHandler.in(pawd);
+                            if (log_in) {
+                                System.out.println("Test successfull.");
+                            } else {
+                                System.out.println("Incorrect hash mapping or incorrect salt encoding.");
+                            }
+                        } else {
+                            System.out.printf("Group %s not found.\n", parts[2]);
                         }
                     } else {
                         help(denisLanguage);
@@ -171,7 +191,7 @@ public class DenisMan implements Runnable {
                     if (parts.length > 3) {
                         String group = parts[2];
                         String storage_section = parts[3];
-                        GroupHandler groupHandler = new GroupHandler(group);
+                        Group groupHandler = new Group(group);
                         if (groupHandler.isExists()) {
                             boolean add_group = groupHandler.addAccessibility(group, storage_section);
                             if (add_group) {
@@ -190,7 +210,7 @@ public class DenisMan implements Runnable {
                     if (parts.length > 3) {
                         String group = parts[2];
                         String storage_section = parts[3];
-                        GroupHandler groupHandler = new GroupHandler(group);
+                        Group groupHandler = new Group(group);
                         if (groupHandler.isExists()) {
                             boolean rem_group = groupHandler.removeAccessibility(group, storage_section);
                             if (rem_group) {
@@ -207,11 +227,11 @@ public class DenisMan implements Runnable {
                 } else if (command.contains("-aa")) {
                     String[] parts = command.split(" ");
                     if (parts.length > 2) {
-                        GroupHandler groupHandler = new GroupHandler(parts[2]);
-                        if (groupHandler.isExists()) {
-                            Access access = new Access(parts[2], groupHandler.getAccessList());
+                        Group group = new Group(parts[2]);
+                        if (group.isExists()) {
+                            Access access = new Access(parts[2], group.getAccessList());
                             System.out.printf("Group: %s\n", parts[2]);
-                            for (String a : groupHandler.getAccessList()) {
+                            for (String a : group.getAccessList()) {
                                 System.out.printf("|-> %s\n", a);
                             }
                         } else {

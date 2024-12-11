@@ -2,12 +2,15 @@ package github.hacimertgokhan.denis;
 
 import database.Token;
 import github.hacimertgokhan.Main;
+import github.hacimertgokhan.denis.sections.group.Group;
 import github.hacimertgokhan.json.JsonFile;
 import github.hacimertgokhan.logger.DenisLogger;
 import github.hacimertgokhan.pointers.Any;
 import github.hacimertgokhan.pointers.Authories;
 import github.hacimertgokhan.proto.ProtoDatabase;
 import github.hacimertgokhan.readers.DenisProperties;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.*;
 import java.net.Socket;
@@ -19,6 +22,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
 public class DenisClient {
+    private static final Logger log = LogManager.getLogger(DenisClient.class);
     static DenisProperties denisProperties = new DenisProperties();
     static boolean CLIENT_ACTIONS = Boolean.parseBoolean((denisProperties.getProperty("send-client-actions")));
     static DenisLogger DDBServer = new DenisLogger(Main.class);
@@ -30,8 +34,66 @@ public class DenisClient {
 
     private final BlockingQueue<Runnable> taskQueue = new LinkedBlockingQueue<>();
 
+    public class Login {
+        private String group,password;
+        private boolean logged;
+
+        public Login(String group, String password) {
+            this.group=group;
+            this.password=password;
+        }
+
+        public boolean join(PrintWriter out) {
+            if(!isLogged()) {
+                Group group = new Group(this.group);
+                if (group.isExists()) {
+                    if (group.in(password)) {
+                        setLogged(true);
+                        out.println("You're logged in.");
+                        return true;
+                    } else {
+                        setLogged(false);
+                        out.println("Unknow hash or password.");
+                        return false;
+                    }
+                } else {
+                    out.println("Unknow string encryption.");
+                    setLogged(false);
+                    return false;
+                }
+            } else {
+                out.println("You're already logged in.");
+                return true;
+            }
+        }
+
+        public boolean isLogged() {
+            return logged;
+        }
+
+        public String getGroup() {
+            return group;
+        }
+
+        public String getPassword() {
+            return password;
+        }
+
+        public void setGroup(String group) {
+            this.group = group;
+        }
+
+        public void setLogged(boolean logged) {
+            this.logged = logged;
+        }
+
+        public void setPassword(String password) {
+            this.password = password;
+        }
+    }
+
     public void sendWelcomeMessage(PrintWriter out) {
-        out.println(String.format("[Welcome - %s]: Welcome to DenisDB! Please authenticate using AUTH command.", new Date()));
+        out.println(String.format("[Welcome - %s]: Welcome to Denis! Please authenticate using AUTH command.", new Date()));
     }
 
 
@@ -60,7 +122,6 @@ public class DenisClient {
 
         handleClient(socket, store, logTerminal);
     }
-
 
     public DenisClient(Socket socket, ConcurrentHashMap<String, Any> store) {
         this.projects = new ConcurrentHashMap<>();
@@ -181,6 +242,27 @@ public class DenisClient {
                                 String.join(" ", parts)));
                     }
 
+                    boolean logged_in = false;
+
+                    if (!logged_in) {
+                        if (command.equals("LIN")) {
+                            if (parts.length < 2) {
+                                clientLogg(2, out, "USAGE: LIN <Group> <Password>");
+                                continue;
+                            }
+                            String group = parts[1].toUpperCase();
+                            String pwd = parts[2].toUpperCase();
+                            Login login = new Login(group, pwd);
+                            if (login.join(out)) {
+                                logged_in = true;
+                            } else {
+                                logged_in = false;
+                            }
+                        } else {
+                            clientLogg(2, out, "USAGE: LIN <Group> <Password>");
+                        }
+                    }
+
                     if (command.equals("AUTH")) {
                         if (parts.length < 2) {
                             clientLogg(2, out, "ERROR: Usage: AUTH <CREATE|token>");
@@ -213,8 +295,12 @@ public class DenisClient {
                         }
                         continue;
                     }
-                    if (currentProjectToken == null && !command.equals("EXIT")) {
+                    if (logged_in && currentProjectToken == null && !command.equals("EXIT")) {
                         clientLogg(2, out, "Please authenticate first using AUTH command");
+                        continue;
+                    }
+                    if (!logged_in && !command.equals("EXIT")) {
+                        clientLogg(2, out, "Please login first using LIN command");
                         continue;
                     }
                     taskQueue.add(() -> {

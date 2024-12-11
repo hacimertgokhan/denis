@@ -1,15 +1,16 @@
 package github.hacimertgokhan.denis.sections.group;
 
+import github.hacimertgokhan.denis.fingerprint.tools.GenToHashSalter;
 import github.hacimertgokhan.readers.DenisToml;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
-public class GroupHandler {
+public class Group {
     private String group;
     private DenisToml denisToml;
-    public GroupHandler(String group) {
+    public Group(String group) {
         this.group = group;
         denisToml = new DenisToml("denis.toml");
     }
@@ -72,4 +73,20 @@ public class GroupHandler {
         System.out.println("The TOML file has been updated.");
     }
 
+    public String hash() {
+        Map<String, Object> groupDetails = denisToml.toml().getTable(group).toMap();
+        return (String) groupDetails.get("hash");
+    }
+
+    public String salt() {
+        Map<String, Object> groupDetails = denisToml.toml().getTable(group).toMap();
+        return (String) groupDetails.get("salt");
+    }
+
+    public boolean in(String in_pwd) {
+        Map<String, Object> groupDetails = denisToml.toml().getTable(group).toMap();
+        String access_ = (String) groupDetails.get("access");
+        GenToHashSalter genToHashSalter = new GenToHashSalter();
+        return genToHashSalter.verifyPassword(in_pwd, salt(), access_);
+    }
 }

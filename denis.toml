@@ -1,14 +1,7 @@
-[test]
-salt = "0rgTS8q1kBxybybN4Ihcr+73ER8kP2GL6zAkMLIAIjw6aXtB9XmbER6W9kWvGiuueva1owigpQMBKVMInvgR5g=="
-access = "DMM8vPOJ9w5Luy+tAQbZxg=="
-accessibility = ["denis"]
-hash = "11eX27SfZGTv3u5IIvE+qz2V/K325xk42Z3YTB5lCsdBMZS6e2pSHZkzsNTTDUk0lX3n8VeZetxSmF6gouSmmg=="
-unix = 1733852943
-group = "test"
 [mert]
-salt = "Vje5pKQGx6xLsj6qSgYz+xkNlz2bxeKRFIFAcvcVdOIZRzPdOZIQl5hH7OxlzcGoAWIdmAG3mlgstw+EFDezZQ=="
-accessibility = ["denis", "12345"]
-pwd = "XhLzRVsyefDTo7XTzrBOkQ=="
-hash = "XYgTRz5zJ9rczKxv/J5Rkwphi4qn0KIEbZaFzZUhNJKA9QQzQlQOo7nV9gtCxnAYXOfaacR/TGKxVZ95nVdkBQ=="
-unix = 1733849812
+salt = "bzZODbJj091wL73WKoxzQRTuf58ezKnUP57VWLoz6QtwRkCkDtNYudoENpozC/iAx18QCutEv92hV91oE5wKeQ=="
+access = "LvnUtsXoBvnZmUzAwJMttW56JE41fIwEm9PQngIGGXa0V/pfiUUONT24+7mFbdR0S4yd+lAFtR0tmloY7mt0GQ=="
+accessibility = ["denis"]
+hash = "qjyhFmyIrL0sAfNWgUz/oazW/KzvsPrEi9qnDu8hGNPqH3CgdSaCHXR1j8O+unfiE7iqB875whjzvb9QkDNMYg=="
+unix = 1733917042
 group = "mert"

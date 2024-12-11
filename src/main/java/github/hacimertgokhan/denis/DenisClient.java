@@ -35,13 +35,16 @@ public class DenisClient {
     private final BlockingQueue<Runnable> taskQueue = new LinkedBlockingQueue<>();
 
     public class Login {
-        private String group,password;
+        private String group;
+        private String password;
         private boolean logged;
 
         public Login(String group, String password) {
             this.group=group;
             this.password=password;
         }
+
+        public Login() {}
 
         public boolean join(PrintWriter out) {
             if(!isLogged()) {
@@ -215,6 +218,7 @@ public class DenisClient {
 
     public void handleClient(Socket clientSocket, ConcurrentHashMap<String, Any> store, DenisTerminal logTerminal) {
         DDBServer.info("Waiting for client connection...");
+        boolean logged_in = false;
         try {
             if (clientSocket == null || clientSocket.isClosed()) {
                 return;
@@ -242,7 +246,6 @@ public class DenisClient {
                                 String.join(" ", parts)));
                     }
 
-                    boolean logged_in = false;
 
                     if (!logged_in) {
                         if (command.equals("LIN")) {
@@ -250,51 +253,56 @@ public class DenisClient {
                                 clientLogg(2, out, "USAGE: LIN <Group> <Password>");
                                 continue;
                             }
-                            String group = parts[1].toUpperCase();
-                            String pwd = parts[2].toUpperCase();
+                            String group = parts[1];
+                            String pwd = parts[2];
                             Login login = new Login(group, pwd);
-                            if (login.join(out)) {
-                                logged_in = true;
-                            } else {
-                                logged_in = false;
-                            }
+                            logged_in = login.join(out);
                         } else {
                             clientLogg(2, out, "USAGE: LIN <Group> <Password>");
                         }
                     }
 
-                    if (command.equals("AUTH")) {
-                        if (parts.length < 2) {
-                            clientLogg(2, out, "ERROR: Usage: AUTH <CREATE|token>");
+                    if (logged_in) {
+                        if (command.equals("AUTH")) {
+                            if (parts.length < 2) {
+                                clientLogg(2, out, "ERROR: Usage: AUTH <CREATE|token>");
+                                continue;
+                            }
+
+                            String subCommand = parts[1].toUpperCase();
+                            if (subCommand.equals("CREATE")) {
+                                taskQueue.add(() -> {
+                                    String newToken = new CreateSecureToken().getToken();
+                                    registerProject(newToken, newToken);
+                                    try {
+                                        ddb.appendToArray("tokens", newToken);
+                                        clientLogg(2, out, "Project created! Token: " + newToken);
+                                    } catch (IOException e) {
+                                        DDBServer.error("Error saving new token: " + e.getMessage());
+                                        clientLogg(2, out, "Could not create project");
+                                    }
+                                });
+                            } else {
+                                taskQueue.add(() -> {
+                                    String token = parts[1];
+                                    Login login = new Login();
+                                    Group group = new Group(login.getGroup());
+                                    if (group.getAccessList().contains(token)) {
+                                        if (authenticateProject(token)) {
+                                            loadStorageFromProtobuf(store, token);
+                                            clientLogg(0, out, "Authenticated to project: " + token);
+                                        } else {
+                                            clientLogg(2, out, "Invalid token: " + token);
+                                        }
+                                    } else {
+                                        clientLogg(2, out, "Cannot auth with: " + token);
+                                    }
+                                });
+                            }
                             continue;
                         }
-
-                        String subCommand = parts[1].toUpperCase();
-                        if (subCommand.equals("CREATE")) {
-                            taskQueue.add(() -> {
-                                String newToken = new CreateSecureToken().getToken();
-                                registerProject(newToken, newToken);
-                                try {
-                                    ddb.appendToArray("tokens", newToken);
-                                    clientLogg(2, out, "Project created! Token: " + newToken);
-                                } catch (IOException e) {
-                                    DDBServer.error("Error saving new token: " + e.getMessage());
-                                    clientLogg(2, out, "Could not create project");
-                                }
-                            });
-                        } else {
-                            taskQueue.add(() -> {
-                                String token = parts[1];
-                                if (authenticateProject(token)) {
-                                    loadStorageFromProtobuf(store, token);
-                                    clientLogg(0, out, "Authenticated to project: " + token);
-                                } else {
-                                    clientLogg(2, out, "Invalid token: " + token);
-                                }
-                            });
-                        }
-                        continue;
                     }
+
                     if (logged_in && currentProjectToken == null && !command.equals("EXIT")) {
                         clientLogg(2, out, "Please authenticate first using AUTH command");
                         continue;

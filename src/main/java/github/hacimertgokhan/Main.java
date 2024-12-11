@@ -3,6 +3,7 @@ package github.hacimertgokhan;
 import github.hacimertgokhan.denis.DenisTerminal;
 import github.hacimertgokhan.denis.DenisClient;
 import github.hacimertgokhan.denis.calculators.ThreadPoolCalculator;
+import github.hacimertgokhan.denis.fingerprint.PawdStore;
 import github.hacimertgokhan.denis.language.DenisLanguage;
 import github.hacimertgokhan.json.JsonFile;
 import github.hacimertgokhan.logger.DenisLogger;
@@ -64,6 +65,9 @@ public class Main {
                 }
             }
         }
+        denisLogger.info("Checking pawd.dat file.");
+        PawdStore pawdStore = new PawdStore();
+        pawdStore.loadFromFile();
         denisLogger.info(String.format("Thread Pool Size %s", THREAD_POOL_SIZE));
         handleUseMode();
     }

@@ -1,6 +1,7 @@
 package github.hacimertgokhan.denis.cli;
 
 import github.hacimertgokhan.denis.CreateSecureToken;
+import github.hacimertgokhan.denis.fingerprint.PawdStore;
 import github.hacimertgokhan.denis.fingerprint.tools.GenToHashSalter;
 import github.hacimertgokhan.denis.language.DenisLanguage;
 import github.hacimertgokhan.denis.sections.Access;
@@ -137,6 +138,7 @@ public class DenisMan implements Runnable {
                         if (denisToml.get(parts[2]) == null) {
                             if (denisToml.get(hash) == null) {
                                 if (denisToml.get(salt) == null) {
+                                    PawdStore pawdStore = new PawdStore();
                                     List<String> empty_list = new ArrayList<>();
                                     empty_list.add("denis");
                                     Map<String, Object> new_group_data = new HashMap<>();
@@ -147,6 +149,7 @@ public class DenisMan implements Runnable {
                                     new_group_data.put("unix", Instant.now().getEpochSecond());
                                     new_group_data.put("accessibility", empty_list);
                                     denisToml.set(parts[2], new_group_data);
+                                    pawdStore.put(parts[2], pwd);
                                     System.out.printf("Group %s created.\n # Hashed: %s\n # Salted: %s\n # Password: %s\n # Hashed Password: %s\n", parts[2], hash, salt, pwd, hash_pwd);
                                     try {
                                         denisToml.save();
@@ -160,7 +163,7 @@ public class DenisMan implements Runnable {
                                 System.out.println("Hash already exists?");
                             }
                         } else {
-                            System.out.println("You cannot use that string!");
+                            System.out.println("You cannot use that group name!");
                         }
                     } else {
                         help(denisLanguage);

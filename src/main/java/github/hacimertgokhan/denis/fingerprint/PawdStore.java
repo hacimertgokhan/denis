@@ -46,7 +46,7 @@ public class PawdStore {
             }
             new DenisLogger(PawdStore.class).info(String.format("Loaded %s group pawd.", i));
         } catch (FileNotFoundException e) {
-            System.out.println("Dosya bulunamadı, yeni bir dosya oluşturulacak.");
+            System.out.println("Something went wrong about pawd.dat");
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -61,13 +61,5 @@ public class PawdStore {
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-    public static void main(String[] args) {
-        PawdStore store = new PawdStore();
-        store.put("pass1", "mert1234");
-        store.put("pass2", "1234abcd");
-        System.out.println("pass1: " + store.get("pass1"));
-        System.out.println("pass2: " + store.get("pass2"));
     }
 }

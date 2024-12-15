@@ -14,9 +14,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.*;
 import java.net.Socket;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -33,6 +31,8 @@ public class DenisClient {
     private String currentProjectToken = null;
 
     private final BlockingQueue<Runnable> taskQueue = new LinkedBlockingQueue<>();
+
+    private List<String> accessList = new ArrayList<>();
 
     public class Login {
         private String group;
@@ -53,6 +53,7 @@ public class DenisClient {
                     if (group.in(password)) {
                         setLogged(true);
                         out.println("You're logged in.");
+                        accessList = group.getAccessList();
                         return true;
                     } else {
                         setLogged(false);
@@ -249,7 +250,7 @@ public class DenisClient {
 
                     if (!logged_in) {
                         if (command.equals("LIN")) {
-                            if (parts.length < 2) {
+                            if (parts.length < 3) {
                                 clientLogg(2, out, "USAGE: LIN <Group> <Password>");
                                 continue;
                             }
@@ -285,9 +286,7 @@ public class DenisClient {
                             } else {
                                 taskQueue.add(() -> {
                                     String token = parts[1];
-                                    Login login = new Login();
-                                    Group group = new Group(login.getGroup());
-                                    if (group.getAccessList().contains(token)) {
+                                    if (accessList.contains(token)) {
                                         if (authenticateProject(token)) {
                                             loadStorageFromProtobuf(store, token);
                                             clientLogg(0, out, "Authenticated to project: " + token);

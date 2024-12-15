@@ -1,8 +1,0 @@
-Denis started at wed dec 11 20:33:19 gmt+03:00 2024
-Client connected: /127.0.0.1
-[CLIENT] 127.0.0.1 action: LIN mert asd
-[CLIENT] 127.0.0.1 action: LIN mert                                             clientLogg(2, out, "Cannot auth with: " + token);
-[CLIENT] 127.0.0.1 action: 
-[CLIENT] 127.0.0.1 action: 
-[CLIENT] 127.0.0.1 action: LIN mert XYU93qGucau+ZiboAf21+A==
-Denis stopped at wed dec 11 20:33:48 gmt+03:00 2024

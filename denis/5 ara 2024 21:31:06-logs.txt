@@ -1,4 +1,0 @@
-Denis started at thu dec 05 21:31:06 gmt+03:00 2024
-Client connected: /127.0.0.1
-[CLIENT] 127.0.0.1 action: AUTH CREATE
-Denis stopped at thu dec 05 21:35:28 gmt+03:00 2024

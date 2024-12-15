@@ -1,3 +1,0 @@
-Denis started at wed dec 11 19:36:08 gmt+03:00 2024
-Client connected: /127.0.0.1
-Denis stopped at wed dec 11 19:47:11 gmt+03:00 2024

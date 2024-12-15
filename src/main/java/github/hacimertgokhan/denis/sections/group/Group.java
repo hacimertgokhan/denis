@@ -25,7 +25,7 @@ public class Group {
     }
 
     public List<String> getAccessList() {
-        Map<String, Object> groupDetails = denisToml.toml().getTable(group).toMap();
+        Map<String, Object> groupDetails = denisToml.toml(). getTable(group).toMap();
         @SuppressWarnings("unchecked")
         List<String> accessibility = (List<String>) groupDetails.get("accessibility");
         return accessibility;

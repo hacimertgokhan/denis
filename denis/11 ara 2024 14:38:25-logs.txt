@@ -1,4 +1,0 @@
-Denis started at wed dec 11 14:38:25 gmt+03:00 2024
-Client connected: /127.0.0.1
-[CLIENT] 127.0.0.1 action: LIN mert 4P0YB+2mzDgcvQ4akgrO/g==
-Denis stopped at wed dec 11 14:41:33 gmt+03:00 2024

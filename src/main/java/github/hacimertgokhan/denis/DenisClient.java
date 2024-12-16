@@ -59,21 +59,17 @@ public class DenisClient {
                 if (group.isExists()) {
                     if (group.in(password)) {
                         setLogged(true);
-                        out.println("You're logged in.");
                         accessList = group.getAccessList();
                         return true;
                     } else {
                         setLogged(false);
-                        out.println("Unknow hash or password.");
                         return false;
                     }
                 } else {
-                    out.println("Unknow string encryption.");
                     setLogged(false);
                     return false;
                 }
             } else {
-                out.println("You're already logged in.");
                 return true;
             }
         }
@@ -394,9 +390,9 @@ public class DenisClient {
 
                             case "SET":
                                 if (parts.length >= 3) {
-                                    String valueAndFlags = parts[2];
+                                    String valueAndFlags = parts[2];  // Value ve flag kısmı
                                     String[] valueParts = valueAndFlags.split(" ");
-                                    String value = valueParts[0];
+                                    String value = String.join(" ", Arrays.copyOfRange(valueParts, 0, valueParts.length - 1));
                                     boolean save = Arrays.stream(valueParts).anyMatch(s -> s.equalsIgnoreCase("-&save"));
                                     store.put(key, new Any(value));
                                     boolean protoSaved = false;

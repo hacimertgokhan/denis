@@ -5,5 +5,5 @@ for /f "tokens=1,2 delims==" %%A in (denis.conf) do (
         set VERSION=%%B
     )
 )
-echo Denis Database Integrated CLI (jcli-win-0.0.1alpha)
+echo "Denis Database Integrated CLI (jcli-win-0.0.1alpha)"
 java -Dfile.encoding=UTF-8 -cp "denis-%VERSION%-alpha.jar;lib/*" github.hacimertgokhan.denisdb.cli.CLIMain

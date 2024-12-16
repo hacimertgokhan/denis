@@ -2,6 +2,7 @@ package github.hacimertgokhan.denis;
 
 import database.Token;
 import github.hacimertgokhan.Main;
+import github.hacimertgokhan.denis.client.ClientStates;
 import github.hacimertgokhan.denis.sections.group.Group;
 import github.hacimertgokhan.json.JsonFile;
 import github.hacimertgokhan.logger.DenisLogger;
@@ -26,13 +27,19 @@ public class DenisClient {
     static DenisLogger DDBServer = new DenisLogger(Main.class);
     static JsonFile ddb = new JsonFile("ddb.json");
     static File storageDir = new File("storage");
-
     private final ConcurrentHashMap<String, Authories> projects;
     private String currentProjectToken = null;
-
     private final BlockingQueue<Runnable> taskQueue = new LinkedBlockingQueue<>();
-
     private List<String> accessList = new ArrayList<>();
+    private ClientStates currentClientState = ClientStates.INITIAL;
+
+    public ClientStates getCurrentClientState() {
+        return currentClientState;
+    }
+
+    public void setCurrentClientState(ClientStates currentClientState) {
+        this.currentClientState = currentClientState;
+    }
 
     public class Login {
         private String group;
@@ -99,7 +106,6 @@ public class DenisClient {
     public void sendWelcomeMessage(PrintWriter out) {
         out.println(String.format("[Welcome - %s]: Welcome to Denis! Please authenticate using AUTH command.", new Date()));
     }
-
 
     public DenisClient(Socket socket, ConcurrentHashMap<String, Any> store, DenisTerminal logTerminal) {
         this.projects = new ConcurrentHashMap<>();
@@ -228,7 +234,6 @@ public class DenisClient {
             try (BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
                  PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true)) {
                 String inputLine;
-                sendWelcomeMessage(out);
                 while ((inputLine = in.readLine()) != null) {
                     if (clientSocket.isClosed()) {
                         DDBServer.error("Client socket closed unexpectedly.");
@@ -247,59 +252,62 @@ public class DenisClient {
                                 String.join(" ", parts)));
                     }
 
-
-                    if (!logged_in) {
-                        if (command.equals("LIN")) {
-                            if (parts.length < 3) {
-                                clientLogg(2, out, "USAGE: LIN <Group> <Password>");
-                                continue;
-                            }
-                            String group = parts[1];
-                            String pwd = parts[2];
-                            Login login = new Login(group, pwd);
-                            logged_in = login.join(out);
-                        } else {
-                            clientLogg(2, out, "USAGE: LIN <Group> <Password>");
-                        }
+                    // LIN ve AUTH komutlarına öncelik ver
+                    if (!logged_in && !command.equals("LIN")) {
+                        clientLogg(2, out, "Please login first using LIN command");
+                        continue;
                     }
 
-                    if (logged_in) {
-                        if (command.equals("AUTH")) {
-                            if (parts.length < 2) {
-                                clientLogg(2, out, "ERROR: Usage: AUTH <CREATE|token>");
-                                continue;
-                            }
+                    if (logged_in && currentProjectToken == null && !command.equals("AUTH") && !command.equals("EXIT")) {
+                        clientLogg(2, out, "Please authenticate first using AUTH command");
+                        continue;
+                    }
 
-                            String subCommand = parts[1].toUpperCase();
-                            if (subCommand.equals("CREATE")) {
-                                taskQueue.add(() -> {
-                                    String newToken = new CreateSecureToken().getToken();
-                                    registerProject(newToken, newToken);
-                                    try {
-                                        ddb.appendToArray("tokens", newToken);
-                                        clientLogg(2, out, "Project created! Token: " + newToken);
-                                    } catch (IOException e) {
-                                        DDBServer.error("Error saving new token: " + e.getMessage());
-                                        clientLogg(2, out, "Could not create project");
-                                    }
-                                });
-                            } else {
-                                taskQueue.add(() -> {
-                                    String token = parts[1];
-                                    if (accessList.contains(token)) {
-                                        if (authenticateProject(token)) {
-                                            loadStorageFromProtobuf(store, token);
-                                            clientLogg(0, out, "Authenticated to project: " + token);
-                                        } else {
-                                            clientLogg(2, out, "Invalid token: " + token);
-                                        }
-                                    } else {
-                                        clientLogg(2, out, "Cannot auth with: " + token);
-                                    }
-                                });
-                            }
+                    // LIN komutu
+                    if (!logged_in && command.equals("LIN")) {
+                        if (parts.length < 3) {
+                            clientLogg(2, out, "USAGE: LIN <Group> <Password>");
                             continue;
                         }
+                        String group = parts[1];
+                        String pwd = parts[2];
+                        Login login = new Login(group, pwd);
+                        logged_in = login.join(out);
+                        continue;
+                    }
+
+                    // AUTH komutu
+                    if (logged_in && command.equals("AUTH")) {
+                        if (parts.length < 2) {
+                            clientLogg(2, out, "ERROR: Usage: AUTH <CREATE|token>");
+                            continue;
+                        }
+
+                        String subCommand = parts[1].toUpperCase();
+                        if (subCommand.equals("CREATE")) {
+                            String newToken = new CreateSecureToken().getToken();
+                            registerProject(newToken, newToken);
+                            try {
+                                ddb.appendToArray("tokens", newToken);
+                                clientLogg(2, out, "Project created! Token: " + newToken);
+                            } catch (IOException e) {
+                                DDBServer.error("Error saving new token: " + e.getMessage());
+                                clientLogg(2, out, "Could not create project");
+                            }
+                        } else {
+                            String token = parts[1];
+                            if (accessList.contains(token)) {
+                                if (authenticateProject(token)) {
+                                    loadStorageFromProtobuf(store, token);
+                                    clientLogg(0, out, "Authenticated to project: " + token);
+                                } else {
+                                    clientLogg(2, out, "Invalid token: " + token);
+                                }
+                            } else {
+                                clientLogg(2, out, "Cannot auth with: " + token);
+                            }
+                        }
+                        continue;
                     }
 
                     if (logged_in && currentProjectToken == null && !command.equals("EXIT")) {
@@ -391,19 +399,22 @@ public class DenisClient {
                                     String value = valueParts[0];
                                     boolean save = Arrays.stream(valueParts).anyMatch(s -> s.equalsIgnoreCase("-&save"));
                                     store.put(key, new Any(value));
-                                    clientLogg(0, out, "Ok.");
+                                    boolean protoSaved = false;
                                     if (save) {
                                         try {
                                             ProtoDatabase finalDb = new ProtoDatabase("database.bin");
                                             finalDb.setData(getProjectPrefix(), key, new Any(value));
-                                            clientLogg(0, out, "Saved to protobuff.");
+                                            protoSaved = true;
                                         } catch (IOException e) {
                                             throw new RuntimeException(e);
                                         }
                                     }
-                                    String newValue = parts[2];
-                                    store.put(key, new Any(newValue));
-                                    clientLogg(0, out, "Saved to cache.");
+                                    StringBuilder message = new StringBuilder("Ok (Cache");
+                                    if (protoSaved) {
+                                        message.append(", Protobuf");
+                                    }
+                                    message.append(")");
+                                    clientLogg(0, out, message.toString());
                                 } else {
                                     out.println("USAGE: SET <key> <value> [-&save]");
                                 }

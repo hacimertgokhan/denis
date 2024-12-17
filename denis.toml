@@ -1,3 +1,10 @@
+[test]
+salt = "rrIupjxu1OXFNjNqr3r8wwHZQ8P1lpBKWBZXGADSB/iQ0TKVhp7XQSdIiJPHn5nNKHYgsdVPEx+nO2UAhSbbzQ=="
+access = "kwxVMkHbbwVTkvD7Hhdhkx7BPDtr+PF4lr+OWPDDETcxJs4MLLlKwls7PfaZtAeAYcca3nCkYTbSsAQDbMQzwA=="
+accessibility = ["denis"]
+hash = "4X0yHZgJHU/YMbToNXkXaY5/nOYwC+jk1v99zYnbn0M1qSdywNQkp5/zir/fbDNVLn1jPHPrsLhbJUXmr14k8A=="
+unix = 1734437799
+group = "test"
 [mert]
 salt = "n0lhvlpuPG0UlgqYJLCLpwjfQEvxCau1/vZLHHse4hONWxZ3ONAY3/x/tR9sT4pQKi1qqG32pEdB9GiK8hnjJA=="
 access = "1jX4IxDFm0YmhPCxk2my36eWMuHZKgseenEqedT8NhJd6yaATh+cQzWp3mXdtNcVb/Xx/9zdz6UrYrbKkgJvkw=="

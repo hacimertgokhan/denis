@@ -451,6 +451,8 @@ public class DenisClient {
         }
     }
 
+
+    // use without denis_logger
     public void handleClient(Socket clientSocket, ConcurrentHashMap<String, Any> store) {
         DDBServer.info("Waiting for client connection...");
         try {

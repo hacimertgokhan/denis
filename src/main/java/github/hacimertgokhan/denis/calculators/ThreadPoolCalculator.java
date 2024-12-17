@@ -23,7 +23,7 @@ public class ThreadPoolCalculator {
                     coreCount + 1;
             case IO_BOUND ->
                     (int) Math.ceil(coreCount * (1 + ioCpuRatio));
-            default -> throw new IllegalArgumentException("Bilinmeyen iş yükü türü.");
+            default -> throw new IllegalArgumentException("Unknow job thread proccess.");
         };
     }
 

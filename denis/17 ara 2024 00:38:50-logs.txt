@@ -1,0 +1,17 @@
+Denis started at tue dec 17 00:38:50 gmt+03:00 2024
+Client connected: /127.0.0.1
+[CLIENT] 127.0.0.1 action: LIN mert XYU93qGucau+ZiboAf21+A==
+[CLIENT] 127.0.0.1 action: AUTH A3SwKx7IJMahRLVqQLb2qxUN0N3fxp60jJH8OuUQdEZUGwuwxIHlJxEdrlyFSpFR040tB2mdHekCAE8ha2DxmJfFDvYPxl0mWGcApmllG1pgtRRqn1K32AMdvu7YxbjZ
+[CLIENT] 127.0.0.1 action: GET todo:1
+[CLIENT] 127.0.0.1 action: GET todo:1
+[CLIENT] 127.0.0.1 action: GET todo:1
+[CLIENT] 127.0.0.1 action: SET todo:1 Kendi veritabanımla kod yazmacalar
+[CLIENT] 127.0.0.1 action: GET todo:1
+[CLIENT] 127.0.0.1 action: GET todo:1
+[CLIENT] 127.0.0.1 action: SET todo:1 Kendi veritabanımla ksadasdasdsa as das dasd od yazmacalar
+[CLIENT] 127.0.0.1 action: GET todo:1
+Client connected: /127.0.0.1
+[CLIENT] 127.0.0.1 action: LIN mert XYU93qGucau+ZiboAf21+A==AUTH A3SwKx7IJMahRLVqQLb2qxUN0N3fxp60jJH8OuUQdEZUGwuwxIHlJxEdrlyFSpFR040tB2mdHekCAE8ha2DxmJfFDvYPxl0mWGcApmllG1pgtRRqn1K32AMdvu7YxbjZSET todo:1 Kendi veritabanımla ksadasdasdsa as das dasd od yazmacalarSET todo:1 Kendi veritabanımla ksadasdasdsa as das dasd od yazmacalarGET todo:1
+Client connected: /127.0.0.1
+[CLIENT] 127.0.0.1 action: LIN mert XYU93qGucau+ZiboAf21+A==AUTH A3SwKx7IJMahRLVqQLb2qxUN0N3fxp60jJH8OuUQdEZUGwuwxIHlJxEdrlyFSpFR040tB2mdHekCAE8ha2DxmJfFDvYPxl0mWGcApmllG1pgtRRqn1K32AMdvu7YxbjZGET todo:1SET todo:1 Kendi veritabanımla ksadasdasdsa as das dasd od yazmacalar
+Denis stopped at tue dec 17 00:54:11 gmt+03:00 2024

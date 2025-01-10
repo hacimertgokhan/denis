@@ -1,14 +1,37 @@
 [Unit]
-Description=Denis
+Description=Denis Service
+Documentation=https://github.com/hacimertgokhan/denis
 After=network.target
+Wants=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=5
 
 [Service]
+Type=simple
 User=hacimertgokhan
+Group=hacimertgokhan
 WorkingDirectory=/opt/denis
-ExecStart=env DISPLAY=:0 SSH_ASKPASS=/usr/lib/ssh/ssh-askpass sudo -A /opt/denis/ddb.sh -start
-SuccessExitStatus=143
-Restart=always
-RestartSec=5
+Environment=DISPLAY=:0
+Environment=SSH_ASKPASS=/usr/lib/ssh/ssh-askpass
+
+ExecStartPre=/bin/mkdir -p /opt/denis
+ExecStart=/usr/bin/sudo -A /opt/denis/ddb.sh -start
+ExecStop=/usr/bin/sudo -A /opt/denis/ddb.sh -stop
+
+Restart=on-failure
+RestartSec=30
+TimeoutStartSec=30
+TimeoutStopSec=30
+
+ProtectSystem=full
+ProtectHome=read-only
+NoNewPrivileges=true
+PrivateTmp=true
+MemoryLimit=2G
+CPUQuota=80%
+
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target

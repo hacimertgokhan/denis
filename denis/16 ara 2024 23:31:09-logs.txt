@@ -1,0 +1,107 @@
+Denis started at mon dec 16 23:31:09 gmt+03:00 2024
+Client connected: /127.0.0.1
+[CLIENT] 127.0.0.1 action: LIN mert XYU93qGucau+ZiboAf21+A==
+[CLIENT] 127.0.0.1 action: AUTH A3SwKx7IJMahRLVqQLb2qxUN0N3fxp60jJH8OuUQdEZUGwuwxIHlJxEdrlyFSpFR040tB2mdHekCAE8ha2DxmJfFDvYPxl0mWGcApmllG1pgtRRqn1K32AMdvu7YxbjZ
+[CLIENT] 127.0.0.1 action: SET DATA DATA
+[CLIENT] 127.0.0.1 action: SET DATA DATA -&save
+Client connected: /127.0.0.1
+[CLIENT] 127.0.0.1 action: LIN mert XYU93qGucau+ZiboAf21+A==
+[CLIENT] 127.0.0.1 action: AUTH A3SwKx7IJMahRLVqQLb2qxUN0N3fxp60jJH8OuUQdEZUGwuwxIHlJxEdrlyFSpFR040tB2mdHekCAE8ha2DxmJfFDvYPxl0mWGcApmllG1pgtRRqn1K32AMdvu7YxbjZ
+[CLIENT] 127.0.0.1 action: SET key1 value1
+[CLIENT] 127.0.0.1 action: GET key1
+Client connected: /127.0.0.1
+[CLIENT] 127.0.0.1 action: LIN mert XYU93qGucau+ZiboAf21+A==
+[CLIENT] 127.0.0.1 action: AUTH A3SwKx7IJMahRLVqQLb2qxUN0N3fxp60jJH8OuUQdEZUGwuwxIHlJxEdrlyFSpFR040tB2mdHekCAE8ha2DxmJfFDvYPxl0mWGcApmllG1pgtRRqn1K32AMdvu7YxbjZ
+[CLIENT] 127.0.0.1 action: SET key1 value1
+[CLIENT] 127.0.0.1 action: GET key1
+Client connected: /127.0.0.1
+[CLIENT] 127.0.0.1 action: LIN mert XYU93qGucau+ZiboAf21+A==
+[CLIENT] 127.0.0.1 action: AUTH A3SwKx7IJMahRLVqQLb2qxUN0N3fxp60jJH8OuUQdEZUGwuwxIHlJxEdrlyFSpFR040tB2mdHekCAE8ha2DxmJfFDvYPxl0mWGcApmllG1pgtRRqn1K32AMdvu7YxbjZ
+[CLIENT] 127.0.0.1 action: SET key1 value1
+[CLIENT] 127.0.0.1 action: GET key1
+Client connected: /127.0.0.1
+[CLIENT] 127.0.0.1 action: LIN mert XYU93qGucau+ZiboAf21+A==
+[CLIENT] 127.0.0.1 action: AUTH A3SwKx7IJMahRLVqQLb2qxUN0N3fxp60jJH8OuUQdEZUGwuwxIHlJxEdrlyFSpFR040tB2mdHekCAE8ha2DxmJfFDvYPxl0mWGcApmllG1pgtRRqn1K32AMdvu7YxbjZ
+[CLIENT] 127.0.0.1 action: SET key1 value1
+[CLIENT] 127.0.0.1 action: GET key1
+Client connected: /127.0.0.1
+[CLIENT] 127.0.0.1 action: LIN mert XYU93qGucau+ZiboAf21+A==
+[CLIENT] 127.0.0.1 action: AUTH A3SwKx7IJMahRLVqQLb2qxUN0N3fxp60jJH8OuUQdEZUGwuwxIHlJxEdrlyFSpFR040tB2mdHekCAE8ha2DxmJfFDvYPxl0mWGcApmllG1pgtRRqn1K32AMdvu7YxbjZ
+[CLIENT] 127.0.0.1 action: SET key1 value1
+[CLIENT] 127.0.0.1 action: GET key1
+Client connected: /127.0.0.1
+[CLIENT] 127.0.0.1 action: LIN mert XYU93qGucau+ZiboAf21+A==
+[CLIENT] 127.0.0.1 action: AUTH A3SwKx7IJMahRLVqQLb2qxUN0N3fxp60jJH8OuUQdEZUGwuwxIHlJxEdrlyFSpFR040tB2mdHekCAE8ha2DxmJfFDvYPxl0mWGcApmllG1pgtRRqn1K32AMdvu7YxbjZ
+[CLIENT] 127.0.0.1 action: SET key1 value1
+[CLIENT] 127.0.0.1 action: GET key1
+Client connected: /127.0.0.1
+[CLIENT] 127.0.0.1 action: LIN mert XYU93qGucau+ZiboAf21+A==
+[CLIENT] 127.0.0.1 action: AUTH A3SwKx7IJMahRLVqQLb2qxUN0N3fxp60jJH8OuUQdEZUGwuwxIHlJxEdrlyFSpFR040tB2mdHekCAE8ha2DxmJfFDvYPxl0mWGcApmllG1pgtRRqn1K32AMdvu7YxbjZ
+[CLIENT] 127.0.0.1 action: SET key1 value1
+[CLIENT] 127.0.0.1 action: GET key1
+Client connected: /127.0.0.1
+[CLIENT] 127.0.0.1 action: LIN mert XYU93qGucau+ZiboAf21+A==
+[CLIENT] 127.0.0.1 action: AUTH A3SwKx7IJMahRLVqQLb2qxUN0N3fxp60jJH8OuUQdEZUGwuwxIHlJxEdrlyFSpFR040tB2mdHekCAE8ha2DxmJfFDvYPxl0mWGcApmllG1pgtRRqn1K32AMdvu7YxbjZ
+[CLIENT] 127.0.0.1 action: SET key1 value1
+[CLIENT] 127.0.0.1 action: GET key1
+Client connected: /127.0.0.1
+[CLIENT] 127.0.0.1 action: LIN mert XYU93qGucau+ZiboAf21+A==
+[CLIENT] 127.0.0.1 action: AUTH A3SwKx7IJMahRLVqQLb2qxUN0N3fxp60jJH8OuUQdEZUGwuwxIHlJxEdrlyFSpFR040tB2mdHekCAE8ha2DxmJfFDvYPxl0mWGcApmllG1pgtRRqn1K32AMdvu7YxbjZ
+[CLIENT] 127.0.0.1 action: SET key1 value1
+[CLIENT] 127.0.0.1 action: GET key1
+Client connected: /127.0.0.1
+[CLIENT] 127.0.0.1 action: LIN mert XYU93qGucau+ZiboAf21+A==
+[CLIENT] 127.0.0.1 action: AUTH A3SwKx7IJMahRLVqQLb2qxUN0N3fxp60jJH8OuUQdEZUGwuwxIHlJxEdrlyFSpFR040tB2mdHekCAE8ha2DxmJfFDvYPxl0mWGcApmllG1pgtRRqn1K32AMdvu7YxbjZ
+[CLIENT] 127.0.0.1 action: SET key1 value1
+[CLIENT] 127.0.0.1 action: GET key1
+Client connected: /127.0.0.1
+[CLIENT] 127.0.0.1 action: LIN mert XYU93qGucau+ZiboAf21+A==
+[CLIENT] 127.0.0.1 action: AUTH A3SwKx7IJMahRLVqQLb2qxUN0N3fxp60jJH8OuUQdEZUGwuwxIHlJxEdrlyFSpFR040tB2mdHekCAE8ha2DxmJfFDvYPxl0mWGcApmllG1pgtRRqn1K32AMdvu7YxbjZ
+[CLIENT] 127.0.0.1 action: SET key1 value1
+[CLIENT] 127.0.0.1 action: GET key1
+Client connected: /127.0.0.1
+[CLIENT] 127.0.0.1 action: LIN mert XYU93qGucau+ZiboAf21+A==
+[CLIENT] 127.0.0.1 action: AUTH A3SwKx7IJMahRLVqQLb2qxUN0N3fxp60jJH8OuUQdEZUGwuwxIHlJxEdrlyFSpFR040tB2mdHekCAE8ha2DxmJfFDvYPxl0mWGcApmllG1pgtRRqn1K32AMdvu7YxbjZ
+[CLIENT] 127.0.0.1 action: SET key1 value1
+[CLIENT] 127.0.0.1 action: GET key1
+Client connected: /127.0.0.1
+[CLIENT] 127.0.0.1 action: LIN mert XYU93qGucau+ZiboAf21+A==
+[CLIENT] 127.0.0.1 action: AUTH A3SwKx7IJMahRLVqQLb2qxUN0N3fxp60jJH8OuUQdEZUGwuwxIHlJxEdrlyFSpFR040tB2mdHekCAE8ha2DxmJfFDvYPxl0mWGcApmllG1pgtRRqn1K32AMdvu7YxbjZ
+[CLIENT] 127.0.0.1 action: SET key1 value1
+[CLIENT] 127.0.0.1 action: GET key1
+Client connected: /127.0.0.1
+[CLIENT] 127.0.0.1 action: LIN mert XYU93qGucau+ZiboAf21+A==
+[CLIENT] 127.0.0.1 action: AUTH A3SwKx7IJMahRLVqQLb2qxUN0N3fxp60jJH8OuUQdEZUGwuwxIHlJxEdrlyFSpFR040tB2mdHekCAE8ha2DxmJfFDvYPxl0mWGcApmllG1pgtRRqn1K32AMdvu7YxbjZ
+[CLIENT] 127.0.0.1 action: SET key1 value1
+[CLIENT] 127.0.0.1 action: GET key1
+Client connected: /127.0.0.1
+[CLIENT] 127.0.0.1 action: LIN mert XYU93qGucau+ZiboAf21+A==
+[CLIENT] 127.0.0.1 action: AUTH A3SwKx7IJMahRLVqQLb2qxUN0N3fxp60jJH8OuUQdEZUGwuwxIHlJxEdrlyFSpFR040tB2mdHekCAE8ha2DxmJfFDvYPxl0mWGcApmllG1pgtRRqn1K32AMdvu7YxbjZ
+[CLIENT] 127.0.0.1 action: SET key1 value1
+[CLIENT] 127.0.0.1 action: GET key1
+Client connected: /127.0.0.1
+[CLIENT] 127.0.0.1 action: LIN mert XYU93qGucau+ZiboAf21+A==
+[CLIENT] 127.0.0.1 action: AUTH A3SwKx7IJMahRLVqQLb2qxUN0N3fxp60jJH8OuUQdEZUGwuwxIHlJxEdrlyFSpFR040tB2mdHekCAE8ha2DxmJfFDvYPxl0mWGcApmllG1pgtRRqn1K32AMdvu7YxbjZ
+[CLIENT] 127.0.0.1 action: SET key1 value1
+[CLIENT] 127.0.0.1 action: GET key1
+Client connected: /127.0.0.1
+[CLIENT] 127.0.0.1 action: LIN mert XYU93qGucau+ZiboAf21+A==
+[CLIENT] 127.0.0.1 action: AUTH A3SwKx7IJMahRLVqQLb2qxUN0N3fxp60jJH8OuUQdEZUGwuwxIHlJxEdrlyFSpFR040tB2mdHekCAE8ha2DxmJfFDvYPxl0mWGcApmllG1pgtRRqn1K32AMdvu7YxbjZ
+[CLIENT] 127.0.0.1 action: SET key1 value1
+[CLIENT] 127.0.0.1 action: GET key1
+Client connected: /127.0.0.1
+[CLIENT] 127.0.0.1 action: LIN mert XYU93qGucau+ZiboAf21+A==
+[CLIENT] 127.0.0.1 action: AUTH A3SwKx7IJMahRLVqQLb2qxUN0N3fxp60jJH8OuUQdEZUGwuwxIHlJxEdrlyFSpFR040tB2mdHekCAE8ha2DxmJfFDvYPxl0mWGcApmllG1pgtRRqn1K32AMdvu7YxbjZ
+[CLIENT] 127.0.0.1 action: SET key1 value1
+[CLIENT] 127.0.0.1 action: GET key1
+Client connected: /127.0.0.1
+[CLIENT] 127.0.0.1 action: LIN mert XYU93qGucau+ZiboAf21+A==
+[CLIENT] 127.0.0.1 action: AUTH A3SwKx7IJMahRLVqQLb2qxUN0N3fxp60jJH8OuUQdEZUGwuwxIHlJxEdrlyFSpFR040tB2mdHekCAE8ha2DxmJfFDvYPxl0mWGcApmllG1pgtRRqn1K32AMdvu7YxbjZ
+[CLIENT] 127.0.0.1 action: SET key1 value1
+[CLIENT] 127.0.0.1 action: GET key1
+Client connected: /127.0.0.1
+[CLIENT] 127.0.0.1 action: LIN mert XYU93qGucau+ZiboAf21+A==
+[CLIENT] 127.0.0.1 action: AUTH A3SwKx7IJMahRLVqQLb2qxUN0N3fxp60jJH8OuUQdEZUGwuwxIHlJxEdrlyFSpFR040tB2mdHekCAE8ha2DxmJfFDvYPxl0mWGcApmllG1pgtRRqn1K32AMdvu7YxbjZ
+[CLIENT] 127.0.0.1 action: SET key1 value1
+[CLIENT] 127.0.0.1 action: GET key1
+Denis stopped at mon dec 16 23:37:30 gmt+03:00 2024

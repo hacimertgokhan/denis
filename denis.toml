@@ -1,7 +1,7 @@
 [test]
 salt = "rrIupjxu1OXFNjNqr3r8wwHZQ8P1lpBKWBZXGADSB/iQ0TKVhp7XQSdIiJPHn5nNKHYgsdVPEx+nO2UAhSbbzQ=="
 access = "kwxVMkHbbwVTkvD7Hhdhkx7BPDtr+PF4lr+OWPDDETcxJs4MLLlKwls7PfaZtAeAYcca3nCkYTbSsAQDbMQzwA=="
-accessibility = ["denis"]
+accessibility = ["A3SwKx7IJMahRLVqQLb2qxUN0N3fxp60jJH8OuUQdEZUGwuwxIHlJxEdrlyFSpFR040tB2mdHekCAE8ha2DxmJfFDvYPxl0mWGcApmllG1pgtRRqn1K32AMdvu7YxbjZ"]
 hash = "4X0yHZgJHU/YMbToNXkXaY5/nOYwC+jk1v99zYnbn0M1qSdywNQkp5/zir/fbDNVLn1jPHPrsLhbJUXmr14k8A=="
 unix = 1734437799
 group = "test"
@@ -12,3 +12,10 @@ accessibility = ["A3SwKx7IJMahRLVqQLb2qxUN0N3fxp60jJH8OuUQdEZUGwuwxIHlJxEdrlyFSp
 hash = "GgyXDpBwxZ1/cqICVgBasNR4HjfckVPpsphodJpxnUYcBrOUMmZNVXbT1Rvrz6MJl4+OQhVZnx2jedjZv+DoMQ=="
 unix = 1733937894
 group = "mert"
+[m]
+salt = "Yd3UQvqoRR2TN2m2xoTbU6B/vchDM14m5JkpWJZ0ZH96Tj/CtkH9a3obD7LS2cAkNwdbTTSY5uVElXmdK0mhVQ=="
+access = "V4sZG9yflOejPQu5RDthlSNF18sRvr5LWck7N6uxqpfIyDwAfNFgL43o+UE8SKHN2juCClmssKTeb03kH4690Q=="
+accessibility = ["A3SwKx7IJMahRLVqQLb2qxUN0N3fxp60jJH8OuUQdEZUGwuwxIHlJxEdrlyFSpFR040tB2mdHekCAE8ha2DxmJfFDvYPxl0mWGcApmllG1pgtRRqn1K32AMdvu7YxbjZ"]
+hash = "dk5BSjDugYfW+NBHnIVpWWMosV87PXGWHtSHak/tHq6opVbQbpNT8vCtCLAzR8V7cOqAW4Qi34AfdY1+jikstw=="
+unix = 1736469971
+group = "m"

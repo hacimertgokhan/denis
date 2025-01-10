@@ -1,0 +1,107 @@
+Denis started at fri jan 10 03:40:44 gmt+03:00 2025
+Client connected: /127.0.0.1
+Client connected: /127.0.0.1
+[CLIENT] 127.0.0.1 action: LIN test /fvlKEAZ5izZYrPx/jbBOQ==
+[CLIENT] 127.0.0.1 action: LIN yusuf Ahi1/MmJo5V5nbAzYvaJPA==
+[CLIENT] 127.0.0.1 action: AUTH A3SwKx7IJMahRLVqQLb2qxUN0N3fxp60jJH8OuUQdEZUGwuwxIHlJxEdrlyFSpFR040tB2mdHekCAE8ha2DxmJfFDvYPxl0mWGcApmllG1pgtRRqn1K32AMdvu7YxbjZ
+[CLIENT] 127.0.0.1 action: AUTH A3SwKx7IJMahRLVqQLb2qxUN0N3fxp60jJH8OuUQdEZUGwuwxIHlJxEdrlyFSpFR040tB2mdHekCAE8ha2DxmJfFDvYPxl0mWGcApmllG1pgtRRqn1K32AMdvu7YxbjZ
+[CLIENT] 127.0.0.1 action: GET todo_ids
+Client connected: /127.0.0.1
+Client connected: /127.0.0.1
+[CLIENT] 127.0.0.1 action: LIN test /fvlKEAZ5izZYrPx/jbBOQ==
+[CLIENT] 127.0.0.1 action: LIN yusuf Ahi1/MmJo5V5nbAzYvaJPA==
+[CLIENT] 127.0.0.1 action: AUTH A3SwKx7IJMahRLVqQLb2qxUN0N3fxp60jJH8OuUQdEZUGwuwxIHlJxEdrlyFSpFR040tB2mdHekCAE8ha2DxmJfFDvYPxl0mWGcApmllG1pgtRRqn1K32AMdvu7YxbjZ
+[CLIENT] 127.0.0.1 action: AUTH A3SwKx7IJMahRLVqQLb2qxUN0N3fxp60jJH8OuUQdEZUGwuwxIHlJxEdrlyFSpFR040tB2mdHekCAE8ha2DxmJfFDvYPxl0mWGcApmllG1pgtRRqn1K32AMdvu7YxbjZ
+[CLIENT] 127.0.0.1 action: GET todo_ids
+[CLIENT] 127.0.0.1 action: SET todo_ids [] -&save
+[CLIENT] 127.0.0.1 action: GET todo_ids
+[CLIENT] 127.0.0.1 action: GET todo_ids
+[CLIENT] 127.0.0.1 action: GET todo_ids
+[CLIENT] 127.0.0.1 action: GET todo_ids
+Client connected: /127.0.0.1
+Client connected: /127.0.0.1
+[CLIENT] 127.0.0.1 action: LIN test /fvlKEAZ5izZYrPx/jbBOQ==
+[CLIENT] 127.0.0.1 action: LIN test /fvlKEAZ5izZYrPx/jbBOQ==
+[CLIENT] 127.0.0.1 action: AUTH A3SwKx7IJMahRLVqQLb2qxUN0N3fxp60jJH8OuUQdEZUGwuwxIHlJxEdrlyFSpFR040tB2mdHekCAE8ha2DxmJfFDvYPxl0mWGcApmllG1pgtRRqn1K32AMdvu7YxbjZ
+[CLIENT] 127.0.0.1 action: AUTH A3SwKx7IJMahRLVqQLb2qxUN0N3fxp60jJH8OuUQdEZUGwuwxIHlJxEdrlyFSpFR040tB2mdHekCAE8ha2DxmJfFDvYPxl0mWGcApmllG1pgtRRqn1K32AMdvu7YxbjZ
+[CLIENT] 127.0.0.1 action: GET todo_ids
+[CLIENT] 127.0.0.1 action: SET todo_ids [] -&save
+[CLIENT] 127.0.0.1 action: GET todo_ids
+[CLIENT] 127.0.0.1 action: GET todo_ids
+Client connected: /127.0.0.1
+Client connected: /127.0.0.1
+[CLIENT] 127.0.0.1 action: LIN test /fvlKEAZ5izZYrPx/jbBOQ==
+[CLIENT] 127.0.0.1 action: LIN m 0Xs4l/1t+kxOuDBELcNT4Q==
+[CLIENT] 127.0.0.1 action: AUTH A3SwKx7IJMahRLVqQLb2qxUN0N3fxp60jJH8OuUQdEZUGwuwxIHlJxEdrlyFSpFR040tB2mdHekCAE8ha2DxmJfFDvYPxl0mWGcApmllG1pgtRRqn1K32AMdvu7YxbjZ
+[CLIENT] 127.0.0.1 action: AUTH A3SwKx7IJMahRLVqQLb2qxUN0N3fxp60jJH8OuUQdEZUGwuwxIHlJxEdrlyFSpFR040tB2mdHekCAE8ha2DxmJfFDvYPxl0mWGcApmllG1pgtRRqn1K32AMdvu7YxbjZ
+[CLIENT] 127.0.0.1 action: GET todo_ids
+[CLIENT] 127.0.0.1 action: SET todo_ids [] -&save
+[CLIENT] 127.0.0.1 action: GET todo_ids
+[CLIENT] 127.0.0.1 action: GET todo_ids
+Client connected: /127.0.0.1
+Client connected: /127.0.0.1
+[CLIENT] 127.0.0.1 action: LIN test /fvlKEAZ5izZYrPx/jbBOQ==
+[CLIENT] 127.0.0.1 action: LIN m 0Xs4l/1t+kxOuDBELcNT4Q==
+[CLIENT] 127.0.0.1 action: AUTH A3SwKx7IJMahRLVqQLb2qxUN0N3fxp60jJH8OuUQdEZUGwuwxIHlJxEdrlyFSpFR040tB2mdHekCAE8ha2DxmJfFDvYPxl0mWGcApmllG1pgtRRqn1K32AMdvu7YxbjZ
+[CLIENT] 127.0.0.1 action: AUTH A3SwKx7IJMahRLVqQLb2qxUN0N3fxp60jJH8OuUQdEZUGwuwxIHlJxEdrlyFSpFR040tB2mdHekCAE8ha2DxmJfFDvYPxl0mWGcApmllG1pgtRRqn1K32AMdvu7YxbjZ
+[CLIENT] 127.0.0.1 action: GET todo_ids
+[CLIENT] 127.0.0.1 action: SET todo_ids [] -&save
+[CLIENT] 127.0.0.1 action: GET todo_ids
+[CLIENT] 127.0.0.1 action: GET todo_ids
+[CLIENT] 127.0.0.1 action: SET todo:1736470101656 {"id":"1736470101656","title":"test","completed":false} -&save
+[CLIENT] 127.0.0.1 action: GET todo_ids
+[CLIENT] 127.0.0.1 action: SET todo_ids ["1736470101656"] -&save
+[CLIENT] 127.0.0.1 action: GET todo_ids
+[CLIENT] 127.0.0.1 action: GET todo:1736470101656
+[CLIENT] 127.0.0.1 action: SET todo:1736470104683 {"id":"1736470104683","title":"teasdasd","completed":false} -&save
+[CLIENT] 127.0.0.1 action: GET todo_ids
+[CLIENT] 127.0.0.1 action: SET todo_ids ["1736470101656","1736470104683"] -&save
+[CLIENT] 127.0.0.1 action: GET todo_ids
+[CLIENT] 127.0.0.1 action: GET todo:1736470101656
+[CLIENT] 127.0.0.1 action: GET todo:1736470104683
+[CLIENT] 127.0.0.1 action: GET todo_ids
+[CLIENT] 127.0.0.1 action: GET todo:1736470101656
+[CLIENT] 127.0.0.1 action: GET todo:1736470104683
+[CLIENT] 127.0.0.1 action: GET todo_ids
+[CLIENT] 127.0.0.1 action: GET todo:1736470101656
+[CLIENT] 127.0.0.1 action: GET todo:1736470104683
+[CLIENT] 127.0.0.1 action: GET todo:1736470101656
+[CLIENT] 127.0.0.1 action: SET todo:1736470101656 {"id":"1736470101656","title":"test","completed":true} -&save
+[CLIENT] 127.0.0.1 action: GET todo_ids
+[CLIENT] 127.0.0.1 action: GET todo:1736470101656
+[CLIENT] 127.0.0.1 action: GET todo:1736470104683
+[CLIENT] 127.0.0.1 action: GET todo:1736470101656
+[CLIENT] 127.0.0.1 action: SET todo:1736470101656 {"id":"1736470101656","title":"test","completed":false} -&save
+[CLIENT] 127.0.0.1 action: GET todo_ids
+[CLIENT] 127.0.0.1 action: GET todo:1736470101656
+[CLIENT] 127.0.0.1 action: GET todo:1736470104683
+[CLIENT] 127.0.0.1 action: GET todo:1736470101656
+[CLIENT] 127.0.0.1 action: SET todo:1736470101656 {"id":"1736470101656","title":"test","completed":true} -&save
+[CLIENT] 127.0.0.1 action: GET todo_ids
+[CLIENT] 127.0.0.1 action: GET todo:1736470101656
+[CLIENT] 127.0.0.1 action: GET todo:1736470104683
+[CLIENT] 127.0.0.1 action: GET todo:1736470101656
+[CLIENT] 127.0.0.1 action: SET todo:1736470101656 {"id":"1736470101656","title":"test","completed":false} -&save
+[CLIENT] 127.0.0.1 action: GET todo_ids
+[CLIENT] 127.0.0.1 action: GET todo:1736470101656
+[CLIENT] 127.0.0.1 action: GET todo:1736470104683
+[CLIENT] 127.0.0.1 action: GET todo:1736470101656
+[CLIENT] 127.0.0.1 action: SET todo:1736470101656 {"id":"1736470101656","title":"testasdasd","completed":false} -&save
+[CLIENT] 127.0.0.1 action: GET todo_ids
+[CLIENT] 127.0.0.1 action: GET todo:1736470101656
+[CLIENT] 127.0.0.1 action: GET todo:1736470104683
+[CLIENT] 127.0.0.1 action: GET todo_ids
+[CLIENT] 127.0.0.1 action: GET todo:1736470101656
+[CLIENT] 127.0.0.1 action: GET todo:1736470104683
+[CLIENT] 127.0.0.1 action: GET todo_ids
+[CLIENT] 127.0.0.1 action: GET todo:1736470101656
+[CLIENT] 127.0.0.1 action: GET todo:1736470104683
+Client connected: /127.0.0.1
+Client connected: /127.0.0.1
+[CLIENT] 127.0.0.1 action: LIN test /fvlKEAZ5izZYrPx/jbBOQ==
+[CLIENT] 127.0.0.1 action: LIN m 0Xs4l/1t+kxOuDBELcNT4Q==
+[CLIENT] 127.0.0.1 action: AUTH A3SwKx7IJMahRLVqQLb2qxUN0N3fxp60jJH8OuUQdEZUGwuwxIHlJxEdrlyFSpFR040tB2mdHekCAE8ha2DxmJfFDvYPxl0mWGcApmllG1pgtRRqn1K32AMdvu7YxbjZ
+[CLIENT] 127.0.0.1 action: AUTH A3SwKx7IJMahRLVqQLb2qxUN0N3fxp60jJH8OuUQdEZUGwuwxIHlJxEdrlyFSpFR040tB2mdHekCAE8ha2DxmJfFDvYPxl0mWGcApmllG1pgtRRqn1K32AMdvu7YxbjZ
+[CLIENT] 127.0.0.1 action: GET todo_ids
+[CLIENT] 127.0.0.1 action: SET todo_ids [] -&save
+Denis stopped at fri jan 10 03:55:23 gmt+03:00 2025

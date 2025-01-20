@@ -330,56 +330,56 @@ public class DenisClient {
                                         boolean asJson = Arrays.stream(flags).anyMatch(s -> s.equalsIgnoreCase("-&asa-json"));
                                         boolean fromProtoBuff = Arrays.stream(flags).anyMatch(s -> s.equalsIgnoreCase("-&from-protobuff"));
 
+
                                         ProtoDatabase finalDb = new ProtoDatabase("database.bin");
 
-                                        // Cache'ten veri almak
-                                        if (fromCache) {
+                                        if (fromCache){
                                             if (data != null) {
                                                 out.println(data.getValue());
                                             } else {
-                                                out.println(String.format("err: %s not found in cache", key.split(":")[1]));
+                                                if(finalDb.getData(getProjectPrefix(), key) != null){
+                                                    out.println(finalDb.getData(getProjectPrefix(), key));
+                                                } else {
+                                                    out.println(String.format("err: %s not found in cache or protobuff", key.split(":")[1]));
+                                                }
                                             }
                                         }
-                                        // JSON formatında veri almak
                                         else if (asJson) {
                                             if (data != null) {
                                                 out.println(String.format("{\"key\": \"%s\", \"data\": \"%s\"}", key.split(":")[1], data.getValue()));
-                                            } else {
-                                                out.println(String.format("err: %s not found in cache", key.split(":")[1]));
                                             }
-                                        }
-                                        // ProtoBuffer'dan veri almak
-                                        else if (fromProtoBuff) {
+                                            else {
+                                                if(finalDb.getData(getProjectPrefix(), key) != null){
+                                                    out.println(String.format("{\"key\": \"%s\", \"data\": \"%s\"}", key.split(":")[1], finalDb.getData(getProjectPrefix(), key)));
+                                                } else {
+                                                    out.println(String.format("err: %s not found in cache or protobuff", key.split(":")[1]));
+                                                }
+                                            }
+                                        } else if (fromProtoBuff) {
                                             if (finalDb.getData(getProjectPrefix(), key) != null) {
                                                 out.println(finalDb.getData(getProjectPrefix(), key));
-                                            } else {
-                                                out.println(String.format("err: %s not found in protobuff", key.split(":")[1]));
+                                            }
+                                            else {
+                                                if (data != null) {
+                                                    out.println(data.getValue());
+                                                } else {
+                                                    out.println(String.format("err: %s not found in cache or protobuff", key.split(":")[1]));
+                                                }
                                             }
                                         }
-                                        // Hem ProtoBuffer hem JSON formatında veri almak
-                                        else if (fromProtoBuff && asJson) {
-                                            if (finalDb.getData(getProjectPrefix(), key) != null) {
-                                                out.println(finalDb.getData(getProjectPrefix(), key));
-                                            } else {
-                                                out.println(String.format("err: %s not found in protobuff", key.split(":")[1]));
-                                            }
-                                        }
-                                        // Hem cache hem JSON formatında veri almak
-                                        else if (fromCache && asJson) {
-                                            if (data != null) {
-                                                out.println(String.format("{\"key\": \"%s\", \"data\": \"%s\"}", key.split(":")[1], data.getValue()));
-                                            } else {
-                                                out.println(String.format("err: %s not found in cache", key.split(":")[1]));
-                                            }
-                                        }
-                                        // Default: sadece key ile veri almak
                                         else {
                                             if (data != null) {
                                                 out.println(data.getValue());
-                                            } else {
-                                                out.println(String.format("err: %s not found", key.split(":")[1]));
+                                            }
+                                            else {
+                                                if(finalDb.getData(getProjectPrefix(), key) != null){
+                                                    out.println(finalDb.getData(getProjectPrefix(), key));
+                                                } else {
+                                                    out.println(String.format("err: %s not found in cache or protobuff", key.split(":")[1]));
+                                                }
                                             }
                                         }
+
                                     } else {
                                         out.println("USAGE: GET <key> [-&from-cache,-&from-protobuff] [-&asa-json]");
                                     }
@@ -390,46 +390,76 @@ public class DenisClient {
 
                             case "SET":
                                 if (parts.length >= 3) {
-                                    String valueAndFlags = parts[2];  // Value ve flag kısmı
+                                    String valueAndFlags = parts[2];
                                     String[] valueParts = valueAndFlags.split(" ");
-                                    String value = String.join(" ", Arrays.copyOfRange(valueParts, 0, valueParts.length - 1));
+                                    String value = String.join(" ", Arrays.copyOfRange(valueParts, 0, valueParts.length));
                                     boolean save = Arrays.stream(valueParts).anyMatch(s -> s.equalsIgnoreCase("-&save"));
+                                    boolean cache = Arrays.stream(valueParts).anyMatch(s -> s.equalsIgnoreCase("-&cache"));
+                                    boolean protobuff = Arrays.stream(valueParts).anyMatch(s -> s.equalsIgnoreCase("-&protobuff"));
+
                                     store.put(key, new Any(value));
-                                    boolean protoSaved = false;
-                                    if (save) {
-                                        try {
-                                            ProtoDatabase finalDb = new ProtoDatabase("database.bin");
-                                            finalDb.setData(getProjectPrefix(), key, new Any(value));
-                                            protoSaved = true;
-                                        } catch (IOException e) {
-                                            throw new RuntimeException(e);
+                                    StringBuilder message = new StringBuilder("Ok (");
+
+                                    if (!save && !cache && !protobuff) {
+                                        message.append("Cache");
+                                    } else {
+                                        if (cache) {
+                                            message.append("Cache");
                                         }
-                                    }
-                                    StringBuilder message = new StringBuilder("Ok (Cache");
-                                    if (protoSaved) {
-                                        message.append(", Protobuf");
+                                        boolean protoSaved = false;
+                                        if (save || protobuff) {
+                                            try {
+                                                ProtoDatabase finalDb = new ProtoDatabase("database.bin");
+                                                finalDb.setData(getProjectPrefix(), key, new Any(value));
+                                                protoSaved = true;
+                                                if(cache){
+                                                    message.append(", ");
+                                                }
+                                                message.append("Protobuf");
+                                            } catch (IOException e) {
+                                                throw new RuntimeException(e);
+                                            }
+                                        }
+
                                     }
                                     message.append(")");
                                     clientLogg(0, out, message.toString());
                                 } else {
-                                    out.println("USAGE: SET <key> <value> [-&save]");
+                                    out.println("USAGE: SET <key> <value> [-&save] [-&cache] [-&protobuff]");
                                 }
                                 break;
                             case "DEL":
                                 if (parts.length >= 2) {
-                                    try {
-                                        ProtoDatabase finalDb = new ProtoDatabase("database.bin");
-                                        finalDb.deleteData(getProjectPrefix(), key);
-                                    } catch (IOException e) {
-                                        throw new RuntimeException(e);
+                                    String flags = parts.length > 2 ? parts[2] : "";
+                                    String[] delFlags = flags.split(" ");
+                                    boolean cacheDel = Arrays.stream(delFlags).anyMatch(s -> s.equalsIgnoreCase("-&cache"));
+                                    boolean protoDel = Arrays.stream(delFlags).anyMatch(s -> s.equalsIgnoreCase("-&protobuff"));
+
+                                    if(cacheDel) {
+                                        store.remove(key);
+                                        clientLogg(0, out, "Ok (Cache).");
+                                    } else if (protoDel) {
+                                        try {
+                                            ProtoDatabase finalDb = new ProtoDatabase("database.bin");
+                                            finalDb.deleteData(getProjectPrefix(), key);
+                                            clientLogg(0, out, "Ok (Protobuf).");
+                                        } catch (IOException e) {
+                                            throw new RuntimeException(e);
+                                        }
+                                    } else {
+                                        store.remove(key);
+                                        try {
+                                            ProtoDatabase finalDb = new ProtoDatabase("database.bin");
+                                            finalDb.deleteData(getProjectPrefix(), key);
+                                            clientLogg(0, out, "Ok (Cache,Protobuf).");
+                                        } catch (IOException e) {
+                                            throw new RuntimeException(e);
+                                        }
                                     }
-                                    store.remove(key);
-                                    clientLogg(0, out, "Ok.");
-                                } else {
-                                    out.println("USAGE: DEL <key>");
+                                }  else {
+                                    out.println("USAGE: DEL <key> [-&cache] [-&protobuff]");
                                 }
                                 break;
-
                             case "UPDATE":
                                 if (parts.length >= 3) {
                                     String newValue = parts[2];
@@ -439,7 +469,6 @@ public class DenisClient {
                                     out.println("USAGE: UPDATE <key> <newValue>");
                                 }
                                 break;
-
                             default:
                                 out.println("ERROR: Unknown command");
                         }
@@ -455,6 +484,7 @@ public class DenisClient {
     // use without denis_logger
     public void handleClient(Socket clientSocket, ConcurrentHashMap<String, Any> store) {
         DDBServer.info("Waiting for client connection...");
+        boolean logged_in = false;
         try {
             if (clientSocket == null || clientSocket.isClosed()) {
                 return;
@@ -462,7 +492,6 @@ public class DenisClient {
 
             try (BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
                  PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true)) {
-                sendWelcomeMessage(out);
                 String inputLine;
                 while ((inputLine = in.readLine()) != null) {
                     if (clientSocket.isClosed()) {
@@ -478,8 +507,31 @@ public class DenisClient {
                                 clientSocket.getInetAddress().getHostAddress(),
                                 String.join(" ", parts)));
                     }
+                    if (!logged_in && !command.equals("LIN")) {
+                        clientLogg(2, out, "Please login first using LIN command");
+                        continue;
+                    }
 
-                    if (command.equals("AUTH")) {
+                    if (logged_in && currentProjectToken == null && !command.equals("AUTH") && !command.equals("EXIT")) {
+                        clientLogg(2, out, "Please authenticate first using AUTH command");
+                        continue;
+                    }
+
+                    // LIN komutu
+                    if (!logged_in && command.equals("LIN")) {
+                        if (parts.length < 3) {
+                            clientLogg(2, out, "USAGE: LIN <Group> <Password>");
+                            continue;
+                        }
+                        String group = parts[1];
+                        String pwd = parts[2];
+                        Login login = new Login(group, pwd);
+                        logged_in = login.join(out);
+                        continue;
+                    }
+
+                    // AUTH komutu
+                    if (logged_in && command.equals("AUTH")) {
                         if (parts.length < 2) {
                             clientLogg(2, out, "ERROR: Usage: AUTH <CREATE|token>");
                             continue;
@@ -501,18 +553,27 @@ public class DenisClient {
                         } else {
                             taskQueue.add(() -> {
                                 String token = parts[1];
-                                if (authenticateProject(token)) {
-                                    loadStorageFromProtobuf(store, token);
-                                    clientLogg(0, out, "Authenticated to project: " + token);
+                                if (accessList.contains(token)) {
+                                    if (authenticateProject(token)) {
+                                        loadStorageFromProtobuf(store, token);
+                                        clientLogg(0, out, "Authenticated to project: " + token);
+                                    } else {
+                                        clientLogg(2, out, "Invalid token: " + token);
+                                    }
                                 } else {
-                                    clientLogg(2, out, "Invalid token: " + token);
+                                    clientLogg(2, out, "Cannot auth with: " + token);
                                 }
                             });
                         }
                         continue;
                     }
-                    if (currentProjectToken == null && !command.equals("EXIT")) {
+
+                    if (logged_in && currentProjectToken == null && !command.equals("EXIT")) {
                         clientLogg(2, out, "Please authenticate first using AUTH command");
+                        continue;
+                    }
+                    if (!logged_in && !command.equals("EXIT")) {
+                        clientLogg(2, out, "Please login first using LIN command");
                         continue;
                     }
                     taskQueue.add(() -> {
@@ -533,54 +594,53 @@ public class DenisClient {
 
                                         ProtoDatabase finalDb = new ProtoDatabase("database.bin");
 
-                                        // Cache'ten veri almak
-                                        if (fromCache) {
+                                        if (fromCache){
                                             if (data != null) {
                                                 out.println(data.getValue());
                                             } else {
-                                                out.println(String.format("err: %s not found in cache", key.split(":")[1]));
+                                                if(finalDb.getData(getProjectPrefix(), key) != null){
+                                                    out.println(finalDb.getData(getProjectPrefix(), key));
+                                                } else {
+                                                    out.println(String.format("err: %s not found in cache or protobuff", key.split(":")[1]));
+                                                }
                                             }
                                         }
-                                        // JSON formatında veri almak
                                         else if (asJson) {
                                             if (data != null) {
                                                 out.println(String.format("{\"key\": \"%s\", \"data\": \"%s\"}", key.split(":")[1], data.getValue()));
-                                            } else {
-                                                out.println(String.format("err: %s not found in cache", key.split(":")[1]));
                                             }
-                                        }
-                                        // ProtoBuffer'dan veri almak
-                                        else if (fromProtoBuff) {
+                                            else {
+                                                if(finalDb.getData(getProjectPrefix(), key) != null){
+                                                    out.println(String.format("{\"key\": \"%s\", \"data\": \"%s\"}", key.split(":")[1], finalDb.getData(getProjectPrefix(), key)));
+                                                } else {
+                                                    out.println(String.format("err: %s not found in cache or protobuff", key.split(":")[1]));
+                                                }
+                                            }
+                                        } else if (fromProtoBuff) {
                                             if (finalDb.getData(getProjectPrefix(), key) != null) {
                                                 out.println(finalDb.getData(getProjectPrefix(), key));
-                                            } else {
-                                                out.println(String.format("err: %s not found in protobuff", key.split(":")[1]));
+                                            }
+                                            else {
+                                                if (data != null) {
+                                                    out.println(data.getValue());
+                                                } else {
+                                                    out.println(String.format("err: %s not found in cache or protobuff", key.split(":")[1]));
+                                                }
                                             }
                                         }
-                                        // Hem ProtoBuffer hem JSON formatında veri almak
-                                        else if (fromProtoBuff && asJson) {
-                                            if (finalDb.getData(getProjectPrefix(), key) != null) {
-                                                out.println(finalDb.getData(getProjectPrefix(), key));
-                                            } else {
-                                                out.println(String.format("err: %s not found in protobuff", key.split(":")[1]));
-                                            }
-                                        }
-                                        // Hem cache hem JSON formatında veri almak
-                                        else if (fromCache && asJson) {
-                                            if (data != null) {
-                                                out.println(String.format("{\"key\": \"%s\", \"data\": \"%s\"}", key.split(":")[1], data.getValue()));
-                                            } else {
-                                                out.println(String.format("err: %s not found in cache", key.split(":")[1]));
-                                            }
-                                        }
-                                        // Default: sadece key ile veri almak
                                         else {
                                             if (data != null) {
                                                 out.println(data.getValue());
-                                            } else {
-                                                out.println(String.format("err: %s not found", key.split(":")[1]));
+                                            }
+                                            else {
+                                                if(finalDb.getData(getProjectPrefix(), key) != null){
+                                                    out.println(finalDb.getData(getProjectPrefix(), key));
+                                                } else {
+                                                    out.println(String.format("err: %s not found in cache or protobuff", key.split(":")[1]));
+                                                }
                                             }
                                         }
+
                                     } else {
                                         out.println("USAGE: GET <key> [-&from-cache,-&from-protobuff] [-&asa-json]");
                                     }
@@ -593,38 +653,72 @@ public class DenisClient {
                                 if (parts.length >= 3) {
                                     String valueAndFlags = parts[2];
                                     String[] valueParts = valueAndFlags.split(" ");
-                                    String value = valueParts[0];
+                                    String value = String.join(" ", Arrays.copyOfRange(valueParts, 0, valueParts.length));
                                     boolean save = Arrays.stream(valueParts).anyMatch(s -> s.equalsIgnoreCase("-&save"));
+                                    boolean cache = Arrays.stream(valueParts).anyMatch(s -> s.equalsIgnoreCase("-&cache"));
+                                    boolean protobuff = Arrays.stream(valueParts).anyMatch(s -> s.equalsIgnoreCase("-&protobuff"));
+
                                     store.put(key, new Any(value));
-                                    clientLogg(0, out, "Ok.");
-                                    if (save) {
-                                        try {
-                                            ProtoDatabase finalDb = new ProtoDatabase("database.bin");
-                                            finalDb.setData(getProjectPrefix(), key, new Any(value));
-                                            clientLogg(0, out, "Saved to protobuff.");
-                                        } catch (IOException e) {
-                                            throw new RuntimeException(e);
+                                    StringBuilder message = new StringBuilder("Ok (");
+
+                                    if (!save && !cache && !protobuff) {
+                                        message.append("Cache");
+                                    } else {
+                                        if (cache) {
+                                            message.append("Cache");
                                         }
+                                        boolean protoSaved = false;
+                                        if (save || protobuff) {
+                                            try {
+                                                ProtoDatabase finalDb = new ProtoDatabase("database.bin");
+                                                finalDb.setData(getProjectPrefix(), key, new Any(value));
+                                                protoSaved = true;
+                                                if(cache){
+                                                    message.append(", ");
+                                                }
+                                                message.append("Protobuf");
+                                            } catch (IOException e) {
+                                                throw new RuntimeException(e);
+                                            }
+                                        }
+
                                     }
-                                    String newValue = parts[2];
-                                    store.put(key, new Any(newValue));
-                                    clientLogg(0, out, "Saved to cache.");
+                                    message.append(")");
+                                    clientLogg(0, out, message.toString());
                                 } else {
-                                    out.println("ERROR: USAGE: SET <key> <value> [-&save]");
+                                    out.println("USAGE: SET <key> <value> [-&save] [-&cache] [-&protobuff]");
                                 }
                                 break;
                             case "DEL":
                                 if (parts.length >= 2) {
-                                    try {
-                                        ProtoDatabase finalDb = new ProtoDatabase("database.bin");
-                                        finalDb.deleteData(getProjectPrefix(), key);
-                                    } catch (IOException e) {
-                                        throw new RuntimeException(e);
+                                    String flags = parts.length > 2 ? parts[2] : "";
+                                    String[] delFlags = flags.split(" ");
+                                    boolean cacheDel = Arrays.stream(delFlags).anyMatch(s -> s.equalsIgnoreCase("-&cache"));
+                                    boolean protoDel = Arrays.stream(delFlags).anyMatch(s -> s.equalsIgnoreCase("-&protobuff"));
+
+                                    if(cacheDel) {
+                                        store.remove(key);
+                                        clientLogg(0, out, "Ok (Cache).");
+                                    } else if (protoDel) {
+                                        try {
+                                            ProtoDatabase finalDb = new ProtoDatabase("database.bin");
+                                            finalDb.deleteData(getProjectPrefix(), key);
+                                            clientLogg(0, out, "Ok (Protobuf).");
+                                        } catch (IOException e) {
+                                            throw new RuntimeException(e);
+                                        }
+                                    } else {
+                                        store.remove(key);
+                                        try {
+                                            ProtoDatabase finalDb = new ProtoDatabase("database.bin");
+                                            finalDb.deleteData(getProjectPrefix(), key);
+                                            clientLogg(0, out, "Ok (Cache,Protobuf).");
+                                        } catch (IOException e) {
+                                            throw new RuntimeException(e);
+                                        }
                                     }
-                                    store.remove(key);
-                                    clientLogg(0, out, "Ok.");
-                                } else {
-                                    out.println("ERROR: USAGE: DEL key [<-save>]");
+                                }  else {
+                                    out.println("USAGE: DEL <key> [-&cache] [-&protobuff]");
                                 }
                                 break;
 

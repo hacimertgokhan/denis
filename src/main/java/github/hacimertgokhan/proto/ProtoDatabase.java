@@ -32,7 +32,7 @@ public class ProtoDatabase {
 
     public void setData(String token, String key, Any value) {
         Token.TokenData.Builder tokenData = findOrCreateToken(token);
-        tokenData.putKeyValues(key, value.getAs(String.class));
+        tokenData.putKeyValues(key, value);
         try {
             writeDatabase();
         } catch (IOException e) {

@@ -1,0 +1,8 @@
+Denis started at tue jan 21 00:25:00 gmt+03:00 2025
+Client connected: /127.0.0.1
+[CLIENT] 127.0.0.1 action: LIN m 0Xs4l/1t+kxOuDBELcNT4Q==
+[CLIENT] 127.0.0.1 action: AUTH A3SwKx7IJMahRLVqQLb2qxUN0N3fxp60jJH8OuUQdEZUGwuwxIHlJxEdrlyFSpFR040tB2mdHekCAE8ha2DxmJfFDvYPxl0mWGcApmllG1pgtRRqn1K32AMdvu7YxbjZ
+[CLIENT] 127.0.0.1 action: SET DATA data
+[CLIENT] 127.0.0.1 action: GET DATA
+[CLIENT] 127.0.0.1 action: SET DATA DATA -&cache
+[CLIENT] 127.0.0.1 action: GET DATA

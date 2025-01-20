@@ -68,7 +68,7 @@ public class Main {
         denisLogger.info("Checking pawd.dat file.");
         PawdStore pawdStore = new PawdStore();
         pawdStore.loadFromFile();
-        denisLogger.info(String.format("Thread Pool Size %s", THREAD_POOL_SIZE));
+        denisLogger.info(String.format("Thread Pool Size %s", String.valueOf(THREAD_POOL_SIZE)));
         handleUseMode();
     }
 
@@ -100,13 +100,13 @@ public class Main {
                     denisLogger.info((String) new DenisLanguage().getLanguageFile().readJson().get("waiting-for-client-connection"));
                     Socket clientSocket = serverSocket.accept();
                     InetAddress clientAddress = clientSocket.getInetAddress();
-                    int currentConnections = ipConnectionCount.getOrDefault(clientAddress, 0);
+                    int currentConnections = ipConnectionCount.getOrDefault(clientAddress, Integer.valueOf(0));
                     if (currentConnections >= MAX_CONNECTIONS_PER_IP) {
                         denisLogger.warn("Connection limit reached for IP address: " + clientAddress);
-                        clientSocket.close(); // Close the socket immediately
+                        clientSocket.close();
                         continue;
                     }
-                    ipConnectionCount.put(clientAddress, currentConnections + 1);
+                    ipConnectionCount.put(clientAddress, Integer.valueOf(currentConnections + 1));
                     denisLogger.info((new DenisLanguage().getLanguageFile().readJson().get("client-connected").toString()).replace("<socket>", clientAddress.toString()));
                     logTerminal.writeLog(String.format("Client connected: %s", clientAddress));
                     executor.execute(() -> {
@@ -118,7 +118,7 @@ public class Main {
                                 ddbServer.handleClient(clientSocket, store);
                             }
                         } finally {
-                            ipConnectionCount.put(clientAddress, Math.max(0, ipConnectionCount.get(clientAddress) - 1));
+                            ipConnectionCount.put(clientAddress, Integer.valueOf(Math.max(0, ipConnectionCount.get(clientAddress) - 1)));
                             try {
                                 clientSocket.close();
                             } catch (IOException e) {

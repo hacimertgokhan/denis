@@ -1,3 +1,4 @@
-VERSION=$(grep -oP '^sem_ver=\K.*' denis.conf)
+#!/usr/bin/env sh
+VERSION=$(awk -F= '/^sem_ver=/{print $2}' denis.conf)
 echo "Denis Database Integrated CLI (jcli-lnx-0.0.2alpha)"
-java -Dfile.encoding=UTF-8 -cp "denis-$VERSION-alpha.jar:lib/*" github.hacimertgokhan.denisdb.cli.CLIMain
+java -Dfile.encoding=UTF-8 -jar "denis-$VERSION-alpha.jar" cli

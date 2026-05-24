@@ -4,6 +4,10 @@ target/
 !**/src/test/**/target/
 logs
 logs/app.log
+/denis/*-logs.txt
+/ddb.json
+/denis.properties
+/pawd.dat
 
 ### IntelliJ IDEA ###
 .idea/modules.xml

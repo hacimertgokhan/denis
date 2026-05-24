@@ -4,6 +4,7 @@ import database.Token;
 import github.hacimertgokhan.Main;
 import github.hacimertgokhan.denis.client.ClientStates;
 import github.hacimertgokhan.denis.sections.group.Group;
+import github.hacimertgokhan.denis.sql.SqlQueryEngine;
 import github.hacimertgokhan.json.JsonFile;
 import github.hacimertgokhan.logger.DenisLogger;
 import github.hacimertgokhan.pointers.Any;
@@ -314,6 +315,11 @@ public class DenisClient {
                         clientLogg(2, out, "Please login first using LIN command");
                         continue;
                     }
+                    if (SqlQueryEngine.isSqlCommand(inputLine)) {
+                        String sqlInput = inputLine;
+                        taskQueue.add(() -> out.println(new SqlQueryEngine(store, currentProjectToken).execute(sqlInput)));
+                        continue;
+                    }
                     taskQueue.add(() -> {
                         String key = getProjectPrefix() + parts[1];
                         Any data = store.get(key);
@@ -574,6 +580,11 @@ public class DenisClient {
                     }
                     if (!logged_in && !command.equals("EXIT")) {
                         clientLogg(2, out, "Please login first using LIN command");
+                        continue;
+                    }
+                    if (SqlQueryEngine.isSqlCommand(inputLine)) {
+                        String sqlInput = inputLine;
+                        taskQueue.add(() -> out.println(new SqlQueryEngine(store, currentProjectToken).execute(sqlInput)));
                         continue;
                     }
                     taskQueue.add(() -> {

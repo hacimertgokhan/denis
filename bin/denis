@@ -1,0 +1,20 @@
+#!/usr/bin/env sh
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+APP_HOME=$(cd "$SCRIPT_DIR/.." && pwd)
+JAR=""
+
+for candidate in "$APP_HOME"/denis-*.jar; do
+  if [ -f "$candidate" ]; then
+    JAR="$candidate"
+    break
+  fi
+done
+
+if [ -z "$JAR" ]; then
+  echo "Denis jar was not found in $APP_HOME" >&2
+  exit 1
+fi
+
+exec java -Dfile.encoding=UTF-8 -jar "$JAR" "$@"

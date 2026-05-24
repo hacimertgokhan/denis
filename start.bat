@@ -20,4 +20,4 @@ if %errorlevel% equ 0 (
 )
 
 echo "Denis Veritabanı başlatılıyor..."
-java -Dfile.encoding=UTF-8 -cp "denis-%VERSION%-alpha.jar;lib\*" github.hacimertgokhan.Main
+java -Dfile.encoding=UTF-8 -jar "denis-%VERSION%-alpha.jar" server

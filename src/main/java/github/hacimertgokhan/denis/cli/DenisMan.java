@@ -20,7 +20,7 @@ import java.lang.management.MemoryUsage;
 import java.time.Instant;
 import java.util.*;
 
-@Command(name = "ddb", description = "Greet the user with a message and keep asking for names.")
+@Command(name = "denis", description = "Manage Denis Database from the command line.")
 public class DenisMan implements Runnable {
     static JsonFile ddb = new JsonFile("ddb.json");
 
@@ -52,13 +52,24 @@ public class DenisMan implements Runnable {
             @Option(names = {"-i"}, description = "Show token details like last login date.") boolean info) {
 
         if (list) {
-            System.out.println("Listing all tokens...");
+            try {
+                List<String> tokens = ddb.tokenList();
+                if (tokens.isEmpty()) {
+                    System.out.println("No tokens found.");
+                    return;
+                }
+                tokens.forEach(System.out::println);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         } else if (create) {
-            System.out.println("Creating a new token...");
+            processTokenCommand("--token -c");
         } else if (delete) {
-            System.out.println("Deleting token...");
+            System.out.println("Token delete is not implemented yet.");
         } else if (info) {
-            System.out.println("Showing token info...");
+            System.out.println("Token info is not implemented yet.");
+        } else {
+            System.out.println("Usage: denis cli token [-l|-c|-d|-i]");
         }
     }
 
@@ -67,8 +78,29 @@ public class DenisMan implements Runnable {
 
     @Override
     public void run() {
-        Scanner scanner = new Scanner(System.in);
         DenisLanguage denisLanguage = new DenisLanguage();
+        if (version) {
+            System.out.println("Denis Database " + getVersion());
+            return;
+        }
+        if (about) {
+            try {
+                System.out.println(denisLanguage.getLanguageFile().readJson().get("created_by"));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            return;
+        }
+        if (memoryUsage) {
+            listenMemoryUsage(denisLanguage, Runtime.getRuntime());
+            return;
+        }
+        if (help) {
+            help(denisLanguage);
+            return;
+        }
+
+        Scanner scanner = new Scanner(System.in);
         while (true) {
             System.out.print("denis: ");
             String command = scanner.nextLine().trim();
@@ -111,7 +143,7 @@ public class DenisMan implements Runnable {
             }
 
             if (command.equalsIgnoreCase("--version")) {
-                System.out.println("v0.0.2.8-alpha");
+                System.out.println("Denis Database " + getVersion());
             } else if (command.equalsIgnoreCase("--about")) {
                 try {
                     System.out.println(denisLanguage.getLanguageFile().readJson().get("created_by"));
@@ -438,6 +470,10 @@ public class DenisMan implements Runnable {
         }
     }
 
+    private String getVersion() {
+        String version = DenisMan.class.getPackage().getImplementationVersion();
+        return version == null ? "dev" : version;
+    }
+
 
 }
-

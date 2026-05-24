@@ -2,7 +2,9 @@ package github.hacimertgokhan;
 
 import github.hacimertgokhan.denis.DenisTerminal;
 import github.hacimertgokhan.denis.DenisClient;
+import github.hacimertgokhan.denis.CreateSecureToken;
 import github.hacimertgokhan.denis.calculators.ThreadPoolCalculator;
+import github.hacimertgokhan.denis.cli.CLIMain;
 import github.hacimertgokhan.denis.fingerprint.PawdStore;
 import github.hacimertgokhan.denis.language.DenisLanguage;
 import github.hacimertgokhan.json.JsonFile;
@@ -23,7 +25,6 @@ import java.util.concurrent.Executors;
 public class Main {
     static DenisLogger denisLogger = new DenisLogger(Main.class);
     static DenisProperties denisProperties = new DenisProperties();
-    static String TOKEN = denisProperties.getProperty("ddb-main-token");
     static boolean delogg = Boolean.parseBoolean(denisProperties.getProperty("use-delogg"));
     static boolean swd = Boolean.parseBoolean(denisProperties.getProperty("start-with-details"));
     static int PORT = Integer.parseInt(denisProperties.getProperty("ddb-port"));
@@ -38,6 +39,29 @@ public class Main {
     static DenisToml denisToml = new DenisToml("denis.toml");
 
     public static void main(String[] args) {
+        if (args.length > 0) {
+            String command = args[0].toLowerCase(Locale.ROOT);
+            if (command.equals("cli") || command.equals("shell") || command.equals("tools")) {
+                CLIMain.main(Arrays.copyOfRange(args, 1, args.length));
+                return;
+            }
+            if (command.equals("server") || command.equals("start")) {
+                startServer();
+                return;
+            }
+            if (command.equals("--version") || command.equals("version")) {
+                System.out.println("Denis Database " + getVersion());
+                return;
+            }
+            if (command.equals("--help") || command.equals("help")) {
+                printUsage();
+                return;
+            }
+        }
+        startServer();
+    }
+
+    private static void startServer() {
         List<String> list;
         try {
             list = new DenisLanguage().getLanguageFile().getList("startup-information");
@@ -72,8 +96,34 @@ public class Main {
         handleUseMode();
     }
 
+    private static void printUsage() {
+        System.out.println("Denis Database " + getVersion());
+        System.out.println("Usage:");
+        System.out.println("  denis server        Start database server");
+        System.out.println("  denis cli           Open management shell");
+        System.out.println("  denis cli --help    Show CLI commands");
+        System.out.println("  denis --version     Show version");
+    }
+
+    private static String getVersion() {
+        String version = Main.class.getPackage().getImplementationVersion();
+        return version == null ? "dev" : version;
+    }
+
+    private static String resolveMainToken() {
+        String token = denisProperties.getProperty("ddb-main-token");
+        if (token != null && token.length() == 128) {
+            return token;
+        }
+
+        String generatedToken = new CreateSecureToken().getToken();
+        denisProperties.setProperty("ddb-main-token", generatedToken);
+        return generatedToken;
+    }
+
     private static void handleUseMode() {
-        if (TOKEN.length() == 128) {
+        String token = resolveMainToken();
+        if (token.length() == 128) {
             try (ServerSocket serverSocket = new ServerSocket(PORT)) {
                 List<String> swdList;
                 try {
@@ -82,7 +132,7 @@ public class Main {
                     throw new RuntimeException(e);
                 }
                 for(String s : swdList) {
-                    denisLogger.info(s.replace("<port>", String.valueOf(PORT)).replace("<token>", TOKEN));
+                    denisLogger.info(s.replace("<port>", String.valueOf(PORT)).replace("<token>", token));
                 }
                 if (!ddb.fileExists()) {
                     ddb.createEmptyJson();

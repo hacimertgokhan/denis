@@ -26,14 +26,14 @@
             <directory>${basedir}</directory>
             <includes>
                 <include>bin/**</include>
-                <include>lang/**</include>
                 <include>install.sh</include>
                 <include>install.bat</include>
                 <include>start.sh</include>
                 <include>start.bat</include>
                 <include>start_jcli.sh</include>
                 <include>denis.conf</include>
-                <include>denis.toml</include>
+                <include>Dockerfile</include>
+                <include>compose.yaml</include>
             </includes>
             <outputDirectory>/</outputDirectory>
             <fileMode>0755</fileMode>

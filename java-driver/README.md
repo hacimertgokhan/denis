@@ -1,72 +1,41 @@
-# Denis TCP Client Library
+# Denis Java Driver
 
-A Java client library for communicating with a TCP server on port 5142. This library provides functionality for basic operations including GET, SET, AUTH, DELETE, and UPDATE.
+Single-connection Java client for [Denis Database](https://github.com/hacimertgokhan/denis).
+Java 11+, one dependency (`org.json`).
 
-## Features
-
-- TCP connection management
-- Authentication support
-- Basic operations: GET, SET, DELETE, UPDATE
-- Exception handling
-- Thread-safe implementation
-- Modular design with separation of concerns
-
-## Project Structure
-
+```sh
+cd java-driver && mvn package      # target/denis-driver-<version>.jar (shaded)
 ```
-src/
-├── main/java/com/tcpclient/
-│   ├── DenisClient.java           # Main client interface
-│   ├── connection/
-│   │   └── ConnectionManager.java # TCP connection handling
-│   ├── operations/
-│   │   ├── AuthOperation.java    # Authentication operations
-│   │   └── DataOperation.java    # Data operations (GET, SET, etc.)
-│   └── exceptions/
-│       └── DenisException.java   # Custom exceptions
-└── test/java/com/tcpclient/
-    ├── DenisClientTest.java      # Integration tests
-    └── operations/
-        └── AuthOperationTest.java # Unit tests
-```
-
-## Usage Example
 
 ```java
-try (DenisClient client = new DenisClient("localhost")) {
-    // Connect to the server
-    client.connect();
-    
-    // Authenticate
-    String token = client.authenticate("username", "password");
-    
-    // Perform operations
-    client.set("key1", "value1");
-    String value = client.get("key1");
-    client.update("key1", "newValue");
-    client.delete("key1");
-    
-} catch (Exception e) {
-    e.printStackTrace();
+import github.hacimertgokhan.drivers.DenisClient;
+
+try (DenisClient client = new DenisClient("localhost", 5142)) {
+    client.connect();                       // switches the connection to MODE json
+    client.login("crm", "s3cret");          // LIN <group> <password>
+    String token = client.createProject();  // AUTH CREATE — or client.authenticate(token)
+
+    client.set("greeting", "hello world");           // cache
+    client.set("user:1", "{\"id\":1}", true);        // cache + protobuf (-&save)
+    client.get("greeting");                          // "hello world"
+    client.get("missing");                           // null
+    client.update("greeting", "hi");
+    client.delete("greeting");
+    client.sql("CREATE TABLE users (id INT, name TEXT)");
+    client.clear();                                  // HEAVEN
 }
 ```
 
-## Building the Project
+Keys are one word; values may contain spaces, quotes and unicode but no line
+breaks, and no word may start with `-&`. Failures throw `DenisException`
+(unchecked) with the server's error text; transport problems throw `IOException`.
 
-```bash
-mvn clean install
+A `DenisClient` is one TCP connection and is not thread-safe — use one per thread.
+
+## Tests
+
+The integration test needs a running server (see the Dockerfile at the repo root):
+
+```sh
+DENIS_INTEGRATION=1 DENIS_GROUP=crm DENIS_PASSWORD=s3cret mvn test
 ```
-
-## Running Tests
-
-```bash
-mvn test
-```
-
-## Dependencies
-
-- Java 11 or higher
-
-## License
-
-MIT License

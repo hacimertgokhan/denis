@@ -1,0 +1,22 @@
+services:
+  denis:
+    build: .
+    image: denis:local
+    container_name: denis
+    ports:
+      - "${DDB_PORT:-5142}:5142"
+    environment:
+      DDB_PORT: "5142"
+      # 128-character main token; leave unset to let the server generate one on first start.
+      DDB_MAIN_TOKEN: "${DDB_MAIN_TOKEN:-}"
+      # A login group created on first start so clients can LIN immediately.
+      DENIS_BOOTSTRAP_GROUP: "${DENIS_BOOTSTRAP_GROUP:-denis}"
+      DENIS_BOOTSTRAP_GROUP_PASSWORD: "${DENIS_BOOTSTRAP_GROUP_PASSWORD:-change-me}"
+      DENIS_MAX_CONNECTIONS_PER_IP: "${DENIS_MAX_CONNECTIONS_PER_IP:-64}"
+      DENIS_LANGUAGE: "${DENIS_LANGUAGE:-en}"
+    volumes:
+      - denis-data:/data
+    restart: unless-stopped
+
+volumes:
+  denis-data:

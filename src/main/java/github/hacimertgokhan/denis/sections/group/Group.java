@@ -8,11 +8,18 @@ import java.util.List;
 import java.util.Map;
 
 public class Group {
-    private String group;
-    private DenisToml denisToml;
+    private final String group;
+    private final String tomlPath;
+    private final DenisToml denisToml;
+
     public Group(String group) {
+        this(group, GroupManager.DEFAULT_TOML);
+    }
+
+    public Group(String group, String tomlPath) {
         this.group = group;
-        denisToml = new DenisToml("denis.toml");
+        this.tomlPath = tomlPath;
+        this.denisToml = new DenisToml(tomlPath);
     }
 
     public String getGroup() {
@@ -20,8 +27,7 @@ public class Group {
     }
 
     public boolean isExists() {
-        DenisToml denisToml = new DenisToml("denis.toml");
-        return denisToml.get(group) != null;
+        return new DenisToml(tomlPath).get(group) != null;
     }
 
     public List<String> getAccessList() {

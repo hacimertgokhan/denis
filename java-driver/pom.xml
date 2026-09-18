@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>github.hacimertgokhan.java-driver</groupId>
     <artifactId>denis-driver</artifactId>
-    <version>1.0.2alpha</version>
+    <version>1.1.0-alpha</version>
     <packaging>jar</packaging>
 
     <name>Denis Java Driver</name>
@@ -33,6 +33,11 @@
     </distributionManagement>
 
     <dependencies>
+        <dependency>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
+            <version>20231013</version>
+        </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>

@@ -1,9 +1,5 @@
 @echo off
-setlocal enabledelayedexpansion
-for /f "tokens=1,2 delims==" %%A in (denis.conf) do (
-    if "%%A"=="sem_ver" (
-        set VERSION=%%B
-    )
-)
-echo "Denis Database Integrated CLI (jcli-win-0.0.1alpha)"
-java -Dfile.encoding=UTF-8 -cp "denis-%VERSION%-alpha.jar;lib/*" github.hacimertgokhan.denisdb.cli.CLIMain
+setlocal
+for /f "tokens=2 delims==" %%v in ('findstr /b "sem_ver=" denis.conf') do set VERSION=%%v
+echo Denis Database Integrated CLI
+java -Dfile.encoding=UTF-8 -jar "denis-%VERSION%-alpha.jar" cli %*

@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  server:
+    name: Server (Maven build + unit tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+      - run: mvn -B package
+      - uses: actions/upload-artifact@v4
+        with:
+          name: denis-jar
+          path: target/denis-*-alpha.jar
+          if-no-files-found: error
+
+  java-driver:
+    name: Java driver (compile)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+      - run: mvn -B package
+        working-directory: java-driver
+
+  docker:
+    name: Docker image + client integration tests
+    runs-on: ubuntu-latest
+    needs: [server]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: denis:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Start server
+        run: |
+          docker run -d --name denis -p 5142:5142 \
+            -e DENIS_BOOTSTRAP_GROUP=ci -e DENIS_BOOTSTRAP_GROUP_PASSWORD=ci-password \
+            -e DENIS_LANGUAGE=en denis:ci
+          for i in $(seq 1 30); do
+            status=$(docker inspect --format '{{.State.Health.Status}}' denis)
+            [ "$status" = healthy ] && break
+            sleep 2
+          done
+          docker logs denis
+          [ "$status" = healthy ]
+      - name: Non-interactive CLI works inside the container
+        run: |
+          docker exec denis /app/entrypoint.sh cli group list | grep -x ci
+          docker exec denis /app/entrypoint.sh cli group test ci ci-password
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Node client integration tests
+        working-directory: clients/node
+        env:
+          DENIS_INTEGRATION: "1"
+          DENIS_GROUP: ci
+          DENIS_PASSWORD: ci-password
+        run: node --test test/integration.test.js
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+      - name: Java driver integration tests
+        working-directory: java-driver
+        env:
+          DENIS_INTEGRATION: "1"
+          DENIS_GROUP: ci
+          DENIS_PASSWORD: ci-password
+        run: mvn -B test
+      - name: Server logs
+        if: always()
+        run: docker logs denis || true

@@ -9,6 +9,11 @@ import github.hacimertgokhan.readers.DenisProperties;
 
 import java.io.IOException;
 import java.util.List;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.Locale;
 
 public class DenisLanguage implements DenisLanguageHandler {
@@ -93,18 +98,42 @@ public class DenisLanguage implements DenisLanguageHandler {
     /**
      * @return
      */
+    /**
+     * The message file for the active language. Looked up in {@code lang/} next to
+     * the working directory first; when missing, the copy bundled in the jar is
+     * written there so an installation (or container) works without shipping the
+     * folder separately. English is the fallback for unsupported locales.
+     */
     @Override
     public JsonFile getLanguageFile() {
-        JsonFile lang = new JsonFile("lang/" +activateLanguage()+".json");
-        if (lang.fileExists()) {
-            return lang;
-        } else {
-            try {
-                lang.createEmptyJson();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+        for (String candidate : new String[]{activateLanguage(), "en"}) {
+            JsonFile lang = new JsonFile("lang/" + candidate + ".json");
+            if (lang.fileExists() || extractBundled(candidate)) {
+                return lang;
             }
-            return lang;
+        }
+        JsonFile lang = new JsonFile("lang/" + activateLanguage() + ".json");
+        try {
+            lang.createEmptyJson();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return lang;
+    }
+
+    private boolean extractBundled(String language) {
+        String resource = "lang/" + language + ".json";
+        try (InputStream in = DenisLanguage.class.getClassLoader().getResourceAsStream(resource)) {
+            if (in == null) {
+                return false;
+            }
+            Path target = Paths.get(resource);
+            Files.createDirectories(target.getParent());
+            Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
+            return true;
+        } catch (IOException e) {
+            denisLogger.warn("Could not extract bundled language file " + resource + ": " + e.getMessage());
+            return false;
         }
     }
     /**

@@ -6,14 +6,46 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Properties;
 
+/**
+ * Server configuration, resolved in this order (later wins):
+ * <ol>
+ *   <li>{@code denis.properties} bundled in the jar (defaults),</li>
+ *   <li>an external {@code denis.properties} next to the working directory, or the
+ *       file named by {@code -Ddenis.config=...} / {@code DENIS_CONFIG},</li>
+ *   <li>environment variables.</li>
+ * </ol>
+ * Every property key can be given as an environment variable by upper-casing it and
+ * replacing {@code -} with {@code _}, prefixed with {@code DENIS_}: {@code ddb-port}
+ * becomes {@code DENIS_DDB_PORT}, {@code max-connections-per-ip} becomes
+ * {@code DENIS_MAX_CONNECTIONS_PER_IP}. The {@code ddb-*} keys are also accepted
+ * without the prefix ({@code DDB_PORT}, {@code DDB_ADDRESS}, {@code DDB_MAIN_TOKEN})
+ * because that is how the Docker image documents them.
+ */
 public class DenisProperties {
+    public static final String ENV_PREFIX = "DENIS_";
+
     private final Properties properties = new Properties();
     private final String fileName = "denis.properties";
-    private final Path externalPath = Paths.get(System.getProperty("denis.config", fileName));
+    private final Path externalPath;
+    private final Map<String, String> environment;
 
     public DenisProperties() {
+        this(System.getenv());
+    }
+
+    /** For tests: resolve against a given environment instead of {@link System#getenv()}. */
+    public DenisProperties(Map<String, String> environment) {
+        this.environment = environment;
+        String configured = System.getProperty("denis.config");
+        if (configured == null || configured.isBlank()) {
+            configured = environment.getOrDefault("DENIS_CONFIG", fileName);
+        }
+        this.externalPath = Paths.get(configured);
+
         try (InputStream input = DenisProperties.class.getClassLoader().getResourceAsStream(fileName)) {
             if (input != null) {
                 properties.load(input);
@@ -31,14 +63,80 @@ public class DenisProperties {
         }
     }
 
+    /** Environment variable name(s) that override a property key. */
+    static String[] environmentNames(String key) {
+        String upper = key.toUpperCase(Locale.ROOT).replace('-', '_').replace('.', '_');
+        if (upper.startsWith("DDB_")) {
+            return new String[]{ENV_PREFIX + upper, upper};
+        }
+        return new String[]{ENV_PREFIX + upper};
+    }
+
     public String getProperty(String key) {
+        for (String name : environmentNames(key)) {
+            String value = environment.get(name);
+            if (value != null && !value.isBlank()) {
+                return value.trim();
+            }
+        }
         return properties.getProperty(key);
     }
 
+    public String getProperty(String key, String defaultValue) {
+        String value = getProperty(key);
+        return value == null || value.isBlank() ? defaultValue : value;
+    }
+
+    public int getInt(String key, int defaultValue) {
+        String value = getProperty(key);
+        if (value == null || value.isBlank()) {
+            return defaultValue;
+        }
+        try {
+            return Integer.parseInt(value.trim());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException(String.format("%s must be an integer, got '%s'", key, value));
+        }
+    }
+
+    public boolean getBoolean(String key, boolean defaultValue) {
+        String value = getProperty(key);
+        if (value == null || value.isBlank()) {
+            return defaultValue;
+        }
+        return Boolean.parseBoolean(value.trim());
+    }
+
+    /** True when the value comes from the environment rather than a file. */
+    public boolean isFromEnvironment(String key) {
+        for (String name : environmentNames(key)) {
+            String value = environment.get(name);
+            if (value != null && !value.isBlank()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public Path getExternalPath() {
+        return externalPath;
+    }
+
+    /**
+     * Persist a value to the external properties file. Values that are set through
+     * the environment keep winning over the file; use this for values the server
+     * generates itself (for example the main token on first start).
+     */
     public void setProperty(String key, String value) {
         properties.setProperty(key, value);
-        try (FileOutputStream output = new FileOutputStream(externalPath.toFile())) {
-            properties.store(output, null);
+        try {
+            Path parent = externalPath.toAbsolutePath().getParent();
+            if (parent != null) {
+                Files.createDirectories(parent);
+            }
+            try (FileOutputStream output = new FileOutputStream(externalPath.toFile())) {
+                properties.store(output, null);
+            }
         } catch (IOException ex) {
             ex.printStackTrace();
         }

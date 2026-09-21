@@ -6,7 +6,7 @@ import { NextResponse, type NextRequest } from "next/server";
  * authorization happens in the server components and route handlers.
  */
 const PROTECTED = ["/dashboard", "/databases", "/usage", "/settings", "/admin"];
-const AUTH_PAGES = ["/login", "/register"];
+const AUTH_PAGES = ["/login", "/login/code", "/register"];
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
@@ -49,5 +49,15 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/databases/:path*", "/usage/:path*", "/settings/:path*", "/admin/:path*", "/login", "/register", "/api/:path*"],
+  matcher: [
+    "/dashboard/:path*",
+    "/databases/:path*",
+    "/usage/:path*",
+    "/settings/:path*",
+    "/admin/:path*",
+    "/login",
+    "/login/code",
+    "/register",
+    "/api/:path*",
+  ],
 };

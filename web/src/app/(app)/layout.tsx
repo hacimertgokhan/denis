@@ -1,6 +1,7 @@
 import { desc, eq } from "drizzle-orm";
 import { AppSidebar } from "@/components/app/app-sidebar";
 import { RightSidebar } from "@/components/app/right-sidebar";
+import { VerifyBanner } from "@/components/app/verify-banner";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { listSharedDatabases } from "@/lib/access";
 import { auditLabel } from "@/lib/audit-labels";
@@ -29,7 +30,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           shared={shared.map((s) => ({ id: s.database.id, name: s.database.name, region: s.database.region, role: s.role }))}
           maxDatabases={user.maxDatabases}
         />
-        <SidebarInset className="@container/main min-w-0">{children}</SidebarInset>
+        <SidebarInset className="@container/main min-w-0">
+          {!user.emailVerified && <VerifyBanner email={user.email} />}
+          {children}
+        </SidebarInset>
         <RightSidebar activity={activity.map((a) => ({ id: a.id, label: auditLabel(a.action), detail: a.detail, at: a.createdAt.toISOString() }))} />
       </SidebarProvider>
     </div>

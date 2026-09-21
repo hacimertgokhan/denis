@@ -80,6 +80,19 @@ r = await call("/api/auth/reset-password", { method: "POST", body: { newPassword
 assert.equal(r.status, 400);
 console.log("reset link requested (mailed, or logged without SMTP); bad tokens refused");
 
+step("email codes, preferences, unsubscribe");
+r = await call("/api/auth/email-otp/send-verification-otp", { method: "POST", body: { email, type: "email-verification" } });
+assert.equal(r.status, 200, JSON.stringify(r.json));
+r = await call("/api/auth/email-otp/verify-email", { method: "POST", body: { email, otp: "000000" } });
+assert.equal(r.status, 400, "wrong code refused");
+r = await call("/api/v1/me", { method: "PATCH", body: { marketingOptIn: true } });
+assert.equal(r.status, 200);
+r = await call("/api/v1/me");
+assert.equal(r.json.user.marketingOptIn, true);
+r = await call("/api/mail/unsubscribe?u=" + encodeURIComponent(r.json.user.id) + "&s=deadbeef", { method: "POST" });
+assert.equal(r.status, 400, "a forged unsubscribe link is refused");
+console.log("verification code sent (mailed, or logged); wrong codes and forged unsubscribe links refused");
+
 step("create databases up to the plan limit");
 const ids = [];
 for (const name of ["shop", "analytics", "cache"]) {

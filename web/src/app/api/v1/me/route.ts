@@ -14,9 +14,19 @@ export const GET = handler(async () => {
   if (!user) throw new GatewayError("Not signed in", 401, "UNAUTHORIZED");
   const used = await countDatabases(user.id);
   return ok({
-    user: { id: user.id, name: user.name, email: user.email, role: user.role },
+    user: { id: user.id, name: user.name, email: user.email, role: user.role, emailVerified: user.emailVerified, marketingOptIn: user.marketingOptIn },
     plan: { ...plan(), maxDatabases: user.maxDatabases, databasesUsed: used },
   });
+});
+
+/** Preferences a user sets for themselves. Body: { marketingOptIn?: boolean } */
+export const PATCH = handler(async (request: Request) => {
+  const user = await currentUser();
+  if (!user) throw new GatewayError("Not signed in", 401, "UNAUTHORIZED");
+  const body = await readJson<{ marketingOptIn?: boolean }>(request);
+  if (typeof body.marketingOptIn !== "boolean") throw new GatewayError("Nothing to update", 400, "BAD_REQUEST");
+  await db.update(schema.user).set({ marketingOptIn: body.marketingOptIn }).where(eq(schema.user.id, user.id));
+  return ok({ marketingOptIn: body.marketingOptIn });
 });
 
 /**

@@ -36,6 +36,7 @@ export function AuthForm({ mode, githubEnabled }: { mode: "login" | "register"; 
             email,
             password,
             name: name || email.split("@")[0],
+            marketingOptIn: form.get("updates") === "on",
             fetchOptions: { headers: human.headers() },
           })
         : await authClient.signIn.email({ email, password });
@@ -44,7 +45,8 @@ export function AuthForm({ mode, githubEnabled }: { mode: "login" | "register"; 
       toast.error(result.error.message ?? "That did not work. Check the details and try again.");
       return;
     }
-    router.push(next);
+    // a new account confirms its address first; the code is already on its way
+    router.push(mode === "register" ? `/verify-email?email=${encodeURIComponent(email)}&next=${encodeURIComponent(next)}` : next);
     router.refresh();
   }
 
@@ -158,6 +160,12 @@ export function AuthForm({ mode, githubEnabled }: { mode: "login" | "register"; 
                 </span>
               </label>
             )}
+            {mode === "register" && (
+              <label className="flex items-start gap-2.5 text-[13px] leading-relaxed text-[var(--l-ash)]">
+                <input name="updates" type="checkbox" className="mt-1 size-3.5 accent-[var(--l-ink)]" />
+                <span>Email me product updates: a few a year, unsubscribe with one click.</span>
+              </label>
+            )}
             {mode === "register" && <HumanCheck check={human} />}
             <button
               type="submit"
@@ -167,6 +175,14 @@ export function AuthForm({ mode, githubEnabled }: { mode: "login" | "register"; 
               {busy && <Loader2Icon className="size-4 animate-spin" />}
               {mode === "login" ? "Sign in" : "Create account"}
             </button>
+            {mode === "login" && (
+              <p className="text-center text-[13px] text-[var(--l-ash)]">
+                or{" "}
+                <Link href="/login/code" className="underline decoration-[var(--l-line)] underline-offset-4 hover:text-[var(--l-ink)]">
+                  sign in with a code sent to your email
+                </Link>
+              </p>
+            )}
             {githubEnabled && (
               <>
                 <div className="my-1 flex items-center gap-3 text-[12.5px] text-[var(--l-ash)]">

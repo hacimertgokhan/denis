@@ -10,6 +10,7 @@ const tabs = [
   { label: "Databases", path: "/databases" },
   { label: "Accounts", path: "/accounts" },
   { label: "Activity", path: "/activity" },
+  { label: "Announcements", path: "/announcements" },
 ];
 
 export function AdminTabs() {

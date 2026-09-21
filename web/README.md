@@ -124,6 +124,18 @@ the session cookie; a suspended user is signed out on their next request.
   your password" mails a one-hour link through `SMTP_URL` (`src/lib/mail.ts`;
   without SMTP the link is printed to the server log); a reset signs out
   every other session.
+- **Email** (`src/lib/mail.ts`): one template for every message (wordmark,
+  text, footer with sender, reason and legal links). Transactional mail —
+  six-digit codes to confirm an address after sign-up or to sign in without
+  a password (better-auth `emailOTP`, hashed, 10 min, 5 attempts), password
+  reset links — never carries an unsubscribe link. Product updates go only
+  to accounts that opted in at sign-up or in Settings, with a signed
+  one-click unsubscribe (`/api/mail/unsubscribe`, RFC 8058 headers), and
+  are composed, previewed, test-sent and sent from `/admin/announcements`.
+  Provider: Resend (`RESEND_API_KEY`, from `MAIL_FROM`), SMTP as fallback,
+  the server log when neither is set. Secrets stay in `.env`; a pre-commit
+  hook (`.githooks/pre-commit`, enabled with
+  `git config core.hooksPath .githooks`) refuses staged live keys and .env files.
 - **Data rights**: `GET /api/v1/me/export` (everything about the user as
   JSON) and `DELETE /api/v1/me` (account, databases, keys, sessions) from
   Settings → Your data. Command history is pruned after 30 days, the audit
@@ -149,7 +161,7 @@ See [`.env.example`](.env.example). Required: `DATABASE_URL`,
 `PLAN_DB_MAX_BYTES`, `PLAN_DB_MAX_KEYS`, `PLAN_DB_OPS_PER_DAY`,
 `PLAN_API_RATE_PER_MINUTE`. Administrators: `PLATFORM_ADMINS` (comma-separated
 emails). Legal pages: `LEGAL_ENTITY`, `LEGAL_CONTACT_EMAIL`, `LEGAL_ADDRESS`. Mail:
-`SMTP_URL`, `MAIL_FROM`. Bot check: `NEXT_PUBLIC_TURNSTILE_SITE_KEY`,
+`RESEND_API_KEY`, `SMTP_URL`, `MAIL_FROM`. Bot check: `NEXT_PUBLIC_TURNSTILE_SITE_KEY`,
 `TURNSTILE_SECRET_KEY` (optional).
 
 ## Layout
@@ -159,10 +171,11 @@ src/app
   page.tsx                 landing (ruled frame with beams: components/landing/frame.tsx, .lf-* in globals.css)
   (legal)/privacy, terms, security, cookies   policy pages
   sitemap.ts, robots.ts, opengraph-image.tsx  SEO
-  (auth)/login, register, forgot-password, reset-password   better-auth email/password (+ GitHub when configured)
+  (auth)/login, login/code, register, verify-email, forgot-password, reset-password
+                           better-auth email/password, email codes (+ GitHub when configured)
   (app)/                   signed-in shell: sidebar + header
     dashboard, databases, databases/[id]/{console,tables,keys,history,connect,access,settings}, usage, settings
-    admin/{users,databases,accounts,activity}   system administration (PLATFORM_ADMINS)
+    admin/{users,databases,accounts,activity,announcements}   system administration (PLATFORM_ADMINS)
   db/[id]/login, db/[id]/…  the workspace a database account sees (own session cookie per database)
   api/auth/[...all]        better-auth handler
   api/v1/databases…        management API for platform users and database accounts (members, accounts, history…)

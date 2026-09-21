@@ -24,8 +24,8 @@ export default function PrivacyPage() {
       <h2>1. Who is responsible</h2>
       <p>
         The data controller is <strong>{e.LEGAL_ENTITY}</strong>
-        {e.LEGAL_ADDRESS ? `, ${e.LEGAL_ADDRESS}` : ""}. Contact for anything in this
-        policy: <a href={`mailto:${e.LEGAL_CONTACT_EMAIL}`}>{e.LEGAL_CONTACT_EMAIL}</a>.
+        {e.LEGAL_ADDRESS ? `, ${e.LEGAL_ADDRESS}` : ""}. Contact for anything in this policy:{" "}
+        <a href={`mailto:${e.LEGAL_CONTACT_EMAIL}`}>{e.LEGAL_CONTACT_EMAIL}</a>.
       </p>
 
       <h2>2. What we store, and why</h2>
@@ -60,9 +60,7 @@ export default function PrivacyPage() {
           <tr>
             <td>The contents of your databases (keys, values, tables)</td>
             <td>Stored and returned on your instructions only. You decide what goes in; we do not read it except to operate the service</td>
-            <td>
-              Contract; you are the controller of any personal data you put there and we act as your processor (GDPR art. 28)
-            </td>
+            <td>Contract; you are the controller of any personal data you put there and we act as your processor (GDPR art. 28)</td>
             <td>Until you delete it; at most 30 days in backups afterwards</td>
           </tr>
           <tr>
@@ -82,6 +80,12 @@ export default function PrivacyPage() {
             <td>Support and accountability</td>
             <td>Legitimate interest</td>
             <td>12 months</td>
+          </tr>
+          <tr>
+            <td>Email: your address, for verification and sign-in codes, password resets and — only if you opted in — product updates</td>
+            <td>Confirming the address is yours, signing in without a password, recovering access; telling you about releases</td>
+            <td>Contract for codes and resets; consent for product updates (withdraw with one click in any message or under Settings)</td>
+            <td>Codes expire after 10 minutes; the opt-in until you withdraw it. Sent through Resend as our processor</td>
           </tr>
           <tr>
             <td>Request logs on the server: IP address, path, status, timing</td>
@@ -106,15 +110,16 @@ export default function PrivacyPage() {
       <h2>4. Who else sees the data</h2>
       <p>
         Processors that host the service: the server provider that runs the engine, the web app and the PostgreSQL database that holds account data (all in the
-        same data centre region), and GitHub if you sign in with GitHub (only your public profile and email are received). Each processor is bound by a data
-        processing agreement. We disclose data to authorities only when the law requires it, and we tell you unless that is prohibited.
+        same data centre region), Resend (resend.com), which delivers our email and sees the address and content of each message, and GitHub if you sign in with
+        GitHub (only your public profile and email are received). Each processor is bound by a data processing agreement. We disclose data to authorities only
+        when the law requires it, and we tell you unless that is prohibited.
       </p>
 
       <h2>5. Where the data lives</h2>
       <p>
         Account data and database contents are stored in the region shown on the database (<code>eu-central</code> at the moment). If we ever transfer data
-        outside the European Economic Area, we rely on the European Commission&apos;s standard contractual clauses or an adequacy decision, and update this
-        page first.
+        outside the European Economic Area, we rely on the European Commission&apos;s standard contractual clauses or an adequacy decision, and update this page
+        first.
       </p>
 
       <h2>6. How we protect it</h2>
@@ -126,8 +131,8 @@ export default function PrivacyPage() {
 
       <h2>7. Your rights</h2>
       <p>
-        Under the GDPR (articles 15 to 22) you can ask what we hold about you, get a copy, have it corrected or deleted, restrict or object to processing,
-        take your data elsewhere, and complain to the data protection authority of your country. Two of these you can do yourself, right now:
+        Under the GDPR (articles 15 to 22) you can ask what we hold about you, get a copy, have it corrected or deleted, restrict or object to processing, take
+        your data elsewhere, and complain to the data protection authority of your country. Two of these you can do yourself, right now:
       </p>
       <ul>
         <li>

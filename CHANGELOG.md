@@ -12,6 +12,11 @@ before 1.0.0 a minor bump may contain breaking changes, which are listed).
   `SMTP_URL`, or the server log without it) and a reset page that signs out
   other sessions; bot protection on sign-up and reset requests (honeypot and
   minimum form time checked server-side, optional Cloudflare Turnstile).
+- Platform: email through Resend (SMTP fallback) with one formal template;
+  six-digit codes confirm the address after sign-up and sign people in
+  without a password (`/login/code`); product updates are opt-in with a
+  signed one-click unsubscribe and are sent from `/admin/announcements`.
+- Repository: a pre-commit hook that refuses staged live secrets and .env files.
 - Platform: softer aurora on the sign-in pages; the architecture diagram no
   longer draws a line through the project boxes.
 

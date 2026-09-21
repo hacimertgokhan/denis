@@ -452,3 +452,28 @@
     display: none;
   }
 }
+
+/* moving dashes along a diagram connector */
+.lf-flow {
+  animation: lf-flow 1.6s linear infinite;
+}
+@keyframes lf-flow {
+  to {
+    stroke-dashoffset: -18;
+  }
+}
+.lb-bar {
+  transform-origin: left;
+  animation: lb-grow 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+@keyframes lb-grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lf-flow,
+  .lb-bar {
+    animation: none;
+  }
+}

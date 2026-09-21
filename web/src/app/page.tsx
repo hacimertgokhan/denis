@@ -4,7 +4,9 @@ import { LandingNav } from "@/components/landing/nav";
 import { LandingFooter } from "@/components/landing/footer";
 import { ConsoleDemo } from "@/components/landing/console-demo";
 import { HeroAtmosphere } from "@/components/landing/atmosphere";
+import { BenchmarkCharts, DurabilityFacts } from "@/components/landing/benchmarks";
 import { Cross, Frame, Section } from "@/components/landing/frame";
+import { HeroSignal } from "@/components/landing/hero-signal";
 import { CodeBlock } from "@/components/app/code-block";
 import { ArchitectureDiagram, DurabilityDiagram, McpFlowDiagram } from "@/components/app/diagrams";
 import { currentUser } from "@/lib/session";
@@ -163,7 +165,12 @@ export default async function Landing() {
                   {formatNumber(limits.dbOpsPerDay)} commands a day. No card, no tracking.
                 </p>
               </div>
-              <ConsoleDemo />
+              <div className="grid gap-3">
+                <div className="hidden lg:block">
+                  <HeroSignal />
+                </div>
+                <ConsoleDemo />
+              </div>
             </div>
           </Section>
 
@@ -185,6 +192,35 @@ export default async function Landing() {
               </a>
               .
             </p>
+          </Section>
+
+          {/* benchmarks, wins and losses */}
+          <Section rule id="benchmarks">
+            <div className="grid gap-8 py-16 lg:grid-cols-[minmax(0,32rem)_1fr] lg:gap-20 lg:py-24">
+              <div>
+                <h2 className="text-[1.9rem] leading-[1.15] font-medium tracking-[-0.02em]">Measured, not promised.</h2>
+                <p className="mt-4 max-w-[56ch] text-[15.5px] leading-[1.6] text-[var(--l-ash)]">
+                  The same machine, the same client, Redis 7 and PostgreSQL 16 in Docker next to Denis {ENGINE_VERSION}. Point reads, writes by id and{" "}
+                  <code className="font-mono text-[13.5px]">COUNT(*)</code> are where in-memory rows with an index per column pay off; ordered range scans and
+                  raw throughput at 64 connections are where a C event loop and a real query planner still win. Both sides are on the chart.
+                </p>
+                <a
+                  href={`${REPO}/blob/master/docs/BENCHMARKS.md`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-5 inline-block text-[14px] underline decoration-[var(--l-line)] underline-offset-4 hover:decoration-[var(--l-ink)]"
+                >
+                  Full results and how to reproduce them
+                </a>
+                <div className="mt-10">
+                  <h3 className="text-[13px] font-medium tracking-[0.08em] text-[var(--l-ash)] uppercase">Durability and memory</h3>
+                  <div className="mt-3">
+                    <DurabilityFacts />
+                  </div>
+                </div>
+              </div>
+              <BenchmarkCharts />
+            </div>
           </Section>
 
           {/* what you get: a table, not cards */}
@@ -328,28 +364,45 @@ const denis = new DenisClient({ host, port: 5142, group, password, token });`}
 
           {/* last word */}
           <Section rule={false}>
-            <div className="flex flex-col items-start gap-8 py-24 lg:flex-row lg:items-end lg:justify-between lg:py-36">
+            <div className="flex flex-col items-start gap-10 py-24 lg:flex-row lg:items-start lg:justify-between lg:py-32">
               <div>
                 <h2 className="text-[2.4rem] leading-[1.02] font-medium tracking-[-0.025em] sm:text-[3.2rem]">Start with one line.</h2>
                 <p className="mt-4 max-w-[60ch] text-[16px] leading-[1.55] text-[var(--l-ash)]">
                   A database, a key and an MCP endpoint in under a minute. Delete it all with one click when you are done.
                 </p>
               </div>
-              <div className="flex flex-wrap items-center gap-4">
-                <Link
-                  href={user ? "/dashboard" : "/register"}
-                  className="rounded-md bg-[var(--l-ink)] px-5 py-2.5 text-[15px] font-medium text-[var(--l-bg)] transition-opacity hover:opacity-90"
-                >
-                  {user ? "Open the dashboard" : "Create a free account"}
-                </Link>
-                <a
-                  href={REPO}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-[15px] underline decoration-[var(--l-line)] underline-offset-4 hover:decoration-[var(--l-ink)]"
-                >
-                  Star it on GitHub
-                </a>
+              <div className="w-full max-w-[30rem] lg:w-[30rem]">
+                <ol className="divide-y divide-[var(--l-line)] rounded-xl border border-[var(--l-line)] bg-[var(--card)]">
+                  {[
+                    ["01", "Create a database", "a name, a region, done"],
+                    ["02", "Copy an API key", "read-only or read-write"],
+                    ["03", "Connect", "npm install denis-client, or paste the MCP URL"],
+                  ].map(([n, title, sub]) => (
+                    <li key={n} className="grid grid-cols-[3rem_1fr] items-center gap-3 px-5 py-3.5">
+                      <span className="font-mono text-[12px] text-[var(--l-ash)]">{n}</span>
+                      <span>
+                        <span className="block text-[14.5px] font-medium">{title}</span>
+                        <span className="block text-[12.5px] text-[var(--l-ash)]">{sub}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+                <div className="mt-5 flex flex-wrap items-center gap-4">
+                  <Link
+                    href={user ? "/dashboard" : "/register"}
+                    className="rounded-md bg-[var(--l-ink)] px-5 py-2.5 text-[15px] font-medium text-[var(--l-bg)] transition-opacity hover:opacity-90"
+                  >
+                    {user ? "Open the dashboard" : "Create a free account"}
+                  </Link>
+                  <a
+                    href={REPO}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[15px] underline decoration-[var(--l-line)] underline-offset-4 hover:decoration-[var(--l-ink)]"
+                  >
+                    Star it on GitHub
+                  </a>
+                </div>
               </div>
             </div>
           </Section>

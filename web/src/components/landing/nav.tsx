@@ -35,9 +35,9 @@ export function LandingNav({ signedIn }: { signedIn: boolean }) {
           <a className={cn(link, "hidden sm:inline-block")} href={`${REPO}/blob/master/docs/PROTOCOL.md`} target="_blank" rel="noreferrer">
             Protocol
           </a>
-          <a className={cn(link, "hidden sm:inline-block")} href={`${REPO}/blob/master/docs/BENCHMARKS.md`} target="_blank" rel="noreferrer">
+          <Link className={cn(link, "hidden sm:inline-block")} href="/#benchmarks">
             Benchmarks
-          </a>
+          </Link>
           <a className={cn(link, "inline-flex items-center gap-1.5")} href={REPO} target="_blank" rel="noreferrer">
             <GitHubIcon className="size-4" />
             <span className="hidden sm:inline">GitHub</span>

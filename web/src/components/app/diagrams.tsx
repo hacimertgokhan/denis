@@ -44,7 +44,8 @@ function Box({ x, y, w, h, title, subtitle, strong }: { x: number; y: number; w:
 function Arrow({ d, label, lx, ly }: { d: string; label?: string; lx?: number; ly?: number }) {
   return (
     <g>
-      <path d={d} fill="none" stroke={muted} strokeWidth={1.5} markerEnd="url(#arrow)" />
+      <path d={d} fill="none" stroke={stroke} strokeWidth={1.5} markerEnd="url(#arrow)" />
+      <path d={d} fill="none" stroke={fg} strokeWidth={1.5} strokeDasharray="5 11" className="lf-flow" opacity={0.85} />
       {label && (
         <text x={lx} y={ly} textAnchor="middle" fontSize={10.5} fill={muted}>
           {label}

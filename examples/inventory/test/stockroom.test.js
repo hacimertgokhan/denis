@@ -68,9 +68,13 @@ test("register, sign in, create a product, move stock, read the overview", { ski
     assert.equal(await denis.exists(`user:${email}`), true);
     const rows = await denis.query(`SELECT quantity FROM inv_products WHERE sku = '${sku}'`);
     assert.equal(rows[0].quantity, 2);
-    // clean up
+    // clean up: the owner may delete through the app; a staff account (when an owner already exists) is refused
     r = await call(`/products/${id}/delete`, {});
-    assert.equal(r.location, "/products");
+    if (r.location !== "/products") {
+      assert.equal(r.location, `/products/${id}`, "staff is sent back to the product");
+      await denis.execute(`DELETE FROM inv_movements WHERE product_id = ${id}`);
+      await denis.execute(`DELETE FROM inv_products WHERE id = ${id}`);
+    }
     await denis.del(`user:${email}`);
   } finally {
     server.close();

@@ -38,7 +38,7 @@ class DenisServerTest {
     @BeforeEach
     void start() throws IOException {
         ctx = TestContext.open(dir, 50);
-        server = new DenisServer(ctx, new DenisServer.Options("127.0.0.1", 0, 16, 4, 0));
+        server = new DenisServer(ctx, new DenisServer.Options("127.0.0.1", 0, 32, 12, 0));
         server.start();
         acceptor = new Thread(server::serve, "test-acceptor");
         acceptor.setDaemon(true);
@@ -112,12 +112,16 @@ class DenisServerTest {
     void perIpLimitRefusesExtraConnections() throws IOException {
         List<Client> clients = new ArrayList<>();
         try {
-            for (int i = 0; i < 4; i++) {
+            // more than the pool's core threads: every one of them must be served at once
+            for (int i = 0; i < 12; i++) {
                 clients.add(new Client());
+            }
+            for (Client c : clients) {
+                assertEquals("PONG", c.send("PING").getString("message"));
             }
             Socket extra = new Socket("127.0.0.1", server.port());
             extra.setSoTimeout(5_000);
-            assertNull(new BufferedReader(new InputStreamReader(extra.getInputStream())).readLine(), "5th connection must be closed");
+            assertNull(new BufferedReader(new InputStreamReader(extra.getInputStream())).readLine(), "13th connection must be closed");
             extra.close();
         } finally {
             for (Client c : clients) {
@@ -132,10 +136,10 @@ class DenisServerTest {
         try (Client c = new Client()) {
             token = c.loginAndCreate();
         }
-        ExecutorService pool = Executors.newFixedThreadPool(4);
+        ExecutorService pool = Executors.newFixedThreadPool(8);
         try {
             List<Future<?>> tasks = new ArrayList<>();
-            for (int t = 0; t < 4; t++) {
+            for (int t = 0; t < 8; t++) {
                 int thread = t;
                 tasks.add(pool.submit(() -> {
                     try (Client c = new Client()) {
@@ -161,10 +165,10 @@ class DenisServerTest {
         try (Client c = new Client()) {
             c.send("LIN " + TestContext.GROUP + " " + TestContext.PASSWORD);
             c.send("AUTH " + token);
-            assertEquals(400, c.send("KEYS").getInt("count"));
-            assertEquals(80, c.send("SELECT COUNT(*) FROM log").getJSONArray("rows").getJSONObject(0).getInt("count"));
+            assertEquals(800, c.send("KEYS").getInt("count"));
+            assertEquals(160, c.send("SELECT COUNT(*) FROM log").getJSONArray("rows").getJSONObject(0).getInt("count"));
         }
         server.stop();
-        assertEquals(400 + 2 + 80, ctx.persistence().keyCount());
+        assertEquals(800 + 2 + 160, ctx.persistence().keyCount());
     }
 }

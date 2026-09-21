@@ -11,7 +11,7 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -43,10 +43,12 @@ public class DenisServer implements AutoCloseable {
         this.ctx = ctx;
         this.options = options;
         // One blocking thread per connection: the pool is the connection limit.
-        // Idle workers go away after a minute so a quiet server stays small.
+        // A SynchronousQueue makes the pool grow to maxConnections instead of
+        // queueing sockets behind the core threads (an unbounded queue would
+        // never start a 5th worker). Idle workers go away after a minute.
         ThreadPoolExecutor pool = new ThreadPoolExecutor(
                 Math.min(4, options.maxConnections()), options.maxConnections(),
-                60, TimeUnit.SECONDS, new LinkedBlockingQueue<>(),
+                60, TimeUnit.SECONDS, new SynchronousQueue<>(),
                 r -> {
                     Thread t = new Thread(r, "denis-client");
                     t.setDaemon(true);

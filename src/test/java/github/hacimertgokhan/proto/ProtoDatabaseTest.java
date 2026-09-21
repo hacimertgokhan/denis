@@ -55,12 +55,13 @@ class ProtoDatabaseTest {
         try (ProtoDatabase db = new ProtoDatabase(file, 50)) {
             db.setData("t", "k", "v");
             assertTrue(db.isDirty());
+            // The dirty flag is cleared before the flush counter moves, so wait on the counter.
             long deadline = System.currentTimeMillis() + 5_000;
-            while (db.isDirty() && System.currentTimeMillis() < deadline) {
+            while (db.getFlushCount() == 0 && System.currentTimeMillis() < deadline) {
                 Thread.sleep(10);
             }
-            assertFalse(db.isDirty(), "the flusher should have written the file");
-            assertEquals(1, db.getFlushCount());
+            assertEquals(1, db.getFlushCount(), "the flusher should have written the file once");
+            assertFalse(db.isDirty());
             db.setData("t", "k2", "v2");
         }
         try (ProtoDatabase db = new ProtoDatabase(file, 0)) {

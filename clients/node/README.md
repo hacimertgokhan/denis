@@ -26,7 +26,14 @@ await denis.getJSON("user:1");                        // { id: 1, name: "Ada" }
 await denis.get("missing");                           // null
 await denis.update("greeting", "hi");                 // cache-only overwrite
 await denis.del("greeting");
-await denis.sql("CREATE TABLE users (id INT, name TEXT)");
+await denis.exists("user:1");                         // true
+await denis.keys("user:*");                           // ["user:1"]
+await denis.mget(["user:1", "nope"]);                 // { "user:1": "...", nope: null }
+await denis.execute("CREATE TABLE users (id INT, name TEXT)");   // 0 (affected rows)
+await denis.execute("INSERT INTO users (id, name) VALUES (1, 'Ada')"); // 1
+await denis.query("SELECT * FROM users WHERE id = 1");            // [{ id: 1, name: "Ada" }]
+await denis.tables();                                 // [{ name: "users", columns: [...], rows: 1 }]
+await denis.info();                                   // { version, uptimeSeconds, connections, ... }
 await denis.clear();                                  // HEAVEN: drop the project's cached keys
 await denis.close();
 ```
@@ -41,8 +48,17 @@ await denis.close();
 | `set(key, value, {persist})` | `SET key value [-&cache -&save]` | objects are `JSON.stringify`-ed |
 | `update(key, value)` | `UPDATE key value` | cache only |
 | `del(key, {cache, protobuf})` | `DEL key [-&cache\|-&protobuff]` | default: both |
+| `exists(key)` | `EXISTS key` | boolean |
+| `keys(pattern)` | `KEYS pattern` | glob with `*` and `?`, default `*` |
+| `mget(keys)` | `MGET k1 k2` | object, missing keys are `null` |
 | `clear()` | `HEAVEN` | current project only |
-| `sql(query)` | `SQL ...` | returns the engine's text |
+| `save()` | `SAVE` | flush the persisted store now |
+| `info()` | `INFO` | server statistics object |
+| `help()` | `HELP` | command reference `[{name, usage, description}]` |
+| `sql(query)` | `SQL ...` | structured result: `{type:"rows",columns,rows,count}` | `{type:"affected",affected,message}` | `{type:"tables",tables}` |
+| `query(select)` | `SQL SELECT ...` | the row objects |
+| `execute(statement)` | `SQL INSERT/UPDATE/...` | the affected row count |
+| `tables()` / `describe(table)` | `SHOW TABLES` / `DESCRIBE` | `[{name, columns: [{name, type}], rows}]` |
 | `createProject()` | `AUTH CREATE` | returns a new token |
 | `command(line)` | any | raw reply object |
 | `close()` | `EXIT` | closes the pool |

@@ -320,11 +320,89 @@ class DenisClient {
     return true;
   }
 
-  /** Run a Denis SQL statement; returns the engine's text/JSON result. */
+  /** EXISTS: whether the key is in the cache or the persisted store. */
+  async exists(key) {
+    assertKey(key);
+    const reply = await this._expectOk(`EXISTS ${key}`);
+    return reply.exists === true;
+  }
+
+  /** KEYS [pattern]: the project's keys; pattern supports * and ? (default "*"). */
+  async keys(pattern = "*") {
+    if (/\s/.test(pattern)) throw new DenisError("pattern must not contain whitespace", "EINVAL");
+    const reply = await this._expectOk(`KEYS ${pattern}`);
+    return reply.keys;
+  }
+
+  /** MGET: read several keys at once; missing keys map to null. */
+  async mget(keys) {
+    if (!Array.isArray(keys) || keys.length === 0) throw new DenisError("keys must be a non-empty array", "EINVAL");
+    keys.forEach(assertKey);
+    const reply = await this._expectOk(`MGET ${keys.join(" ")}`);
+    return reply.values;
+  }
+
+  /** INFO: server statistics (version, uptime, connections, key counts). */
+  async info() {
+    const { ok, ...info } = await this._expectOk("INFO");
+    return info;
+  }
+
+  /** SAVE: flush the persisted store to disk now. */
+  async save() {
+    await this._expectOk("SAVE");
+    return true;
+  }
+
+  /** HELP: the server's command reference. */
+  async help() {
+    const reply = await this._expectOk("HELP");
+    return reply.commands;
+  }
+
+  /**
+   * Run a Denis SQL statement and return the structured result:
+   *   { type: "rows", columns, rows, count }
+   *   { type: "affected", affected, message }
+   *   { type: "tables", tables, count }
+   * Errors (`ok:false`) are thrown as DenisError with code ESERVER.
+   */
   async sql(query) {
     if (/[\r\n]/.test(query)) throw new DenisError("query must be a single line", "EINVAL");
-    const reply = await this._expectOk(`SQL ${query}`);
-    return reply.data;
+    const { ok, ...result } = await this._expectOk(`SQL ${query}`);
+    return result;
+  }
+
+  /** sql() for SELECT: resolves with the row objects. */
+  async query(sql) {
+    const result = await this.sql(sql);
+    if (result.type !== "rows") throw new DenisError(`expected rows, got ${result.type}`, "EPROTO", result);
+    return result.rows;
+  }
+
+  /** sql() for INSERT/UPDATE/DELETE/DDL: resolves with the affected row count. */
+  async execute(sql) {
+    const result = await this.sql(sql);
+    if (result.type !== "affected") throw new DenisError(`expected an affected count, got ${result.type}`, "EPROTO", result);
+    return result.affected;
+  }
+
+  /** SHOW TABLES: [{ name, columns: [{name, type}], rows }] */
+  async tables() {
+    const result = await this.sql("SHOW TABLES");
+    return result.tables;
+  }
+
+  /** DESCRIBE <table>: { name, columns, rows } or null when the table does not exist. */
+  async describe(table) {
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(table)) throw new DenisError("invalid table name", "EINVAL");
+    try {
+      const result = await this.sql(`DESCRIBE ${table}`);
+      return result.tables[0];
+    } catch (err) {
+      if (err.code === "ESERVER" && /not found/i.test(err.message)) return null;
+      throw err;
+    }
   }
 
   /** Create a new project token on the server (does not switch this client to it). */

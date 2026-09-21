@@ -65,11 +65,43 @@ test("denis integration", { skip: !enabled && "set DENIS_INTEGRATION=1 with a ru
     assert.equal(await denis.get(key), null);
   });
 
-  await t.test("sql subset works", async () => {
-    assert.match(await denis.sql("CREATE TABLE users (id INT, name TEXT)"), /OK/);
-    assert.match(await denis.sql("INSERT INTO users (id, name) VALUES (1, 'Ada')"), /OK/);
-    assert.match(await denis.sql("SELECT * FROM users WHERE id = 1"), /Ada/);
-    assert.match(await denis.sql("DROP TABLE users"), /OK/);
+  await t.test("exists, keys and mget", async () => {
+    await denis.set(`${key}_a`, "1");
+    await denis.set(`${key}_b`, "2", { persist: true });
+    assert.equal(await denis.exists(`${key}_a`), true);
+    assert.equal(await denis.exists(`${key}_zzz`), false);
+    const keys = await denis.keys(`${key}_?`);
+    assert.deepEqual(keys, [`${key}_a`, `${key}_b`]);
+    assert.deepEqual(await denis.mget([`${key}_a`, `${key}_nope`]), { [`${key}_a`]: "1", [`${key}_nope`]: null });
+    await denis.del(`${key}_a`);
+    await denis.del(`${key}_b`);
+  });
+
+  await t.test("info, help and save", async () => {
+    const info = await denis.info();
+    assert.equal(typeof info.version, "string");
+    assert.ok(info.connections.open >= 1);
+    const help = await denis.help();
+    assert.ok(help.some((c) => c.name === "SQL"));
+    assert.equal(await denis.save(), true);
+  });
+
+  await t.test("sql returns structured results", async () => {
+    const table = `t${Date.now()}`;
+    assert.equal((await denis.sql(`CREATE TABLE ${table} (id INT, name TEXT)`)).type, "affected");
+    assert.equal(await denis.execute(`INSERT INTO ${table} (id, name) VALUES (1, 'Ada'), (2, 'Grace')`), 2);
+    assert.deepEqual(await denis.query(`SELECT name FROM ${table} WHERE id = 2`), [{ name: "Grace" }]);
+    const rows = await denis.sql(`SELECT * FROM ${table} ORDER BY id DESC LIMIT 1`);
+    assert.equal(rows.type, "rows");
+    assert.deepEqual(rows.columns, ["id", "name"]);
+    assert.equal(rows.rows[0].id, 2);
+    const described = await denis.describe(table);
+    assert.equal(described.rows, 2);
+    assert.deepEqual(described.columns.map((c) => c.name), ["id", "name"]);
+    assert.ok((await denis.tables()).some((tbl) => tbl.name === table));
+    assert.equal(await denis.describe("no_such_table"), null);
+    await assert.rejects(denis.sql("SELECT * FROM no_such_table"), (err) => err.code === "ESERVER" && /not found/.test(err.message));
+    assert.equal(await denis.execute(`DROP TABLE ${table}`), 0);
   });
 
   await t.test("parallel commands share the pool in order", async () => {

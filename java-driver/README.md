@@ -21,7 +21,13 @@ try (DenisClient client = new DenisClient("localhost", 5142)) {
     client.get("missing");                           // null
     client.update("greeting", "hi");
     client.delete("greeting");
-    client.sql("CREATE TABLE users (id INT, name TEXT)");
+    client.exists("user:1");                         // true
+    client.keys("user:*");                           // ["user:1"]
+    client.execute("CREATE TABLE users (id INT, name TEXT)");          // affected rows (0)
+    client.execute("INSERT INTO users (id, name) VALUES (1, 'Ada')"); // 1
+    client.query("SELECT * FROM users WHERE id = 1");                  // JSONArray of rows
+    client.sql("SHOW TABLES");                       // JSONObject {"type":"tables","tables":[...]}
+    client.info();                                   // JSONObject with version, uptime, counts
     client.clear();                                  // HEAVEN
 }
 ```

@@ -75,10 +75,10 @@ export function AppSidebar({
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild>
+            <SidebarMenuButton size="lg" asChild tooltip="Denis Cloud" className="group-data-[collapsible=icon]:justify-center">
               <Link href="/dashboard">
-                <DenisMark className="size-8" />
-                <div className="grid flex-1 text-left text-sm leading-tight">
+                <DenisMark className="size-8 shrink-0" />
+                <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
                   <span className="truncate font-semibold">Denis Cloud</span>
                   <span className="text-muted-foreground truncate text-xs">free plan</span>
                 </div>
@@ -113,7 +113,7 @@ export function AppSidebar({
           {databases.length < maxDatabases && (
             <CreateDatabaseDialog
               trigger={
-                <SidebarGroupAction title="New database">
+                <SidebarGroupAction title="New database" className="group-data-[collapsible=icon]:hidden">
                   <PlusIcon /> <span className="sr-only">New database</span>
                 </SidebarGroupAction>
               }
@@ -133,7 +133,7 @@ export function AppSidebar({
               ))}
               {databases.length === 0 && (
                 <SidebarMenuItem>
-                  <span className="text-muted-foreground px-2 text-xs">No databases yet</span>
+                  <span className="text-muted-foreground px-2 text-xs group-data-[collapsible=icon]:hidden">No databases yet</span>
                 </SidebarMenuItem>
               )}
             </SidebarMenu>
@@ -201,14 +201,14 @@ export function AppSidebar({
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton size="lg" className="data-[state=open]:bg-sidebar-accent">
-                  <Avatar className="size-8 rounded-lg">
+                  <Avatar className="size-8 shrink-0 rounded-lg">
                     <AvatarFallback className="rounded-lg">{initials || "U"}</AvatarFallback>
                   </Avatar>
-                  <div className="grid flex-1 text-left text-sm leading-tight">
+                  <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
                     <span className="truncate font-medium">{user.name}</span>
                     <span className="text-muted-foreground truncate text-xs">{user.email}</span>
                   </div>
-                  <ChevronsUpDownIcon className="ml-auto size-4" />
+                  <ChevronsUpDownIcon className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent side={isMobile ? "bottom" : "right"} align="end" className="min-w-56 rounded-lg">

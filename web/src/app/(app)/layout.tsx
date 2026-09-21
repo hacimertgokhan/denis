@@ -16,7 +16,7 @@ export default async function AppLayout({
     return (
         // The whole workbench (sidebar + content) sits in a centred 1400px frame.
         // The sidebar is sticky inside the frame instead of fixed to the viewport.
-        <div className="mx-auto w-full max-w-[1400px] px-4 lg:px-8 [&_[data-slot=sidebar-gap]]:!hidden [&_[data-slot=sidebar-container]]:!sticky [&_[data-slot=sidebar-container]]:!top-0 [&_[data-slot=sidebar-container]]:!h-svh">
+        <div className="mx-auto min-h-svh w-full max-w-[1560px] border-x bg-background [&_[data-slot=sidebar-gap]]:!hidden [&_[data-slot=sidebar-container]]:!sticky [&_[data-slot=sidebar-container]]:!top-0 [&_[data-slot=sidebar-container]]:!h-svh">
             <SidebarProvider>
                 <AppSidebar
                     user={{ name: user.name, email: user.email }}

@@ -253,7 +253,7 @@ public class DenisMan implements Runnable {
     @Command(name = "config", description = "Show the effective configuration and where each value comes from.", mixinStandardHelpOptions = true)
     static class ConfigCommand implements Runnable {
         private static final String[] KEYS = {"ddb-port", "ddb-address", "bind-address", "ddb-main-token", "language",
-                "max-connections", "max-connections-per-ip", "client-idle-timeout-ms", "persist-flush-interval-ms",
+                "max-connections", "max-connections-per-ip", "client-idle-timeout-ms", "persist-flush-interval-ms", "persist-snapshot-interval-ms",
                 "send-client-actions", "use-delogg", "open-log-terminal", "bootstrap-group", "bootstrap-group-password"};
 
         @Option(names = {"--json"}, description = "Machine readable output")

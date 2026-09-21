@@ -30,8 +30,10 @@ class ProtoDatabaseTest {
             db.setData("t1", "a", "1");
             db.setData("t1", "b", "two words");
             db.setData("t2", "a", "other project");
-            assertTrue(Files.exists(file));
+            // synchronous mode: every change is in the fsynced journal at once, the snapshot comes on close
+            assertTrue(Files.size(db.getJournalPath()) > 0);
         }
+        assertTrue(Files.exists(file));
         try (ProtoDatabase db = new ProtoDatabase(file, 0)) {
             assertEquals("1", db.getData("t1", "a"));
             assertEquals("two words", db.getData("t1", "b"));
@@ -68,6 +70,46 @@ class ProtoDatabaseTest {
             assertEquals("v2", db.getData("t", "k2"));
         }
         assertFalse(Files.exists(dir.resolve("database.bin.tmp")));
+    }
+
+    @Test
+    void journalSurvivesAnUncleanStop() throws IOException {
+        Path file = dir.resolve("database.bin");
+        // long intervals: nothing is snapshotted, everything sits in the journal
+        ProtoDatabase crashed = new ProtoDatabase(file, 60_000, 60_000);
+        crashed.setData("t", "a", "1");
+        crashed.setData("t", "b", "2");
+        crashed.deleteData("t", "a");
+        crashed.setData("u", "x", "y");
+        crashed.deleteToken("u");
+        assertFalse(Files.exists(file), "no snapshot yet");
+        assertTrue(Files.size(crashed.getJournalPath()) > 0);
+        crashed.abandon();
+        // a new instance on the same files is what a restart after SIGKILL sees
+        try (ProtoDatabase db = new ProtoDatabase(file, 0)) {
+            assertNull(db.getData("t", "a"));
+            assertEquals("2", db.getData("t", "b"));
+            assertEquals(0, db.keyCount("u"));
+            assertTrue(db.isDirty(), "replayed entries are snapshotted on close");
+        }
+        assertTrue(Files.exists(file));
+        assertEquals(0, Files.size(dir.resolve("database.bin.journal")), "close leaves an empty journal");
+        try (ProtoDatabase db = new ProtoDatabase(file, 0)) {
+            assertEquals("2", db.getData("t", "b"));
+        }
+    }
+
+    @Test
+    void truncatedJournalLineAndInterruptedSnapshotAreRecovered() throws IOException {
+        Path file = dir.resolve("database.bin");
+        Files.writeString(dir.resolve("database.bin.journal.old"), "[\"S\",\"t\",\"old\",\"v\"]\n");
+        Files.writeString(dir.resolve("database.bin.journal"), "[\"S\",\"t\",\"new\",\"v\"]\n[\"S\",\"t\",\"cut");
+        try (ProtoDatabase db = new ProtoDatabase(file, 0)) {
+            assertEquals("v", db.getData("t", "old"));
+            assertEquals("v", db.getData("t", "new"));
+            assertNull(db.getData("t", "cut"));
+        }
+        assertFalse(Files.exists(dir.resolve("database.bin.journal.old")), "consumed by the snapshot");
     }
 
     @Test

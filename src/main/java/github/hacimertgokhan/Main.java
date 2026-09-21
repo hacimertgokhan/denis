@@ -103,10 +103,11 @@ public class Main {
                 properties.getInt("max-connections-per-ip", 12),
                 properties.getInt("client-idle-timeout-ms", 0));
         long flushInterval = properties.getInt("persist-flush-interval-ms", (int) github.hacimertgokhan.proto.ProtoDatabase.DEFAULT_FLUSH_INTERVAL_MILLIS);
+        long snapshotInterval = properties.getInt("persist-snapshot-interval-ms", (int) github.hacimertgokhan.proto.ProtoDatabase.DEFAULT_SNAPSHOT_INTERVAL_MILLIS);
 
         ServerContext ctx;
         try {
-            ctx = ServerContext.open(Path.of(""), flushInterval, delogg ? activityLog : null);
+            ctx = ServerContext.open(Path.of(""), flushInterval, snapshotInterval, delogg ? activityLog : null);
         } catch (IOException e) {
             log.error("Could not open the data files: " + e.getMessage());
             System.exit(1);

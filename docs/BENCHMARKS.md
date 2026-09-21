@@ -1,7 +1,7 @@
 # Benchmarks: Denis vs Redis and PostgreSQL
 
 Measured on 21 September 2026 with the harness in [`bench/`](../bench) against
-Denis 0.3.1, **Redis 7.4** (`appendonly yes`, `appendfsync everysec`) and
+**Denis 0.4.0**, **Redis 7.4** (`appendonly yes`, `appendfsync everysec`) and
 **PostgreSQL 16** (primary key on `id`, parameterised queries). Every system
 ran in Docker Desktop (WSL 2) on the same machine with **2 CPUs / 1 GB** per
 container; the load generator was one Node.js 22 process on the host
@@ -18,135 +18,159 @@ Redis one multiplexed connection, PostgreSQL a pool of `concurrency`.
 | Area | Winner | Notes |
 | --- | --- | --- |
 | Single-client latency (KV) | **tie** | ~0.3 ms p50 for both Denis and Redis; the network path dominates |
-| Throughput at 16-64 clients (KV) | **Redis** | Redis ~120-150k ops/s, Denis ~50-65k (40-60 % of Redis); Denis is a thread-per-connection JVM server, Redis an event loop in C |
-| Large values (16-64 KB) | **tie** | within +/-10 %; Denis slightly better on reads |
-| `MGET` (10 keys) | near tie | Denis reaches 80 % of Redis at 64 clients |
-| `KEYS pattern` over 60k keys | Redis | 3x faster; both are full scans |
-| Persisted writes | **tie (throughput)** | Denis's 1 s write-behind costs nothing on the request path, like Redis AOF everysec |
-| Durability on `SIGKILL` | Redis | Redis lost 0 of 10,047 acknowledged writes, Denis lost 443 of 9,162 (the last ~0.15 s): Denis keeps dirty data in the JVM heap until the next flush, Redis hands every write to the kernel immediately (the page cache survives a process kill) |
+| Throughput at 16-64 clients (KV) | **Redis** | Redis ~115-155k ops/s, Denis ~45-68k (40-55 % of Redis); Denis is a thread-per-connection JVM server, Redis an event loop in C |
+| Large values (16-64 KB) | **tie** | within +/-15 % |
+| `MGET` (10 keys) | near tie | Denis reaches ~80 % of Redis |
+| `KEYS pattern` over 60k keys | Redis | ~3x faster; both are full scans |
+| Persisted writes | **tie** | Denis's journal costs nothing visible on the request path (61.8k vs 115.6k ops/s at 64 clients, the same ratio as cache-only writes) |
+| Durability on `SIGKILL` | **tie** | Denis 9,079 / 9,079 and Redis 9,968 / 9,968 acknowledged writes survived: both hand every write to the kernel at once and fsync every second |
 | Durability on graceful restart | tie | Denis 5,000 / 5,000 keys survived |
-| Memory (100k x 100 B keys) | Redis | Redis 25 MB, PostgreSQL 49 MB, Denis 230 MB RSS (JVM + cache + persisted copy); `database.bin` is 19 MB |
-| SQL inserts | **Denis** (12x PostgreSQL) | Denis appends a JSON row to a hash map and flushes every second; PostgreSQL commits with WAL + fsync per statement: different guarantees |
-| SQL reads (`SELECT ... WHERE id`, `COUNT`, `ORDER BY ... LIMIT`) | **PostgreSQL** (40-300x) | Denis has no indexes: every statement scans and parses every row (19 ms per query on 10k rows, 90 ms on 50k) |
-| SQL updates / deletes | PostgreSQL (5-45x) | same full scan, plus a per-table lock |
-| SQL under concurrency | PostgreSQL | Denis stays at ~55 statements/s whatever the concurrency; PostgreSQL scales to 16k point queries/s |
+| Memory (100k x 100 B keys) | Redis | Redis 26 MB, PostgreSQL 47 MB, Denis 212 MB RSS (JVM heap + cache + persisted copy); `database.bin` is 19 MB |
+| SQL point reads (`WHERE id = ...`), `COUNT(*)` | **Denis** | index lookup: 2.8k ops/s single client (PostgreSQL 2.3k), 20k at 16 clients (PostgreSQL 17k); `COUNT(*)` is O(1) |
+| SQL inserts / updates / deletes by id | **Denis** (4-10x) | in-memory rows + journal vs WAL + fsync per statement: different guarantees (see Durability) |
+| SQL range scans with `ORDER BY` | **PostgreSQL** (3-5x) | Denis scans and sorts the table in memory (2.4 ms on 10k rows); no ordered index yet |
+| SQL scaling to 50k rows | **Denis / tie** | point query and `COUNT(*)` stay at ~0.3 ms whatever the size; PostgreSQL's `COUNT(*)` grows to 1.3 ms |
 
-**Bottom line.** As a key-value cache Denis is in Redis's league for latency
-and for large values, and reaches roughly half of Redis's throughput under
-heavy concurrency; it needs an append-only log to match Redis's crash
-durability. Its SQL layer is fine for small tables (hundreds to a few thousand
-rows: 3 ms per query at 1k rows) and for write-heavy logging, but it is not a
-substitute for a relational database on tables of 10k+ rows: the engine has
-no indexes and no query planner.
+**Bottom line.** As a key-value store Denis matches Redis on latency, large
+values and crash durability, and delivers roughly half of Redis's throughput
+under heavy concurrency. Its SQL layer is now an in-memory table store with
+hash indexes: point lookups, counts and writes by key are faster than
+PostgreSQL in this setup; range queries with sorting are the remaining gap,
+and there are still no joins, aggregates beyond `COUNT(*)` or transactions.
 
-## Key-value operations (Denis vs Redis 7)
+## 0.3.1 → 0.4.0
+
+The 0.3.1 benchmark listed three improvements; 0.4.0 shipped them and this is
+what they changed (same hardware, same harness):
+
+| Workload | Conc. | 0.3.1 ops/s | 0.4.0 ops/s | Gain | PostgreSQL ops/s |
+| --- | --: | --: | --: | --: | --: |
+| select by id (10k rows) | 1 | 52 | 2,848 | 55x | 2,276 |
+| select by id (10k rows) | 16 | 53 | 20,016 | 378x | 16,916 |
+| count(*) | 1 | 55 | 3,095 | 56x | 1,826 |
+| update by id | 1 | 52 | 2,683 | 52x | 261 |
+| update by id | 16 | 54 | 16,801 | 311x | 3,990 |
+| delete by id | 16 | 56 | 26,567 | 474x | 4,026 |
+| select range+order+limit 20 | 1 | 38 | 398 | 10x | 1,216 |
+| select by id @ 50000 rows | 1 | 10 | 3,052 | 305x | 2,536 |
+| count(*) @ 50000 rows | 1 | 10 | 3,159 | 316x | 771 |
+
+
+- **In-memory tables with a hash index on every column** (`Table`,
+  `TableCatalog`): rows are parsed once and kept; `WHERE col = value` is a
+  lookup; `COUNT(*)` is O(1). Range queries still scan (in memory, ~10x faster
+  than before) and sort.
+- **Append-only journal**: every persisted change is written to
+  `database.journal` at once and fsynced every second; snapshots every 30 s.
+  `SIGKILL` losses went from 443 writes to 0 and persisted-write throughput
+  went up (no more 1-per-second full-file rewrites under load).
+- **Reply batching** for pipelined clients (one flush per burst of commands).
+
+### Key-value operations (Denis 0.4.0 vs Redis 7)
 
 | Workload | Conc. | Denis ops/s | Redis ops/s | Denis p50 / p99 ms | Redis p50 / p99 ms | Denis vs Redis |
 | --- | --: | --: | --: | --: | --: | --: |
-| set (cache only) | 1 | 3,208 | 3,144 | 0.301 / 0.52 | 0.307 / 0.576 | 102 % |
-| set persisted | 1 | 3,255 | 3,393 | 0.287 / 0.579 | 0.277 / 0.558 | 96 % |
-| get hit | 1 | 3,209 | 3,213 | 0.297 / 0.556 | 0.294 / 0.584 | 100 % |
-| get miss | 1 | 3,401 | 3,367 | 0.278 / 0.531 | 0.284 / 0.529 | 101 % |
-| exists | 1 | 3,328 | 3,359 | 0.289 / 0.489 | 0.287 / 0.493 | 99 % |
-| mget 10 keys | 1 | 2,840 | 3,025 | 0.336 / 0.607 | 0.321 / 0.526 | 94 % |
-| delete | 1 | 3,213 | 3,032 | 0.299 / 0.552 | 0.317 / 0.569 | 106 % |
-| set (cache only) | 16 | 23,021 | 37,340 | 0.601 / 1.788 | 0.407 / 0.744 | 62 % |
-| set persisted | 16 | 24,403 | 40,676 | 0.559 / 1.537 | 0.381 / 0.655 | 60 % |
-| get hit | 16 | 27,886 | 46,146 | 0.522 / 1.474 | 0.336 / 0.562 | 60 % |
-| get miss | 16 | 23,660 | 45,143 | 0.563 / 1.971 | 0.339 / 0.609 | 52 % |
-| exists | 16 | 23,288 | 51,274 | 0.58 / 1.913 | 0.3 / 0.552 | 45 % |
-| mget 10 keys | 16 | 16,803 | 23,994 | 0.867 / 1.98 | 0.633 / 1.182 | 70 % |
-| delete | 16 | 22,303 | 44,192 | 0.628 / 1.875 | 0.342 / 0.774 | 50 % |
-| set (cache only) | 64 | 64,656 | 123,361 | 0.858 / 2.277 | 0.494 / 0.877 | 52 % |
-| set persisted | 64 | 50,255 | 98,347 | 1.027 / 4.23 | 0.611 / 1.355 | 51 % |
-| get hit | 64 | 51,912 | 121,432 | 1.066 / 3.701 | 0.505 / 0.912 | 43 % |
-| get miss | 64 | 62,441 | 150,809 | 0.939 / 2.153 | 0.41 / 0.705 | 41 % |
-| exists | 64 | 51,283 | 133,548 | 1.03 / 4.4 | 0.439 / 0.993 | 38 % |
-| mget 10 keys | 64 | 39,377 | 49,201 | 1.42 / 4.115 | 1.293 / 1.636 | 80 % |
-| delete | 64 | 58,702 | 126,817 | 0.989 / 2.534 | 0.473 / 1.104 | 46 % |
-| keys pattern (~60k keys) | 1 | 190 | 608 | 5.141 / 7.045 | 1.559 / 2.743 | 31 % |
+| set (cache only) | 1 | 3,256 | 3,289 | 0.296 / 0.487 | 0.289 / 0.525 | 99 % |
+| set persisted | 1 | 3,310 | 3,412 | 0.285 / 0.485 | 0.28 / 0.489 | 97 % |
+| get hit | 1 | 3,401 | 3,407 | 0.281 / 0.482 | 0.283 / 0.481 | 100 % |
+| get miss | 1 | 3,279 | 3,304 | 0.29 / 0.558 | 0.292 / 0.532 | 99 % |
+| exists | 1 | 3,397 | 3,504 | 0.284 / 0.459 | 0.274 / 0.493 | 97 % |
+| mget 10 keys | 1 | 2,946 | 3,246 | 0.329 / 0.509 | 0.302 / 0.464 | 91 % |
+| delete | 1 | 3,553 | 3,558 | 0.272 / 0.456 | 0.27 / 0.496 | 100 % |
+| set (cache only) | 16 | 29,494 | 41,626 | 0.49 / 1.195 | 0.362 / 0.641 | 71 % |
+| set persisted | 16 | 28,899 | 44,026 | 0.5 / 1.411 | 0.347 / 0.596 | 66 % |
+| get hit | 16 | 25,749 | 46,705 | 0.517 / 2.136 | 0.331 / 0.574 | 55 % |
+| get miss | 16 | 20,337 | 49,938 | 0.651 / 2.169 | 0.3 / 0.645 | 41 % |
+| exists | 16 | 30,386 | 46,781 | 0.487 / 1.294 | 0.327 / 0.596 | 65 % |
+| mget 10 keys | 16 | 28,250 | 31,870 | 0.525 / 1.379 | 0.48 / 0.92 | 89 % |
+| delete | 16 | 29,348 | 46,810 | 0.5 / 1.459 | 0.325 / 0.537 | 63 % |
+| set (cache only) | 64 | 55,911 | 118,747 | 0.854 / 4.313 | 0.503 / 0.879 | 47 % |
+| set persisted | 64 | 61,769 | 115,613 | 0.91 / 3.856 | 0.534 / 0.814 | 53 % |
+| get hit | 64 | 43,839 | 117,445 | 1.051 / 5.942 | 0.505 / 1.143 | 37 % |
+| get miss | 64 | 67,819 | 153,883 | 0.893 / 1.782 | 0.401 / 0.73 | 44 % |
+| exists | 64 | 66,479 | 152,438 | 0.909 / 1.768 | 0.399 / 0.69 | 44 % |
+| mget 10 keys | 64 | 43,152 | 55,605 | 1.376 / 3.267 | 0.986 / 1.919 | 78 % |
+| delete | 64 | 57,367 | 126,640 | 0.963 / 3.455 | 0.448 / 0.96 | 45 % |
+| keys pattern (~60k keys) | 1 | 188 | 621 | 4.88 / 11.891 | 1.558 / 2.704 | 30 % |
 
 ### Value sizes (concurrency 16)
 
-| Workload | Denis ops/s | Redis ops/s | Denis p50 / p99 ms | Redis p50 / p99 ms | Denis vs Redis |
-| --- | --: | --: | --: | --: | --: |
-| set 1 KB value | 26,673 | 30,451 | 0.547 / 1.434 | 0.495 / 1.107 | 88 % |
-| get 1 KB value | 20,639 | 36,949 | 0.639 / 2.068 | 0.417 / 0.874 | 56 % |
-| set 16 KB value | 11,367 | 15,846 | 1.142 / 9.857 | 0.881 / 2.054 | 72 % |
-| get 16 KB value | 13,413 | 12,174 | 1.028 / 2.519 | 0.755 / 14.892 | 110 % |
-| set 64 KB value | 3,802 | 4,323 | 3.145 / 21.914 | 3.092 / 23.304 | 88 % |
-| get 64 KB value | 4,608 | 4,094 | 3.29 / 9.836 | 3.483 / 7.255 | 113 % |
+| Workload | Conc. | Denis ops/s | Redis ops/s | Denis p50 / p99 ms | Redis p50 / p99 ms | Denis vs Redis |
+| --- | --: | --: | --: | --: | --: | --: |
+| set 1 KB value | 16 | 27,368 | 34,260 | 0.529 / 1.498 | 0.456 / 0.871 | 80 % |
+| get 1 KB value | 16 | 26,670 | 32,087 | 0.513 / 1.431 | 0.453 / 1.083 | 83 % |
+| set 16 KB value | 16 | 11,285 | 16,534 | 1.245 / 4.355 | 0.9 / 1.925 | 68 % |
+| get 16 KB value | 16 | 13,637 | 16,525 | 0.998 / 2.81 | 0.774 / 2.912 | 83 % |
+| set 64 KB value | 16 | 4,125 | 3,402 | 2.971 / 29.834 | 3.085 / 25.269 | 1.2x faster |
+| get 64 KB value | 16 | 4,456 | 3,925 | 3.426 / 7.466 | 4.014 / 6.762 | 1.1x faster |
 
-### Bulk load and memory (100k keys x 100 B, concurrency 32)
-
-| | Denis | Redis | PostgreSQL |
-| --- | --: | --: | --: |
-| load throughput | 28,190 ops/s (persisted) | 62,979 ops/s | - |
-| container RSS after load | 229.5 MiB | 25.4 MiB | 49.2 MiB (idle, 10k-row table) |
-| on-disk size | `database.bin` 19.4 MB | AOF | - |
-
-## Durability
-
-| Check | Denis | Redis (AOF everysec) |
-| --- | --- | --- |
-| graceful restart (`docker restart`), 5,000 persisted keys | 5,000 / 5,000 survived | - |
-| `docker kill -s KILL` after 3 s of continuous persisted writes | 8,719 / 9,162 acknowledged writes survived (443 lost, about the last 0.15 s) | 10,047 / 10,047 survived |
-
-Denis acknowledges a persisted `SET` once it is in memory and writes the
-whole `database.bin` atomically every `persist-flush-interval-ms` (1 s); a
-process kill loses what was written since the last flush (a power loss would
-lose the same for Redis with `everysec`). Setting the interval to `0` makes
-every write synchronous and rewrites the file each time, which is only
-practical for small stores. An append-only journal is the natural next step.
-
-## SQL on a 10k-row table (Denis vs PostgreSQL 16)
+### SQL on a 10k-row table (Denis 0.4.0 vs PostgreSQL 16)
 
 | Workload | Conc. | Denis ops/s | PostgreSQL ops/s | Denis p50 / p99 ms | PostgreSQL p50 / p99 ms | Denis vs PostgreSQL |
 | --- | --: | --: | --: | --: | --: | --: |
-| insert 1 row | 1 | 2,769 | 237 | 0.352 / 0.533 | 3.468 / 15.47 | 11.7x faster |
-| insert 500-row batch | 1 | 316 | 218 | 2.91 / 4.924 | 4.086 / 7.473 | 1.4x faster |
-| select by id | 1 | 52 | 2,238 | 19.12 / 23.555 | 0.431 / 0.668 | 2 % |
-| select range + order by + limit 20 | 1 | 38 | 1,168 | 25.674 / 32.864 | 0.814 / 1.031 | 3 % |
-| count(*) | 1 | 55 | 1,720 | 17.85 / 21.747 | 0.525 / 1.363 | 3 % |
-| update by id | 1 | 52 | 238 | 19.041 / 22.852 | 3.542 / 15.024 | 22 % |
-| delete by id | 1 | 54 | 271 | 18.371 / 22.717 | 3.481 / 14.859 | 20 % |
-| insert 1 row | 16 | 25,948 | 2,084 | 0.585 / 1.207 | 5.874 / 18.815 | 12.5x faster |
-| select by id | 16 | 53 | 16,399 | 267.77 / 596.893 | 0.69 / 10.461 | 0.3 % |
-| select range + order by + limit 20 | 16 | 38 | 3,943 | 402.917 / 1667.706 | 1.6 / 63.77 | 1 % |
-| count(*) | 16 | 59 | 17,272 | 207.365 / 1758.252 | 0.868 / 1.776 | 0.3 % |
-| update by id | 16 | 54 | 1,389 | 261.251 / 772.215 | 10.963 / 19.014 | 4 % |
-| delete by id | 16 | 56 | 2,490 | 256.006 / 683.599 | 5.884 / 14.045 | 2 % |
+| insert 1 row | 1 | 2,432 | 362 | 0.385 / 0.69 | 2.384 / 7.678 | 6.7x faster |
+| insert 500-row batch | 1 | 131 | 155 | 7.042 / 21.375 | 7.181 / 11.303 | 85 % |
+| select by id (10k rows) | 1 | 2,848 | 2,276 | 0.336 / 0.545 | 0.423 / 0.638 | 1.3x faster |
+| select range+order+limit 20 | 1 | 398 | 1,216 | 2.429 / 3.519 | 0.81 / 1.004 | 33 % |
+| count(*) | 1 | 3,095 | 1,826 | 0.309 / 0.527 | 0.535 / 0.764 | 1.7x faster |
+| update by id | 1 | 2,683 | 261 | 0.358 / 0.633 | 2.564 / 8.771 | 10.3x faster |
+| delete by id | 1 | 2,891 | 335 | 0.33 / 0.729 | 2.353 / 7.86 | 8.6x faster |
+| insert 1 row | 16 | 15,527 | 3,914 | 0.673 / 10.434 | 3.982 / 7.36 | 4.0x faster |
+| select by id (10k rows) | 16 | 20,016 | 16,916 | 0.676 / 3.982 | 0.736 / 2.064 | 1.2x faster |
+| select range+order+limit 20 | 16 | 504 | 2,401 | 32.999 / 42.163 | 1.7 / 78.675 | 21 % |
+| count(*) | 16 | 26,407 | 13,101 | 0.575 / 0.972 | 1.208 / 2.096 | 2.0x faster |
+| update by id | 16 | 16,801 | 3,990 | 0.832 / 5.58 | 3.95 / 5.652 | 4.2x faster |
+| delete by id | 16 | 26,567 | 4,026 | 0.528 / 1.989 | 3.906 / 4.737 | 6.6x faster |
 
-### Scaling with table size (concurrency 1)
+### SQL scaling with table size (concurrency 1)
 
-| Rows | Denis select by id | PostgreSQL select by id | Denis count(*) | PostgreSQL count(*) |
-| --: | --: | --: | --: | --: |
-| 1,000 | 3.1 ms (311/s) | 0.40 ms (2,463/s) | 3.3 ms | 0.36 ms |
-| 10,000 | 19.2 ms (51/s) | 0.40 ms (2,453/s) | 18.0 ms | 0.54 ms |
-| 50,000 | 91.0 ms (10/s) | 0.41 ms (2,396/s) | 82.8 ms | 1.32 ms |
+| Workload | Conc. | Denis ops/s | PostgreSQL ops/s | Denis p50 / p99 ms | PostgreSQL p50 / p99 ms | Denis vs PostgreSQL |
+| --- | --: | --: | --: | --: | --: | --: |
+| select by id @ 1000 rows | 1 | 2,988 | 2,449 | 0.326 / 0.486 | 0.4 / 0.577 | 1.2x faster |
+| count(*) @ 1000 rows | 1 | 3,114 | 1,972 | 0.305 / 0.581 | 0.423 / 1.719 | 1.6x faster |
+| select by id @ 10000 rows | 1 | 3,299 | 2,482 | 0.301 / 0.412 | 0.398 / 0.552 | 1.3x faster |
+| count(*) @ 10000 rows | 1 | 3,284 | 1,833 | 0.3 / 0.41 | 0.545 / 0.674 | 1.8x faster |
+| select by id @ 50000 rows | 1 | 3,052 | 2,536 | 0.315 / 0.626 | 0.382 / 0.7 | 1.2x faster |
+| count(*) @ 50000 rows | 1 | 3,159 | 771 | 0.315 / 0.415 | 1.288 / 1.694 | 4.1x faster |
 
-Denis's cost grows linearly with the table (about 1.8 us per row: every row
-is a JSON document that is parsed for every statement) while PostgreSQL's
-point query is flat thanks to the index. Inserts look 12x faster only because
-Denis does no indexing, no WAL and no fsync per statement.
+### Bulk load (100k keys x 100 B, concurrency 32)
 
-## What the benchmark changed in Denis
+| Workload | Conc. | Denis ops/s | Redis ops/s | Denis p50 / p99 ms | Redis p50 / p99 ms | Denis vs Redis |
+| --- | --: | --: | --: | --: | --: | --: |
+| load 100k keys (100 B) | 32 | 27,378 | 70,611 | 0.983 / 4.371 | 0.431 / 0.811 | 39 % |
 
-- Running it exposed that the server served at most **4 concurrent
-  connections** (`ThreadPoolExecutor` with an unbounded queue); fixed in 0.3.1.
-- The Node client gained **pipelining**, which took Denis from ~7k to ~60k
-  ops/s at 64 clients.
+## Durability
+
+| Check | Denis 0.4.0 | Redis (AOF everysec) |
+| --- | --- | --- |
+| graceful restart (`docker restart`), 5,000 persisted keys | 5,000 / 5,000 survived | - |
+| `docker kill -s KILL` after 3 s of continuous persisted writes | 9,079 / 9,079 acknowledged writes survived | 9,968 / 9,968 survived |
+
+Both systems acknowledge a write once it is in memory and handed to the
+kernel (Denis: appended to `database.journal`; Redis: appended to the AOF
+buffer written every event loop) and `fsync` once a second, so a killed
+process loses nothing and a power loss loses at most one second. Denis 0.3.1
+kept dirty data in the JVM heap until the next snapshot and lost the last
+~0.15 s of writes in the same test.
+
+## Memory (100k keys x 100 B)
+
+| | Denis | Redis | PostgreSQL |
+| --- | --: | --: | --: |
+| container RSS after load | 212.4 MiB | 26.4 MiB | 47.4 MiB (idle, 10k-row table) |
+| on-disk size | `database.bin` 18.8 MB (+ journal since the last snapshot) | AOF | - |
+
+The JVM keeps the cache entry, the persisted copy and object headers per key;
+the Redis process stores each key once, compactly. Lowering this (one copy,
+no `Any` wrapper, off-heap values) is the remaining item on the list.
 
 ## Where Denis could improve next
 
-1. **Append-only journal** for persisted writes (crash durability like Redis
-   AOF, and no full-file rewrite).
-2. **Indexes for the SQL engine** (at least a hash index on equality columns,
-   and rows kept as parsed objects instead of JSON text): this is the 40-300x gap.
-3. **Non-blocking I/O** (NIO or virtual threads on Java 21) to close the
+1. **Ordered index** (a `TreeMap` per column) so `WHERE price > x ORDER BY price
+   LIMIT n` stops scanning and sorting the whole table.
+2. **Non-blocking I/O** (NIO or virtual threads on Java 21) to close the
    throughput gap with Redis under many connections.
-4. Lower memory per key (the cache stores `Any` wrappers and a second copy in
-   the persisted map).
+3. Lower memory per key.
 
 ## Reproduce
 

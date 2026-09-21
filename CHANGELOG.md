@@ -7,6 +7,34 @@ before 1.0.0 a minor bump may contain breaking changes, which are listed).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-21
+
+The three improvements the 0.3.1 benchmark asked for.
+
+### Added
+- **Append-only journal** (`database.journal`): every persisted change is
+  appended and handed to the OS at once, fsynced every
+  `persist-flush-interval-ms` (1 s) and replayed at start-up. A killed process
+  loses nothing; a power loss loses at most one fsync window — the same
+  guarantee as Redis `appendfsync everysec`. Full `database.bin` snapshots now
+  happen every `persist-snapshot-interval-ms` (30 s) while dirty, on `SAVE` and
+  on shutdown, instead of every second; an interrupted snapshot is recovered
+  from `database.journal.old`.
+- **In-memory SQL tables with a hash index on every column** (`Table`,
+  `TableCatalog`): rows are kept parsed and `WHERE col = value` in an AND-only
+  clause is an index lookup for SELECT, UPDATE and DELETE; `COUNT(*)` without
+  WHERE is O(1). Tables are built
+  from the store on first use and shared by all connections. Raw key commands
+  on `__sql:` keys invalidate the loaded table.
+- **Reply batching**: replies to pipelined commands are flushed in one write
+  when the client has more input queued.
+
+### Changed
+- Log4j 2.25.5, protobuf 4.33.0 (Dependabot).
+- `persist-flush-interval-ms=0` now means "fsync the journal on every change"
+  (the snapshot is written on `SAVE`/shutdown) instead of rewriting the whole
+  file per change.
+
 ## [0.3.1] - 2026-09-21
 
 ### Fixed
@@ -106,6 +134,7 @@ MCP server lets AI assistants inspect and query the database.
   `DenisServer`, `ProjectRegistry`); anything embedding the server classes
   directly must be updated.
 
-[Unreleased]: https://github.com/hacimertgokhan/denis/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/hacimertgokhan/denis/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/hacimertgokhan/denis/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/hacimertgokhan/denis/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/hacimertgokhan/denis/compare/v0.0.2.9alpha...v0.3.0

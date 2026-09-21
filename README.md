@@ -38,15 +38,15 @@ Requirements: Java 17+ (Maven to build from source; Node 18+ for the Node
 client and the MCP server).
 
 ```sh
-mvn package                                   # target/denis-0.3.1.jar (+ project bundle zip/tar.gz)
-java -jar target/denis-0.3.1.jar cli group create crm -p s3cret
-java -jar target/denis-0.3.1.jar server       # listens on 0.0.0.0:5142
+mvn package                                   # target/denis-0.4.0.jar (+ project bundle zip/tar.gz)
+java -jar target/denis-0.4.0.jar cli group create crm -p s3cret
+java -jar target/denis-0.4.0.jar server       # listens on 0.0.0.0:5142
 ```
 
 In a second terminal:
 
 ```sh
-java -jar target/denis-0.3.1.jar cli exec -g crm -p s3cret --create-project \
+java -jar target/denis-0.4.0.jar cli exec -g crm -p s3cret --create-project \
   "SET greeting hello world -&save" "GET greeting" \
   "CREATE TABLE users (id INT, name TEXT)" \
   "INSERT INTO users (id, name) VALUES (1, 'Ada'), (2, 'Grace')" \
@@ -79,7 +79,7 @@ denis cli --help
 
 Runtime files are kept next to the installed app: `denis.properties`,
 `denis.toml` (groups), `ddb.json` (project tokens), `pawd.dat`,
-`database.bin` (persisted keys and tables), `logs/` and the per-run activity
+`database.bin` + `database.journal` (persisted keys and tables), `logs/` and the per-run activity
 log in `denis/`. None of them belong in version control.
 
 ## Docker
@@ -171,8 +171,9 @@ of a value may start with `-&`.
 
 ## SQL
 
-After `AUTH`, Denis accepts a single-table SQL subset. Tables are persisted and
-survive restarts.
+After `AUTH`, Denis accepts a single-table SQL subset. Tables live in memory
+with a hash index on every column (`WHERE col = value` is a lookup), are
+persisted through the journal and survive restarts.
 
 ```sql
 CREATE TABLE [IF NOT EXISTS] users (id INT, name TEXT, price REAL);
@@ -252,7 +253,8 @@ different properties file; `denis cli config` shows the effective values.
 | `max-connections` | `DENIS_MAX_CONNECTIONS` | `256` | concurrent client connections (one worker thread each) |
 | `max-connections-per-ip` | `DENIS_MAX_CONNECTIONS_PER_IP` | `12` | concurrent connections per client address |
 | `client-idle-timeout-ms` | `DENIS_CLIENT_IDLE_TIMEOUT_MS` | `0` | close a silent connection after this long; `0` = never |
-| `persist-flush-interval-ms` | `DENIS_PERSIST_FLUSH_INTERVAL_MS` | `1000` | how often dirty persisted keys are written; `0` = synchronous |
+| `persist-flush-interval-ms` | `DENIS_PERSIST_FLUSH_INTERVAL_MS` | `1000` | how often `database.journal` is fsynced; `0` = on every change |
+| `persist-snapshot-interval-ms` | `DENIS_PERSIST_SNAPSHOT_INTERVAL_MS` | `30000` | how often a full `database.bin` snapshot replaces the journal while there are changes |
 | `language` | `DENIS_LANGUAGE` | `auto` | `auto` or one of `en tr de fr es da fi el` |
 | `send-client-actions` | `DENIS_SEND_CLIENT_ACTIONS` | `true` | log every client command (credentials are masked) |
 | `use-delogg` | `DENIS_USE_DELOGG` | `false` | also write client actions to the activity log |
@@ -271,29 +273,30 @@ github.hacimertgokhan
 │   ├── server/ServerContext     what all connections share: cache, persistence, projects, groups, counters
 │   ├── server/ProjectStore      one project's view: key prefixing, cache + persisted store, KEYS
 │   ├── DenisClient              one session: state machine + command handlers, text/json replies
-│   ├── sql/SqlQueryEngine       the SQL subset on top of ProjectStore (tables persisted)
+│   ├── sql/SqlQueryEngine       the SQL subset; sql/Table + TableCatalog keep rows parsed and indexed in memory
 │   ├── sql/SqlResult            rows / affected / tables / error, rendered as JSON or text
 │   ├── project/ProjectRegistry  project tokens (ddb.json), shared and persisted
 │   ├── sections/group           login groups in denis.toml (salted SHA-512)
 │   └── cli                      picocli commands; RemoteSession + ReplyRenderer for remote commands
-├── proto/ProtoDatabase          database.bin in memory, write-behind flush, atomic replace
+├── proto/ProtoDatabase          database.bin snapshot + database.journal append-only log, all in memory
 └── readers/DenisProperties      configuration: env > denis.properties > bundled defaults
 ```
 
 Request path: `DenisServer` accepts a socket → `DenisClient.handleClient` reads
 lines → `handleLine` dispatches → `ProjectStore` reads the cache and falls back
-to `ProtoDatabase`; writes go to the cache and, when persisted, mark
-`ProtoDatabase` dirty; a daemon thread flushes it to `database.bin.tmp` and
-renames it over `database.bin`.
+to `ProtoDatabase`; persisted writes are appended to `database.journal`
+immediately (fsync every second) and a daemon thread periodically writes a
+full snapshot to `database.bin.tmp`, renames it over `database.bin` and
+starts a fresh journal.
 
 ## Benchmarks
 
 [docs/BENCHMARKS.md](docs/BENCHMARKS.md) compares Denis with Redis 7 and
 PostgreSQL 16 under identical container limits (harness in [`bench/`](bench)).
-In short: as a key-value store Denis matches Redis on single-client latency and
-on large values and reaches about half of Redis's throughput at 64 clients;
-its SQL layer is fast for inserts and fine for small tables, but has no indexes,
-so reads on 10k+ rows are one to two orders of magnitude slower than PostgreSQL.
+In short: as a key-value store Denis matches Redis on latency, large values and
+crash durability and reaches about half of Redis's throughput at 64 clients; the
+SQL layer's indexed point reads, counts and writes by key are faster than
+PostgreSQL in that setup, while range scans with ORDER BY are still 3-5x slower.
 
 ## Versioning and releases
 
@@ -303,7 +306,7 @@ are listed under **Breaking** in [CHANGELOG.md](CHANGELOG.md). Client packages
 have their own versions (`clients/node`, `clients/mcp`, `java-driver`).
 
 To release: update `CHANGELOG.md` and the version in `pom.xml`, commit, tag
-(`git tag v0.3.1 && git push --tags`). The `Release` workflow verifies that the
+(`git tag v0.4.0 && git push --tags`). The `Release` workflow verifies that the
 tag matches `pom.xml`, builds the jar and the bundle, pushes the image to GHCR
 and creates the GitHub Release with the changelog section as notes.
 Release Drafter keeps a draft of the next version from merged PR labels

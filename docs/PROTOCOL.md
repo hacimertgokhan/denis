@@ -108,6 +108,8 @@ DESCRIBE t
   everything else as text.
 - One table per statement: no joins, subqueries, GROUP BY or aggregates other
   than `COUNT(*)`.
+- Every column has a hash index: `WHERE col = value` (alone or inside an
+  AND-only clause) is a lookup; other operators scan the table in memory.
 
 Replies in json mode:
 
@@ -141,6 +143,7 @@ In text mode: a JSON array for rows/tables, `OK: <message>` and `ERROR: <message
   one (`max-connections`, default 256): excess connections are closed without
   a reply.
 - Optional idle timeout (`client-idle-timeout-ms`).
-- Persisted writes are flushed every `persist-flush-interval-ms` (default 1 s)
-  and on shutdown; `SAVE` forces a flush. Set the interval to `0` for
-  synchronous writes.
+- Persisted writes go to `database.journal` immediately and are fsynced every
+  `persist-flush-interval-ms` (default 1 s; `0` = every change). A full
+  `database.bin` snapshot is written every `persist-snapshot-interval-ms`
+  (30 s) while there are changes, on `SAVE` and on shutdown.

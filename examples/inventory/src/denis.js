@@ -1,6 +1,14 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { DenisClient, DenisCloud } from "denis-client";
 
+// .env next to package.json, without a dependency: KEY=value lines, no expansion
+if (existsSync(".env")) {
+  for (const line of readFileSync(".env", "utf8").split("\n")) {
+    const m = /^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/.exec(line);
+    if (m && process.env[m[1]] === undefined && m[2] !== "") process.env[m[1]] = m[2];
+  }
+}
+
 // Over TCP without DENIS_TOKEN the first start creates a project; its token is
 // kept in this file so every later process (server, seed, tests) uses the same one.
 const TOKEN_FILE = ".denis-token";
@@ -36,8 +44,8 @@ export async function migrate() {
     await denis.connect();
     if (!process.env.DENIS_TOKEN && denis.token && denis.token !== savedToken) writeFileSync(TOKEN_FILE, denis.token + "\n");
   }
-  await denis.execute("CREATE TABLE IF NOT EXISTS products (id INT, sku TEXT, name TEXT, category TEXT, unit TEXT, quantity INT, min_quantity INT, price REAL, updated_at TEXT)");
-  await denis.execute("CREATE TABLE IF NOT EXISTS movements (id INT, product_id INT, sku TEXT, kind TEXT, quantity INT, note TEXT, actor TEXT, created_at TEXT)");
+  await denis.execute("CREATE TABLE IF NOT EXISTS inv_products (id INT, sku TEXT, name TEXT, category TEXT, unit TEXT, quantity INT, min_quantity INT, price REAL, updated_at TEXT)");
+  await denis.execute("CREATE TABLE IF NOT EXISTS inv_movements (id INT, product_id INT, sku TEXT, kind TEXT, quantity INT, note TEXT, actor TEXT, created_at TEXT)");
 }
 
 /** A monotonic counter kept in a key: read, add one, write back. */

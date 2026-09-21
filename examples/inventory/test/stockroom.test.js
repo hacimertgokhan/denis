@@ -66,7 +66,7 @@ test("register, sign in, create a product, move stock, read the overview", { ski
     assert.match(r.text, new RegExp(sku));
     // the data really is in Denis
     assert.equal(await denis.exists(`user:${email}`), true);
-    const rows = await denis.query(`SELECT quantity FROM products WHERE sku = '${sku}'`);
+    const rows = await denis.query(`SELECT quantity FROM inv_products WHERE sku = '${sku}'`);
     assert.equal(rows[0].quantity, 2);
     // clean up
     r = await call(`/products/${id}/delete`, {});

@@ -10,8 +10,8 @@ database on Denis Cloud (HTTPS with an API key).
 users        user:<email>      {"name","hash","salt","role","createdAt"}   scrypt, per-user salt
 sessions     session:<token>   {"email","expiresAt"}                        14 days, httpOnly cookie
 counters     seq:product, seq:movement
-products     table (id, sku, name, category, unit, quantity, min_quantity, price, updated_at)
-movements    table (id, product_id, sku, kind, quantity, note, actor, created_at)
+inv_products table (id, sku, name, category, unit, quantity, min_quantity, price, updated_at)
+inv_movements table (id, product_id, sku, kind, quantity, note, actor, created_at)
 ```
 
 Rules: quantities only change through a movement (`in`, `out`, `adjust`),

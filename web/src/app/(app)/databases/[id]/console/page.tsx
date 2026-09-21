@@ -10,5 +10,5 @@ export default async function ConsolePage({ params }: { params: Promise<{ id: st
   const { id } = await params;
   const database = await getOwnedDatabase(user.id, id);
   if (!database) notFound();
-  return <Console databaseId={database.id} />;
+  return <Console databaseId={database.id} databaseName={database.name} />;
 }

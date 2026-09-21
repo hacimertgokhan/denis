@@ -16,10 +16,12 @@ export default async function DatabaseLayout({ children, params }: { children: R
         crumbs={[{ label: "Databases", href: "/databases" }, { label: database.name }]}
         actions={<Badge variant="outline">{database.region}</Badge>}
       />
-      <div className="border-b px-4 lg:px-6">
-        <DatabaseTabs id={database.id} />
+      <div className="border-b">
+        <div className="mx-auto max-w-[1120px] px-5 lg:px-8">
+          <DatabaseTabs id={database.id} />
+        </div>
       </div>
-      <div className="flex flex-1 flex-col gap-4 p-4 lg:p-6">{children}</div>
+      <div className="mx-auto flex w-full max-w-[1120px] flex-1 flex-col gap-6 p-5 lg:p-8">{children}</div>
     </>
   );
 }

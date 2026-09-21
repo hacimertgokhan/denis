@@ -5,13 +5,13 @@ import { useState } from "react";
 import { Loader2Icon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ConfirmDialog } from "@/components/app/confirm-dialog";
+import { SectionRow } from "@/components/app/page-primitives";
 import { apiFetch } from "@/lib/client-api";
 
-export function DatabaseSettings({ database }: { database: { id: string; name: string } }) {
+export function DatabaseSettings({ database }: { database: { id: string; name: string; region: string; createdAt: string } }) {
   const router = useRouter();
   const [name, setName] = useState(database.name);
   const [busy, setBusy] = useState(false);
@@ -20,7 +20,7 @@ export function DatabaseSettings({ database }: { database: { id: string; name: s
     setBusy(true);
     try {
       await apiFetch(`/api/v1/databases/${database.id}`, { method: "PATCH", body: JSON.stringify({ name }) });
-      toast.success("Renamed");
+      toast.success("Name saved");
       router.refresh();
     } catch (err) {
       toast.error((err as Error).message);
@@ -30,78 +30,84 @@ export function DatabaseSettings({ database }: { database: { id: string; name: s
   }
 
   return (
-    <div className="grid gap-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Name</CardTitle>
-          <CardDescription>Shown in the console and used for the MCP server name.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid max-w-sm gap-2">
+    <div>
+      <SectionRow title="Name" description="Shown in the console and used as the MCP server name.">
+        <form
+          className="flex max-w-md flex-col gap-3 sm:flex-row sm:items-end"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void rename();
+          }}
+        >
+          <div className="grid flex-1 gap-1.5">
             <Label htmlFor="name">Database name</Label>
             <Input id="name" value={name} onChange={(e) => setName(e.target.value)} maxLength={48} />
           </div>
-        </CardContent>
-        <CardFooter>
-          <Button onClick={() => void rename()} disabled={busy || !name.trim() || name === database.name}>
-            {busy && <Loader2Icon className="animate-spin" />} Save
+          <Button type="submit" variant="outline" disabled={busy || !name.trim() || name === database.name}>
+            {busy && <Loader2Icon className="animate-spin" />} Save name
           </Button>
-        </CardFooter>
-      </Card>
+        </form>
+      </SectionRow>
 
-      <Card className="border-destructive/40">
-        <CardHeader>
-          <CardTitle>Danger zone</CardTitle>
-          <CardDescription>These actions cannot be undone.</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <div className="font-medium">Empty the database</div>
-              <div className="text-sm text-muted-foreground">Delete every key and table; API keys and the database stay.</div>
-            </div>
-            <ConfirmDialog
-              title="Empty this database?"
-              description="Every key and table is deleted. API keys keep working."
-              confirmLabel="Empty database"
-              confirmText={database.name}
-              onConfirm={async () => {
-                try {
-                  await apiFetch(`/api/v1/databases/${database.id}`, { method: "PATCH", body: JSON.stringify({ action: "reset" }) });
-                  toast.success("Database emptied");
-                  router.refresh();
-                } catch (err) {
-                  toast.error((err as Error).message);
-                }
-              }}
-              trigger={<Button variant="outline">Empty</Button>}
-            />
+      <SectionRow title="Details">
+        <dl className="max-w-md divide-y rounded-lg border text-[14px]">
+          <div className="flex items-center justify-between gap-6 px-4 py-2.5">
+            <dt className="text-muted-foreground">Database id</dt>
+            <dd className="font-mono text-[13px]">{database.id}</dd>
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <div className="font-medium">Delete the database</div>
-              <div className="text-sm text-muted-foreground">Removes the data, the API keys and the usage history.</div>
-            </div>
-            <ConfirmDialog
-              title="Delete this database?"
-              description="All data, keys and history are removed permanently."
-              confirmLabel="Delete database"
-              confirmText={database.name}
-              onConfirm={async () => {
-                try {
-                  await apiFetch(`/api/v1/databases/${database.id}`, { method: "DELETE" });
-                  toast.success("Database deleted");
-                  router.push("/databases");
-                  router.refresh();
-                } catch (err) {
-                  toast.error((err as Error).message);
-                }
-              }}
-              trigger={<Button variant="destructive">Delete</Button>}
-            />
+          <div className="flex items-center justify-between gap-6 px-4 py-2.5">
+            <dt className="text-muted-foreground">Region</dt>
+            <dd>{database.region}</dd>
           </div>
-        </CardContent>
-      </Card>
+          <div className="flex items-center justify-between gap-6 px-4 py-2.5">
+            <dt className="text-muted-foreground">Created</dt>
+            <dd>{new Date(database.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}</dd>
+          </div>
+        </dl>
+      </SectionRow>
+
+      <SectionRow title="Empty the database" description="Deletes every key and table. API keys and the database itself stay.">
+        <ConfirmDialog
+          title="Empty this database?"
+          description="Every key and table is deleted. API keys keep working."
+          confirmLabel="Empty database"
+          confirmText={database.name}
+          onConfirm={async () => {
+            try {
+              await apiFetch(`/api/v1/databases/${database.id}`, { method: "PATCH", body: JSON.stringify({ action: "reset" }) });
+              toast.success("Database emptied");
+              router.refresh();
+            } catch (err) {
+              toast.error((err as Error).message);
+            }
+          }}
+          trigger={<Button variant="outline">Empty database</Button>}
+        />
+      </SectionRow>
+
+      <SectionRow title="Delete the database" description="Removes the data, the API keys and the usage history. This cannot be undone.">
+        <ConfirmDialog
+          title="Delete this database?"
+          description="All data, keys and history are removed permanently."
+          confirmLabel="Delete database"
+          confirmText={database.name}
+          onConfirm={async () => {
+            try {
+              await apiFetch(`/api/v1/databases/${database.id}`, { method: "DELETE" });
+              toast.success("Database deleted");
+              router.push("/databases");
+              router.refresh();
+            } catch (err) {
+              toast.error((err as Error).message);
+            }
+          }}
+          trigger={
+            <Button variant="outline" className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive">
+              Delete database
+            </Button>
+          }
+        />
+      </SectionRow>
     </div>
   );
 }

@@ -6,7 +6,7 @@ import { KeyIcon, Loader2Icon, PlusIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Panel } from "@/components/app/page-primitives";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,75 +57,72 @@ export function ApiKeys({ databaseId, keys }: { databaseId: string; keys: KeyRow
   const active = keys.filter((k) => !k.revokedAt);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          API keys
-          <Dialog
-            open={open}
-            onOpenChange={(o) => {
-              setOpen(o);
-              if (!o) setSecret(null);
-            }}
-          >
-            <DialogTrigger asChild>
-              <Button size="sm">
-                <PlusIcon /> New key
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              {secret ? (
-                <>
-                  <DialogHeader>
-                    <DialogTitle>Copy your key now</DialogTitle>
-                    <DialogDescription>It is shown once. Store it in a secret manager or an environment variable.</DialogDescription>
-                  </DialogHeader>
-                  <CodeBlock code={secret} title="API key" />
-                  <DialogFooter>
-                    <Button onClick={() => setOpen(false)}>Done</Button>
-                  </DialogFooter>
-                </>
-              ) : (
-                <>
-                  <DialogHeader>
-                    <DialogTitle>New API key</DialogTitle>
-                    <DialogDescription>Keys authenticate the REST API, the token endpoint and the MCP endpoint for this database.</DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="key-name">Name</Label>
-                      <Input id="key-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="production, claude-desktop, …" maxLength={48} />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label>Scope</Label>
-                      <Select value={scope} onValueChange={(v) => setScope(v as "read" | "write")}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="write">Read and write</SelectItem>
-                          <SelectItem value="read">Read only (safe for AI assistants)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+    <Panel
+      title="API keys"
+      description={`${active.length} active. Revoking a key also invalidates the JWTs issued for it.`}
+      bodyClassName="p-0"
+      actions={
+        <Dialog
+          open={open}
+          onOpenChange={(o) => {
+            setOpen(o);
+            if (!o) setSecret(null);
+          }}
+        >
+          <DialogTrigger asChild>
+            <Button size="sm" variant="outline">
+              <PlusIcon /> New key
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            {secret ? (
+              <>
+                <DialogHeader>
+                  <DialogTitle>Copy your key now</DialogTitle>
+                  <DialogDescription>It is shown once. Store it in a secret manager or an environment variable.</DialogDescription>
+                </DialogHeader>
+                <CodeBlock code={secret} title="API key" />
+                <DialogFooter>
+                  <Button onClick={() => setOpen(false)}>Done</Button>
+                </DialogFooter>
+              </>
+            ) : (
+              <>
+                <DialogHeader>
+                  <DialogTitle>New API key</DialogTitle>
+                  <DialogDescription>Keys authenticate the REST API, the token endpoint and the MCP endpoint for this database.</DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="key-name">Name</Label>
+                    <Input id="key-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="production, claude-desktop, …" maxLength={48} autoFocus />
                   </div>
-                  <DialogFooter>
-                    <Button onClick={() => void create()} disabled={busy || !name.trim()}>
-                      {busy && <Loader2Icon className="animate-spin" />} Create key
-                    </Button>
-                  </DialogFooter>
-                </>
-              )}
-            </DialogContent>
-          </Dialog>
-        </CardTitle>
-        <CardDescription>
-          {active.length} active key(s). Revoking a key also invalidates the JWTs issued for it.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+                  <div className="grid gap-2">
+                    <Label>Scope</Label>
+                    <Select value={scope} onValueChange={(v) => setScope(v as "read" | "write")}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="write">Read and write</SelectItem>
+                        <SelectItem value="read">Read only (safe for AI assistants)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button onClick={() => void create()} disabled={busy || !name.trim()}>
+                    {busy && <Loader2Icon className="animate-spin" />} Create key
+                  </Button>
+                </DialogFooter>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
+      }
+    >
         {keys.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No keys yet. Create one to use the API or MCP.</p>
+          <p className="p-5 text-[13.5px] text-muted-foreground">No keys yet. Create one to use the API or MCP.</p>
         ) : (
           <Table>
             <TableHeader>
@@ -174,7 +171,6 @@ export function ApiKeys({ databaseId, keys }: { databaseId: string; keys: KeyRow
             </TableBody>
           </Table>
         )}
-      </CardContent>
-    </Card>
+    </Panel>
   );
 }

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { LandingNav } from "@/components/landing/nav";
 import { LandingFooter } from "@/components/landing/footer";
 import { ConsoleDemo } from "@/components/landing/console-demo";
+import { HeroAtmosphere } from "@/components/landing/atmosphere";
 import { CodeBlock } from "@/components/app/code-block";
 import { ArchitectureDiagram, DurabilityDiagram, McpFlowDiagram } from "@/components/app/diagrams";
 import { currentUser } from "@/lib/session";
@@ -30,7 +31,9 @@ export default async function Landing() {
 
       <main>
         {/* hero: a sentence and the thing itself */}
-        <section className="mx-auto grid max-w-[1120px] gap-12 px-5 pt-32 pb-20 lg:grid-cols-[minmax(0,26rem)_1fr] lg:items-center lg:gap-16 lg:pt-40">
+        <section className="relative">
+          <HeroAtmosphere />
+          <div className="mx-auto grid max-w-[1120px] gap-12 px-5 pt-32 pb-20 lg:grid-cols-[minmax(0,26rem)_1fr] lg:items-center lg:gap-16 lg:pt-40">
           <div>
             <h1 className="text-[2.5rem] leading-[1.05] font-medium tracking-[-0.02em] text-balance sm:text-[3.25rem]">
               A database you talk to one line at a time.
@@ -61,6 +64,7 @@ export default async function Landing() {
             </p>
           </div>
           <ConsoleDemo />
+          </div>
         </section>
 
         {/* what you get: a table, not cards */}

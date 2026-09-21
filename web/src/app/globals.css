@@ -67,11 +67,11 @@
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  --chart-1: #d9931f;
+  --chart-2: #4b5563;
+  --chart-3: #8a6d3b;
+  --chart-4: #9aa0aa;
+  --chart-5: #c2410c;
   --radius: 0.625rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
@@ -102,11 +102,11 @@
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  --chart-1: #e0a23a;
+  --chart-2: #b8bec8;
+  --chart-3: #c9a86a;
+  --chart-4: #6b7280;
+  --chart-5: #f97316;
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.488 0.243 264.376);
@@ -199,4 +199,42 @@
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ----------------------------------------------------------------- workbench
+ * Shared building blocks of the signed-in pages: hairline sections instead
+ * of stacked cards, one honey accent for "current" states.
+ */
+.wb-rule {
+  border-color: var(--border);
+}
+.wb-terminal {
+  background: #1b1e24;
+  color: #eceae4;
+}
+.dark .wb-terminal {
+  background: #111318;
+}
+.wb-terminal .wb-dim {
+  color: #8b919c;
+}
+.wb-terminal .wb-prompt {
+  color: #e0a23a;
+}
+.wb-terminal .wb-err {
+  color: #fca5a5;
+}
+.wb-terminal table {
+  border-collapse: collapse;
+}
+.wb-terminal th,
+.wb-terminal td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0.35rem 0.75rem 0.35rem 0;
+  text-align: left;
+  vertical-align: top;
+  font-weight: 400;
+}
+.wb-terminal th {
+  color: #8b919c;
 }

@@ -10,5 +10,5 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   const { id } = await params;
   const database = await getOwnedDatabase(user.id, id);
   if (!database) notFound();
-  return <DatabaseSettings database={{ id: database.id, name: database.name }} />;
+  return <DatabaseSettings database={{ id: database.id, name: database.name, region: database.region, createdAt: database.createdAt.toISOString() }} />;
 }

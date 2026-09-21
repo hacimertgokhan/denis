@@ -6,7 +6,7 @@ import { useState } from "react";
 import { Loader2Icon } from "lucide-react";
 import { toast } from "sonner";
 import { GitHubIcon } from "@/components/app/brand-icons";
-import { ConsoleDemo } from "@/components/landing/console-demo";
+import { AuthAtmosphere } from "@/components/landing/atmosphere";
 import { authClient } from "@/lib/auth-client";
 
 const field =
@@ -38,20 +38,32 @@ export function AuthForm({ mode, githubEnabled }: { mode: "login" | "register"; 
 
   return (
     <div className="landing grid min-h-screen lg:grid-cols-[1.1fr_1fr]">
-      {/* left: the product at rest */}
-      <aside className="hidden flex-col justify-between bg-[var(--l-console)] p-10 text-[var(--l-console-text)] lg:flex">
-        <Link href="/" className="text-[15px] font-medium tracking-tight">
-          Denis Cloud
-        </Link>
-        <div className="my-10 max-w-[34rem]">
-          <p className="mb-6 max-w-[30ch] text-[1.6rem] leading-[1.25] font-medium tracking-[-0.01em] text-balance">
-            Keys, small tables and an MCP endpoint, one line at a time.
-          </p>
-          <div className="[&>div]:border-white/10 [&>div]:shadow-none">
-            <ConsoleDemo autoplay={false} />
+      {/* left: atmosphere and a short promise */}
+      <aside className="hidden lg:block">
+        <AuthAtmosphere>
+          <div className="-mt-10 flex min-h-[calc(100vh-10rem)] flex-col justify-between">
+            <Link href="/" className="text-[15px] font-medium tracking-tight text-white">
+              Denis Cloud
+            </Link>
+            <div className="max-w-[30rem]">
+              <p className="text-[2rem] leading-[1.2] font-medium tracking-[-0.015em] text-balance text-white">
+                Keys, small tables and an MCP endpoint, one line at a time.
+              </p>
+              <ul className="mt-8 grid gap-3 text-[15px] text-white/70">
+                <li className="flex gap-3">
+                  <span className="mt-[0.55em] size-1.5 shrink-0 rounded-full bg-[#d9931f]" /> Three databases per account, each with its own API keys.
+                </li>
+                <li className="flex gap-3">
+                  <span className="mt-[0.55em] size-1.5 shrink-0 rounded-full bg-[#d9931f]" /> A web console, a REST API and a hosted MCP endpoint.
+                </li>
+                <li className="flex gap-3">
+                  <span className="mt-[0.55em] size-1.5 shrink-0 rounded-full bg-[#d9931f]" /> Every change journaled to disk the moment it is acknowledged.
+                </li>
+              </ul>
+            </div>
+            <p className="text-[13px] text-white/45">Open source engine, MIT licensed. Free hosting.</p>
           </div>
-        </div>
-        <p className="text-[13px] text-[var(--l-console-dim)]">Open source engine. Free hosting for three databases per account.</p>
+        </AuthAtmosphere>
       </aside>
 
       {/* right: the form */}

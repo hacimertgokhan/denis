@@ -1,17 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { KeyRoundIcon, Loader2Icon, PlusIcon, SearchIcon, Trash2Icon } from "lucide-react";
+import { Loader2Icon, PlusIcon, SearchIcon } from "lucide-react";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { ConfirmDialog } from "@/components/app/confirm-dialog";
 import { apiFetch } from "@/lib/client-api";
+import { cn } from "@/lib/utils";
 import type { Reply } from "@/components/app/reply-view";
 
 async function exec(databaseId: string, command: string): Promise<Reply> {
@@ -24,7 +24,7 @@ async function exec(databaseId: string, command: string): Promise<Reply> {
 
 export function KeysBrowser({ databaseId }: { databaseId: string }) {
   const [pattern, setPattern] = useState("*");
-  const [keys, setKeys] = useState<string[]>([]);
+  const [keys, setKeys] = useState<string[] | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [value, setValue] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -34,7 +34,7 @@ export function KeysBrowser({ databaseId }: { databaseId: string }) {
   const [persist, setPersist] = useState(true);
 
   const search = useCallback(async () => {
-    await Promise.resolve(); // leave the render/effect phase before touching state
+    await Promise.resolve();
     setBusy(true);
     try {
       const reply = await exec(databaseId, `KEYS ${pattern.trim() || "*"}`);
@@ -48,7 +48,6 @@ export function KeysBrowser({ databaseId }: { databaseId: string }) {
   }, [databaseId, pattern]);
 
   useEffect(() => {
-    // initial load, deferred out of the effect body
     const timer = setTimeout(() => void search(), 0);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -61,14 +60,20 @@ export function KeysBrowser({ databaseId }: { databaseId: string }) {
     setValue(reply.ok ? String(reply.data) : null);
   }
 
+  function startEdit(key = "", initial = "") {
+    setEditKey(key);
+    setEditValue(initial);
+    setEditOpen(true);
+  }
+
   async function save() {
     const key = editKey.trim();
     if (!key || /\s/.test(key)) {
-      toast.error("Keys are one word without whitespace");
+      toast.error("A key is one word without whitespace");
       return;
     }
     if (/[\r\n]/.test(editValue) || /(^|\s)-&/.test(editValue)) {
-      toast.error("Values cannot contain line breaks or a word starting with -&");
+      toast.error("A value cannot contain line breaks or a word starting with -&");
       return;
     }
     const reply = await exec(databaseId, `SET ${key} ${editValue}${persist ? " -&cache -&save" : ""}`);
@@ -79,7 +84,7 @@ export function KeysBrowser({ databaseId }: { databaseId: string }) {
     toast.success(`Saved ${key}`);
     setEditOpen(false);
     await search();
-    if (selected === key) await open(key);
+    await open(key);
   }
 
   async function remove(key: string) {
@@ -107,115 +112,125 @@ export function KeysBrowser({ databaseId }: { databaseId: string }) {
   }
 
   return (
-    <div className="grid gap-4 @4xl/main:grid-cols-[20rem_1fr]">
-      <Card className="h-fit">
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between text-base">
-            Keys
-            <Dialog open={editOpen} onOpenChange={setEditOpen}>
-              <DialogTrigger asChild>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    setEditKey("");
-                    setEditValue("");
-                  }}
-                >
-                  <PlusIcon /> New
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Set a key</DialogTitle>
-                  <DialogDescription>Values are text; store JSON for structured data.</DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="k">Key</Label>
-                    <Input id="k" value={editKey} onChange={(e) => setEditKey(e.target.value)} placeholder="user:42" className="font-mono" />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="v">Value</Label>
-                    <Textarea id="v" value={editValue} onChange={(e) => setEditValue(e.target.value)} className="font-mono" rows={4} />
-                  </div>
-                  <label className="flex items-center gap-2 text-sm">
-                    <Checkbox checked={persist} onCheckedChange={(c) => setPersist(c === true)} /> Persist to disk (survives restarts)
-                  </label>
-                </div>
-                <DialogFooter>
-                  <Button onClick={() => void save()}>Save</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </CardTitle>
-          <CardDescription>Glob pattern: * any run, ? one character</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-3">
+    <>
+      <div className="grid min-h-[28rem] overflow-hidden rounded-lg border bg-card @3xl/main:grid-cols-[18rem_1fr]">
+        {/* key list */}
+        <div className="flex flex-col border-b @3xl/main:border-r @3xl/main:border-b-0">
           <form
-            className="flex gap-2"
+            className="flex items-center gap-2 border-b px-3 py-2"
             onSubmit={(e) => {
               e.preventDefault();
               void search();
             }}
           >
-            <Input value={pattern} onChange={(e) => setPattern(e.target.value)} className="font-mono" />
-            <Button type="submit" size="icon" variant="outline" aria-label="Search">
-              {busy ? <Loader2Icon className="animate-spin" /> : <SearchIcon />}
-            </Button>
+            <SearchIcon className="size-3.5 shrink-0 text-muted-foreground" />
+            <input
+              value={pattern}
+              onChange={(e) => setPattern(e.target.value)}
+              className="min-w-0 flex-1 bg-transparent font-mono text-[13px] outline-none"
+              placeholder="user:*"
+              aria-label="Key pattern"
+            />
+            <button type="button" onClick={() => startEdit()} className="text-muted-foreground hover:text-foreground" aria-label="New key">
+              <PlusIcon className="size-4" />
+            </button>
           </form>
-          <div className="max-h-[28rem] overflow-y-auto">
-            {keys.length === 0 && <p className="text-sm text-muted-foreground">No keys match.</p>}
-            {keys.map((k) => (
-              <button
-                key={k}
-                type="button"
-                onClick={() => void open(k)}
-                className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left font-mono text-sm hover:bg-muted ${selected === k ? "bg-muted" : ""}`}
-              >
-                <KeyRoundIcon className="size-3.5 shrink-0 text-muted-foreground" />
-                <span className="truncate">{k}</span>
-              </button>
-            ))}
-          </div>
-          <span className="text-xs text-muted-foreground">{keys.length} key(s)</span>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between font-mono text-base">
-            {selected ?? <span className="font-sans text-muted-foreground">Select a key</span>}
-            {selected && (
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    setEditKey(selected);
-                    setEditValue(value ?? "");
-                    setEditOpen(true);
-                  }}
-                >
-                  Edit
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => void remove(selected)}>
-                  <Trash2Icon /> Delete
-                </Button>
-              </div>
+          <ul className="max-h-[32rem] flex-1 overflow-y-auto py-1">
+            {keys === null && (
+              <li className="px-4 py-2">
+                <Loader2Icon className="size-4 animate-spin text-muted-foreground" />
+              </li>
             )}
-          </CardTitle>
-          {selected && value !== null && (
-            <CardDescription>
-              {value.length} characters {pretty && <Badge variant="secondary">JSON</Badge>}
-            </CardDescription>
+            {keys?.length === 0 && <li className="px-4 py-3 text-[13px] text-muted-foreground">No keys match. Patterns: * any run, ? one character.</li>}
+            {keys?.map((k) => (
+              <li key={k}>
+                <button
+                  type="button"
+                  onClick={() => void open(k)}
+                  className={cn("w-full truncate px-4 py-1.5 text-left font-mono text-[13px] transition-colors hover:bg-muted/60", selected === k && "bg-muted font-medium")}
+                >
+                  {k}
+                </button>
+              </li>
+            ))}
+          </ul>
+          <div className="border-t px-4 py-2 text-[12px] text-muted-foreground">{keys ? `${keys.length} key(s)` : busy ? "Searching…" : ""}</div>
+        </div>
+
+        {/* value */}
+        <div className="flex min-w-0 flex-col">
+          {selected ? (
+            <>
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-2.5">
+                <div className="min-w-0">
+                  <span className="font-mono text-[13.5px] font-medium">{selected}</span>
+                  {value !== null && (
+                    <span className="ml-3 text-[12px] text-muted-foreground">
+                      {value.length} characters{pretty ? " · JSON" : ""}
+                    </span>
+                  )}
+                </div>
+                <div className="flex gap-1">
+                  <Button variant="ghost" size="sm" onClick={() => startEdit(selected, value ?? "")}>
+                    Edit
+                  </Button>
+                  <ConfirmDialog
+                    title={`Delete ${selected}?`}
+                    description="The key is removed from the cache and the persisted store."
+                    confirmLabel="Delete key"
+                    onConfirm={() => remove(selected)}
+                    trigger={
+                      <Button variant="ghost" size="sm" className="text-muted-foreground">
+                        Delete
+                      </Button>
+                    }
+                  />
+                </div>
+              </div>
+              <div className="flex-1 p-4">
+                {value === null ? (
+                  <Loader2Icon className="size-4 animate-spin text-muted-foreground" />
+                ) : (
+                  <pre className="font-mono text-[13px] leading-[1.6] break-all whitespace-pre-wrap">{pretty ?? value}</pre>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-1 items-center justify-center text-[13.5px] text-muted-foreground">Select a key to see its value</div>
           )}
-        </CardHeader>
-        <CardContent>
-          {selected && value === null && <Loader2Icon className="animate-spin text-muted-foreground" />}
-          {value !== null && <pre className="overflow-x-auto rounded-md bg-muted p-3 font-mono text-sm whitespace-pre-wrap break-all">{pretty ?? value}</pre>}
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+      </div>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editKey && keys?.includes(editKey) ? `Edit ${editKey}` : "New key"}</DialogTitle>
+            <DialogDescription>Values are text. Store JSON for structured data.</DialogDescription>
+          </DialogHeader>
+          <form
+            className="grid gap-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void save();
+            }}
+          >
+            <div className="grid gap-2">
+              <Label htmlFor="k">Key</Label>
+              <Input id="k" value={editKey} onChange={(e) => setEditKey(e.target.value)} placeholder="user:42" className="font-mono" autoFocus />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="v">Value</Label>
+              <Textarea id="v" value={editValue} onChange={(e) => setEditValue(e.target.value)} className="font-mono" rows={5} />
+            </div>
+            <label className="flex items-center gap-2 text-[13.5px]">
+              <Checkbox checked={persist} onCheckedChange={(c) => setPersist(c === true)} /> Persist to disk (survives restarts)
+            </label>
+            <DialogFooter>
+              <Button type="submit">Save key</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

@@ -1,8 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { StatCard } from "@/components/app/stat-card";
+import { StatStrip } from "@/components/app/page-primitives";
 import { OpsChart, StorageChart } from "@/components/app/usage-chart";
 import { getOwnedDatabase, opsToday, sampleUsage, usageHistory } from "@/lib/databases";
 import { formatBytes, formatDate, formatNumber, percent } from "@/lib/format";
@@ -20,77 +18,29 @@ export default async function OverviewPage({ params }: { params: Promise<{ id: s
 
   return (
     <>
-      <div className="grid grid-cols-1 gap-4 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
-        <StatCard
-          label="Storage"
-          value={formatBytes(database.persistedBytes)}
-          progress={percent(database.persistedBytes, database.maxBytes)}
-          hint={`of ${formatBytes(database.maxBytes)} persisted`}
-          badge={`${percent(database.persistedBytes, database.maxBytes)} %`}
-        />
-        <StatCard
-          label="Keys"
-          value={formatNumber(database.persistedKeys)}
-          progress={percent(database.persistedKeys, database.maxKeys)}
-          hint={`of ${formatNumber(database.maxKeys)} · ${formatNumber(database.cachedKeys)} in cache`}
-        />
-        <StatCard
-          label="Commands today"
-          value={formatNumber(today)}
-          progress={percent(today, database.opsPerDay)}
-          hint={`of ${formatNumber(database.opsPerDay)} per day`}
-        />
-        <StatCard label="Avg latency (7 d)" value={opsTotal ? `${(latencyTotal / opsTotal).toFixed(1)} ms` : "–"} hint={`${formatNumber(opsTotal)} commands`} />
-      </div>
+      <StatStrip
+        stats={[
+          { label: "Storage", value: formatBytes(database.persistedBytes), progress: percent(database.persistedBytes, database.maxBytes), hint: `of ${formatBytes(database.maxBytes)}` },
+          { label: "Keys", value: formatNumber(database.persistedKeys), progress: percent(database.persistedKeys, database.maxKeys), hint: `of ${formatNumber(database.maxKeys)} · ${formatNumber(database.cachedKeys)} cached` },
+          { label: "Commands today", value: formatNumber(today), progress: percent(today, database.opsPerDay), hint: `of ${formatNumber(database.opsPerDay)}` },
+          { label: "Latency, 7 days", value: opsTotal ? `${(latencyTotal / opsTotal).toFixed(1)} ms` : "–", hint: `average over ${formatNumber(opsTotal)} commands` },
+        ]}
+      />
 
-      <div className="grid gap-4 @4xl/main:grid-cols-3">
+      <div className="grid gap-6 @4xl/main:grid-cols-3">
         <div className="@4xl/main:col-span-2">
           <OpsChart points={points} />
         </div>
         <StorageChart points={points} maxBytes={database.maxBytes} />
       </div>
 
-      <div className="grid gap-4 @4xl/main:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Get started</CardTitle>
-            <CardDescription>Everything you can do with this database</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-2">
-            <Button asChild variant="outline" size="sm">
-              <Link href={`/databases/${database.id}/console`}>Open the console</Link>
-            </Button>
-            <Button asChild variant="outline" size="sm">
-              <Link href={`/databases/${database.id}/connect`}>Create an API key</Link>
-            </Button>
-            <Button asChild variant="outline" size="sm">
-              <Link href={`/databases/${database.id}/connect#mcp`}>Connect an AI assistant (MCP)</Link>
-            </Button>
-            <Button asChild variant="outline" size="sm">
-              <Link href={`/databases/${database.id}/tables`}>Browse tables</Link>
-            </Button>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Details</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <dl className="grid grid-cols-2 gap-y-2 text-sm">
-              <dt className="text-muted-foreground">Database id</dt>
-              <dd className="font-mono">{database.id}</dd>
-              <dt className="text-muted-foreground">Region</dt>
-              <dd>{database.region}</dd>
-              <dt className="text-muted-foreground">Created</dt>
-              <dd>{formatDate(database.createdAt)}</dd>
-              <dt className="text-muted-foreground">Limits</dt>
-              <dd>
-                {formatBytes(database.maxBytes)} · {formatNumber(database.maxKeys)} keys · {formatNumber(database.opsPerDay)} commands/day
-              </dd>
-            </dl>
-          </CardContent>
-        </Card>
-      </div>
+      <nav className="flex flex-wrap gap-x-6 gap-y-2 text-[14px] text-muted-foreground">
+        <Link href={`/databases/${database.id}/console`} className="underline decoration-border underline-offset-4 hover:text-foreground hover:decoration-foreground">Open the console</Link>
+        <Link href={`/databases/${database.id}/connect`} className="underline decoration-border underline-offset-4 hover:text-foreground hover:decoration-foreground">Create an API key</Link>
+        <Link href={`/databases/${database.id}/connect#mcp`} className="underline decoration-border underline-offset-4 hover:text-foreground hover:decoration-foreground">Connect an assistant</Link>
+        <Link href={`/databases/${database.id}/tables`} className="underline decoration-border underline-offset-4 hover:text-foreground hover:decoration-foreground">Browse tables</Link>
+        <span className="ml-auto">Created {formatDate(database.createdAt)} · {database.region}</span>
+      </nav>
     </>
   );
 }

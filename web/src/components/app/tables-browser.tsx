@@ -1,14 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { ChevronLeftIcon, ChevronRightIcon, Loader2Icon, RefreshCwIcon, TableIcon, Trash2Icon } from "lucide-react";
+import { ChevronLeftIcon, ChevronRightIcon, Loader2Icon, RefreshCwIcon } from "lucide-react";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ConfirmDialog } from "@/components/app/confirm-dialog";
+import { EmptyState } from "@/components/app/page-primitives";
 import { apiFetch } from "@/lib/client-api";
+import { cn } from "@/lib/utils";
 import type { Reply } from "@/components/app/reply-view";
 
 type TableInfo = { name: string; columns: { name: string; type: string }[]; rows: number };
@@ -30,7 +30,7 @@ export function TablesBrowser({ databaseId }: { databaseId: string }) {
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
-    await Promise.resolve(); // leave the render/effect phase before touching state
+    await Promise.resolve();
     setBusy(true);
     try {
       const reply = await exec(databaseId, "SHOW TABLES");
@@ -47,7 +47,6 @@ export function TablesBrowser({ databaseId }: { databaseId: string }) {
   }, [databaseId, selected]);
 
   useEffect(() => {
-    // initial load, deferred out of the effect body
     const timer = setTimeout(() => void load(), 0);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -85,120 +84,128 @@ export function TablesBrowser({ databaseId }: { databaseId: string }) {
       toast.error(reply.error);
       return;
     }
-    toast.success(`Table ${table} dropped`);
+    toast.success(`Dropped ${table}`);
     setSelected(null);
     await load();
   }
 
-  return (
-    <div className="grid gap-4 @4xl/main:grid-cols-[16rem_1fr]">
-      <Card className="h-fit">
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between text-base">
-            Tables
-            <Button variant="ghost" size="icon" className="size-7" onClick={() => void load()} aria-label="Refresh">
-              <RefreshCwIcon className={busy ? "animate-spin" : ""} />
-            </Button>
-          </CardTitle>
-          <CardDescription>{tables ? `${tables.length} table(s)` : "Loading…"}</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-1">
-          {tables?.length === 0 && (
-            <p className="text-sm text-muted-foreground">
-              No tables. Run <code className="font-mono">CREATE TABLE …</code> in the console.
-            </p>
-          )}
-          {tables?.map((t) => (
-            <button
-              key={t.name}
-              type="button"
-              onClick={() => {
-                setSelected(t.name);
-                setOffset(0);
-              }}
-              className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted ${selected === t.name ? "bg-muted font-medium" : ""}`}
-            >
-              <TableIcon className="size-4 text-muted-foreground" />
-              <span className="truncate">{t.name}</span>
-              <Badge variant="secondary" className="ml-auto tabular-nums">
-                {t.rows}
-              </Badge>
-            </button>
-          ))}
-        </CardContent>
-      </Card>
+  if (tables && tables.length === 0) {
+    return (
+      <EmptyState title="No tables yet">
+        Create one in the{" "}
+        <Link href={`/databases/${databaseId}/console`} className="underline underline-offset-4">
+          console
+        </Link>
+        : <code className="font-mono">CREATE TABLE products (id INT, name TEXT, price REAL)</code>
+      </EmptyState>
+    );
+  }
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between text-base">
-            {current ? current.name : "Select a table"}
-            {current && (
+  return (
+    <div className="grid min-h-[28rem] overflow-hidden rounded-lg border bg-card @3xl/main:grid-cols-[15rem_1fr]">
+      {/* table list */}
+      <div className="border-b @3xl/main:border-r @3xl/main:border-b-0">
+        <div className="flex items-center justify-between border-b px-4 py-2.5">
+          <span className="text-[13px] font-medium">Tables{tables ? ` · ${tables.length}` : ""}</span>
+          <button type="button" onClick={() => void load()} className="text-muted-foreground hover:text-foreground" aria-label="Refresh">
+            <RefreshCwIcon className={cn("size-3.5", busy && "animate-spin")} />
+          </button>
+        </div>
+        <ul className="py-1">
+          {tables?.map((t) => (
+            <li key={t.name}>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelected(t.name);
+                  setOffset(0);
+                }}
+                className={cn(
+                  "flex w-full items-center justify-between gap-2 px-4 py-2 text-left text-[13.5px] transition-colors hover:bg-muted/60",
+                  selected === t.name && "bg-muted font-medium",
+                )}
+              >
+                <span className="truncate font-mono">{t.name}</span>
+                <span className="text-[12px] text-muted-foreground tabular-nums">{t.rows}</span>
+              </button>
+            </li>
+          ))}
+          {!tables && (
+            <li className="px-4 py-2 text-[13px] text-muted-foreground">
+              <Loader2Icon className="size-4 animate-spin" />
+            </li>
+          )}
+        </ul>
+      </div>
+
+      {/* rows */}
+      <div className="flex min-w-0 flex-col">
+        {current ? (
+          <>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-2.5">
+              <div className="min-w-0">
+                <span className="font-mono text-[13.5px] font-medium">{current.name}</span>
+                <span className="ml-3 font-mono text-[12px] text-muted-foreground">{current.columns.map((c) => `${c.name} ${c.type}`).join(" · ")}</span>
+              </div>
               <ConfirmDialog
-                title={`Drop table ${current.name}?`}
-                description="All rows are deleted. This cannot be undone."
+                title={`Drop ${current.name}?`}
+                description="Every row is deleted. This cannot be undone."
                 confirmLabel="Drop table"
                 onConfirm={() => drop(current.name)}
                 trigger={
-                  <Button variant="outline" size="sm">
-                    <Trash2Icon /> Drop
+                  <Button variant="ghost" size="sm" className="text-muted-foreground">
+                    Drop table
                   </Button>
                 }
               />
-            )}
-          </CardTitle>
-          {current && (
-            <CardDescription className="font-mono text-xs">{current.columns.map((c) => `${c.name} ${c.type}`).join(", ")}</CardDescription>
-          )}
-        </CardHeader>
-        <CardContent>
-          {current && (
-            <>
-              <div className="overflow-x-auto rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      {current.columns.map((c) => (
-                        <TableHead key={c.name}>{c.name}</TableHead>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {rows.map((r, i) => (
-                      <TableRow key={i}>
-                        {current.columns.map((c) => (
-                          <TableCell key={c.name} className="tabular-nums">
-                            {r[c.name] === null || r[c.name] === undefined ? <span className="text-muted-foreground">NULL</span> : String(r[c.name])}
-                          </TableCell>
-                        ))}
-                      </TableRow>
+            </div>
+            <div className="flex-1 overflow-x-auto">
+              <table className="w-full text-[13.5px]">
+                <thead>
+                  <tr className="border-b text-left text-[12.5px] text-muted-foreground">
+                    {current.columns.map((c) => (
+                      <th key={c.name} className="px-4 py-2 font-medium">
+                        {c.name}
+                      </th>
                     ))}
-                    {rows.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={current.columns.length} className="text-center text-muted-foreground">
-                          {busy ? <Loader2Icon className="mx-auto animate-spin" /> : "No rows"}
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((r, i) => (
+                    <tr key={i} className="border-b last:border-b-0 hover:bg-muted/40">
+                      {current.columns.map((c) => (
+                        <td key={c.name} className="px-4 py-2 font-mono text-[13px] tabular-nums">
+                          {r[c.name] === null || r[c.name] === undefined ? <span className="text-muted-foreground">NULL</span> : String(r[c.name])}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                  {rows.length === 0 && (
+                    <tr>
+                      <td colSpan={current.columns.length} className="px-4 py-8 text-center text-[13.5px] text-muted-foreground">
+                        {busy ? <Loader2Icon className="mx-auto size-4 animate-spin" /> : "No rows"}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex items-center justify-between border-t px-4 py-2 text-[12.5px] text-muted-foreground">
+              <span>{rows.length ? `Rows ${offset + 1}–${offset + rows.length} of ${current.rows}` : `0 of ${current.rows}`}</span>
+              <div className="flex gap-1">
+                <Button variant="ghost" size="icon" className="size-7" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - PAGE))} aria-label="Previous page">
+                  <ChevronLeftIcon />
+                </Button>
+                <Button variant="ghost" size="icon" className="size-7" disabled={offset + PAGE >= current.rows} onClick={() => setOffset(offset + PAGE)} aria-label="Next page">
+                  <ChevronRightIcon />
+                </Button>
               </div>
-              <div className="mt-3 flex items-center justify-between text-sm text-muted-foreground">
-                <span>
-                  Rows {rows.length ? offset + 1 : 0}–{offset + rows.length} of {current.rows}
-                </span>
-                <div className="flex gap-1">
-                  <Button variant="outline" size="icon" className="size-8" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - PAGE))}>
-                    <ChevronLeftIcon />
-                  </Button>
-                  <Button variant="outline" size="icon" className="size-8" disabled={offset + PAGE >= current.rows} onClick={() => setOffset(offset + PAGE)}>
-                    <ChevronRightIcon />
-                  </Button>
-                </div>
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-1 items-center justify-center text-[13.5px] text-muted-foreground">Select a table</div>
+        )}
+      </div>
     </div>
   );
 }

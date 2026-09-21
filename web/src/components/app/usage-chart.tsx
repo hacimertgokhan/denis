@@ -5,6 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import { formatBytes, formatNumber } from "@/lib/format";
 
+const PANEL = "rounded-lg border bg-card shadow-none gap-4 py-5";
+
 export type UsagePoint = {
   hour: string;
   ops?: number;
@@ -47,10 +49,10 @@ const tickFormatter = (value: string) => new Date(value).toLocaleString("en-US",
 export function OpsChart({ points, days = 7, title = "Commands", description }: { points: UsagePoint[]; days?: number; title?: string; description?: string }) {
   const data = fill(points, days);
   return (
-    <Card>
+    <Card className={PANEL}>
       <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{description ?? `Reads, writes and errors per hour, last ${days} days`}</CardDescription>
+        <CardTitle className="text-[15px] font-medium">{title}</CardTitle>
+        <CardDescription className="text-[13px]">{description ?? `Reads, writes and errors per hour, last ${days} days`}</CardDescription>
       </CardHeader>
       <CardContent className="px-2 sm:px-6">
         <ChartContainer config={opsConfig} className="aspect-auto h-64 w-full">
@@ -81,10 +83,10 @@ export function OpsChart({ points, days = 7, title = "Commands", description }: 
 export function StorageChart({ points, days = 7, maxBytes }: { points: UsagePoint[]; days?: number; maxBytes?: number }) {
   const data = fill(points, days);
   return (
-    <Card>
+    <Card className={PANEL}>
       <CardHeader>
-        <CardTitle>Storage</CardTitle>
-        <CardDescription>Persisted data over time{maxBytes ? ` (limit ${formatBytes(maxBytes)})` : ""}</CardDescription>
+        <CardTitle className="text-[15px] font-medium">Storage</CardTitle>
+        <CardDescription className="text-[13px]">Persisted data over time{maxBytes ? ` (limit ${formatBytes(maxBytes)})` : ""}</CardDescription>
       </CardHeader>
       <CardContent className="px-2 sm:px-6">
         <ChartContainer config={storageConfig} className="aspect-auto h-56 w-full">

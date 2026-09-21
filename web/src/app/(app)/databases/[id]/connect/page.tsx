@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ApiKeys } from "@/components/app/api-keys";
 import { CodeBlock } from "@/components/app/code-block";
+import { SectionRow } from "@/components/app/page-primitives";
 import { listApiKeys } from "@/lib/api-keys";
 import { getOwnedDatabase } from "@/lib/databases";
 import { env } from "@/lib/env";
@@ -34,15 +34,11 @@ export default async function ConnectPage({ params }: { params: Promise<{ id: st
         }))}
       />
 
-      <Card id="mcp">
-        <CardHeader>
-          <CardTitle>Connect an AI assistant (MCP)</CardTitle>
-          <CardDescription>
-            The hosted MCP endpoint gives Claude, Cursor or any MCP client the tools denis_describe, denis_query, denis_get, denis_keys, denis_mget, denis_usage and, with
-            a write key, denis_execute, denis_set, denis_delete. Use a read-only key when the assistant should only analyse data.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+      <div id="mcp" className="border-t">
+      <SectionRow
+        title="Connect an AI assistant"
+        description="The hosted MCP endpoint gives Claude, Cursor or any MCP client the denis_* tools. Use a read-only key when the assistant should only analyse data."
+      >
           <Tabs defaultValue="claude-code">
             <TabsList>
               <TabsTrigger value="claude-code">Claude Code</TabsTrigger>
@@ -85,21 +81,14 @@ export default async function ConnectPage({ params }: { params: Promise<{ id: st
               />
             </TabsContent>
           </Tabs>
-          <p className="mt-3 text-sm text-muted-foreground">
+          <p className="mt-3 text-[13.5px] text-muted-foreground">
             Try: <em>“Describe my database and tell me which products cost more than 10.”</em> The assistant calls denis_describe, writes the SQL and runs denis_query.
           </p>
-        </CardContent>
-      </Card>
-
-      <Card id="api">
-        <CardHeader>
-          <CardTitle>REST API</CardTitle>
-          <CardDescription>
-            One endpoint, any protocol command. Replies are the engine&apos;s JSON objects; SQL results come back as rows/affected/tables. Errors use{" "}
-            <code className="font-mono">{"{ error: { code, message } }"}</code>.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+      </SectionRow>
+      <SectionRow
+        title="REST API"
+        description="One endpoint, any protocol command. Replies are the engine's JSON objects; SQL results come back as rows, affected counts or tables. Errors use { error: { code, message } }."
+      >
           <Tabs defaultValue="curl">
             <TabsList>
               <TabsTrigger value="curl">curl</TabsTrigger>
@@ -182,8 +171,8 @@ curl -X POST ${base}/api/v1/token -H "Content-Type: application/json" \\
               />
             </TabsContent>
           </Tabs>
-        </CardContent>
-      </Card>
+      </SectionRow>
+      </div>
     </>
   );
 }

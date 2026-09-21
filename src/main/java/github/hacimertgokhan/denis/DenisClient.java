@@ -53,7 +53,7 @@ public class DenisClient {
             new CommandDoc("EXIT", "EXIT", "Close the connection.", false, false),
             new CommandDoc("LIN", "LIN <group> <password>", "Log in with a group from denis.toml.", false, false),
             new CommandDoc("ADMIN", "ADMIN <main-token> LIST | CREATE | USAGE <token> | QUOTA <token> <maxKeys> <maxBytes> | FLUSH <token> | DROP <token>",
-                    "Project administration with the server's main token (ddb-main-token): list projects with usage, create one, read usage, set limits (0 = unlimited), empty or delete one.", false, false),
+                    "Project administration with the server's main token (ddb-main-token): list projects with usage, create one, import an existing token, read usage, set limits (0 = unlimited), empty or delete one.", false, false),
             new CommandDoc("AUTH", "AUTH CREATE | AUTH <token>", "Create a project (key namespace) or select one by token.", true, false),
             new CommandDoc("INFO", "INFO", "Server statistics: version, uptime, connections, key counts.", true, false),
             new CommandDoc("GET", "GET <key> [-&from-cache | -&from-protobuff] [-&asa-json]", "Read a key (cache first, then the persisted store).", true, true),
@@ -429,7 +429,7 @@ public class DenisClient {
     /** {@code ADMIN <main-token> <action> ...}: project administration, no login needed. */
     private void handleAdmin(PrintWriter out, String[] words) {
         if (words.length < 3) {
-            usage(out, "USAGE: ADMIN <main-token> LIST|CREATE|USAGE|QUOTA|FLUSH|DROP ...");
+            usage(out, "USAGE: ADMIN <main-token> LIST|CREATE|IMPORT|USAGE|QUOTA|FLUSH|DROP ...");
             return;
         }
         if (!ctx.isMainToken(words[1])) {
@@ -453,6 +453,25 @@ public class DenisClient {
                         ctx.projects().setQuota(token, new ProjectRegistry.Quota(Long.parseLong(words[3]), Long.parseLong(words[4])));
                     }
                     json(out, new JSONObject().put("message", "Project created").put("token", token), token);
+                }
+                case "IMPORT" -> {
+                    // ADMIN <main> IMPORT <token> [maxKeys maxBytes]: adopt a token issued before the registry was lost
+                    if (words.length < 4) {
+                        usage(out, "USAGE: ADMIN <main-token> IMPORT <token> [maxKeys maxBytes]");
+                        return;
+                    }
+                    boolean added;
+                    try {
+                        added = ctx.projects().register(words[3]);
+                    } catch (IllegalArgumentException e) {
+                        error(out, e.getMessage());
+                        return;
+                    }
+                    if (words.length >= 6) {
+                        ctx.projects().setQuota(words[3], new ProjectRegistry.Quota(Long.parseLong(words[4]), Long.parseLong(words[5])));
+                    }
+                    json(out, new JSONObject().put("message", added ? "Project imported" : "Project already existed").put("token", words[3]).put("added", added),
+                            added ? "imported" : "already existed");
                 }
                 case "USAGE", "QUOTA", "FLUSH", "DROP" -> {
                     if (words.length < 4 || !ctx.projects().exists(words[3])) {

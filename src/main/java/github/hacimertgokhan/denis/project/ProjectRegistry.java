@@ -129,6 +129,25 @@ public class ProjectRegistry {
         return tokens.size();
     }
 
+    /**
+     * Register a token that was issued elsewhere (a platform restoring its
+     * projects after the engine's data was lost). Idempotent; the token must
+     * look like one of ours: 32-256 characters of letters and digits.
+     *
+     * @return true when the project was added, false when it already existed
+     */
+    public synchronized boolean register(String token) throws IOException {
+        if (token == null || !token.matches("[A-Za-z0-9]{32,256}")) {
+            throw new IllegalArgumentException("a project token is 32-256 letters and digits");
+        }
+        if (exists(token)) {
+            return false;
+        }
+        file.appendToArray(TOKENS_KEY, token);
+        tokens.add(token);
+        return true;
+    }
+
     /** Generate, persist and register a new project token. */
     public synchronized String create() throws IOException {
         String token = new CreateSecureToken().getToken();

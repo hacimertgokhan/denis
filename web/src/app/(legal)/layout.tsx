@@ -5,7 +5,7 @@ import { currentUser } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
-const ENGINE_VERSION = "0.6.0";
+const ENGINE_VERSION = "0.6.1";
 
 /** Reading layout for the policy pages: a sticky outline on the left, the text across the rest of the column. */
 export default async function LegalLayout({ children }: { children: React.ReactNode }) {

@@ -39,15 +39,15 @@ Requirements: Java 17+ (Maven to build from source; Node 18+ for the Node
 client and the MCP server).
 
 ```sh
-mvn package                                   # target/denis-0.6.0.jar (+ project bundle zip/tar.gz)
-java -jar target/denis-0.6.0.jar cli group create crm -p s3cret
-java -jar target/denis-0.6.0.jar server       # listens on 0.0.0.0:5142
+mvn package                                   # target/denis-0.6.1.jar (+ project bundle zip/tar.gz)
+java -jar target/denis-0.6.1.jar cli group create crm -p s3cret
+java -jar target/denis-0.6.1.jar server       # listens on 0.0.0.0:5142
 ```
 
 In a second terminal:
 
 ```sh
-java -jar target/denis-0.6.0.jar cli exec -g crm -p s3cret --create-project \
+java -jar target/denis-0.6.1.jar cli exec -g crm -p s3cret --create-project \
   "SET greeting hello world -&save" "GET greeting" \
   "CREATE TABLE users (id INT, name TEXT)" \
   "INSERT INTO users (id, name) VALUES (1, 'Ada'), (2, 'Grace')" \
@@ -324,7 +324,7 @@ are listed under **Breaking** in [CHANGELOG.md](CHANGELOG.md). Client packages
 have their own versions (`clients/node`, `clients/mcp`, `java-driver`).
 
 To release: update `CHANGELOG.md` and the version in `pom.xml`, commit, tag
-(`git tag v0.6.0 && git push --tags`). The `Release` workflow verifies that the
+(`git tag v0.6.1 && git push --tags`). The `Release` workflow verifies that the
 tag matches `pom.xml`, builds the jar and the bundle, pushes the image to GHCR
 and creates the GitHub Release with the changelog section as notes.
 Release Drafter keeps a draft of the next version from merged PR labels

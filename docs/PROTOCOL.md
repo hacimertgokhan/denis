@@ -79,6 +79,7 @@ Every field a reply can carry:
 | `SQL <statement>` or the bare statement | see below | |
 | `ADMIN <main-token> LIST` | `{"ok":true,"projects":[{token,usage,quota}],"count":n}` | no login; the main token is `ddb-main-token` from `denis.properties` / `DDB_MAIN_TOKEN` |
 | `ADMIN <main-token> CREATE [maxKeys maxBytes]` | `{"ok":true,"token":"..."}` | create a project, optionally with limits |
+| `ADMIN <main-token> IMPORT <token> [maxKeys maxBytes]` | `{"ok":true,"token":"...","added":true}` | register a token issued elsewhere (restore after the registry was lost); idempotent |
 | `ADMIN <main-token> USAGE <token>` | `{"ok":true,"token","usage":{cachedKeys,cachedBytes,persistedKeys,persistedBytes},"quota":{maxKeys,maxBytes}}` | |
 | `ADMIN <main-token> QUOTA <token> <maxKeys> <maxBytes>` | usage object | `0` = unlimited; limits apply to the cache and the persisted store separately |
 | `ADMIN <main-token> FLUSH <token>` | `message` | delete every key and table of the project, keep the project |

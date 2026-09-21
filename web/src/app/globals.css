@@ -481,17 +481,3 @@
   }
 }
 
-/* the cursor in the mark blinks slowly */
-.dm-cursor {
-  animation: dm-blink 2.4s steps(1) infinite;
-}
-@keyframes dm-blink {
-  50% {
-    opacity: 0;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .dm-cursor {
-    animation: none;
-  }
-}

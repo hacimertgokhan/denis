@@ -7,6 +7,22 @@ before 1.0.0 a minor bump may contain breaking changes, which are listed).
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-09-21
+
+### Added
+- `ADMIN <main-token> IMPORT <token> [maxKeys maxBytes]`: register a project
+  token issued elsewhere, idempotently. A platform that still holds tokens the
+  engine lost (a data-less container restart, an older backup) restores them
+  instead of failing with "Cannot auth with". `denis-client` exposes it as
+  `admin.import(token, quota)`.
+
+### Fixed
+- Platform: a database whose project is missing from the engine is
+  re-registered with its limits and the command retried once, for commands
+  and usage sampling alike.
+- Platform: a static geometric mark and a matching favicon; the navigation
+  is one quiet row.
+
 ## [0.6.0] - 2026-09-21
 
 ### Added
@@ -182,7 +198,8 @@ MCP server lets AI assistants inspect and query the database.
   `DenisServer`, `ProjectRegistry`); anything embedding the server classes
   directly must be updated.
 
-[Unreleased]: https://github.com/hacimertgokhan/denis/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/hacimertgokhan/denis/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/hacimertgokhan/denis/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/hacimertgokhan/denis/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/hacimertgokhan/denis/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/hacimertgokhan/denis/compare/v0.3.1...v0.4.0

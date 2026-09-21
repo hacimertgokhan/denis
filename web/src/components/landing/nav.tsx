@@ -9,21 +9,23 @@ import { cn } from "@/lib/utils";
 
 const REPO = "https://github.com/hacimertgokhan/denis";
 
-/** The mark: a prompt and a cursor, the two glyphs of a one-line protocol. */
+/**
+ * The mark: a geometric D on a black tile, with one small square inside the
+ * bowl — a single stored key. No motion; it has to work at 16 px.
+ */
 export function DenisMark({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 28 28" className={cn("size-7", className)} aria-hidden>
-      {/* ink and paper fall back to the app theme outside .landing */}
       <rect x="1" y="1" width="26" height="26" rx="7" fill="var(--l-ink, var(--primary))" />
       <path
-        d="M9 9.5 L14 14 L9 18.5"
+        d="M9.5 8 H13.6 A6 6 0 0 1 13.6 20 H9.5 Z"
         fill="none"
         stroke="var(--l-bg, var(--primary-foreground))"
-        strokeWidth="2.2"
-        strokeLinecap="round"
+        strokeWidth="2.4"
         strokeLinejoin="round"
+        strokeLinecap="round"
       />
-      <rect x="15.5" y="17" width="5" height="2.2" rx="1.1" fill="var(--l-bg, var(--primary-foreground))" className="dm-cursor" />
+      <rect x="12.2" y="12.8" width="2.4" height="2.4" rx="0.5" fill="var(--l-bg, var(--primary-foreground))" />
     </svg>
   );
 }

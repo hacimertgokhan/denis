@@ -280,4 +280,25 @@ class DenisClientProtocolTest {
         assertTrue(info.has("uptimeSeconds"));
         assertTrue(info.getJSONObject("project").has("cachedKeys"));
     }
+
+    @Test
+    void adminImportAdoptsATokenTheEngineLost() {
+        send("MODE json");
+        String admin = "ADMIN " + TestContext.MAIN_TOKEN + " ";
+        String lost = "L".repeat(64);
+        // a client holding the token cannot use it yet
+        assertTrue(json("LIN " + TestContext.GROUP + " " + TestContext.PASSWORD).getBoolean("ok"));
+        assertFalse(json("AUTH " + lost).getBoolean("ok"));
+        // the platform re-registers it with its limits
+        JSONObject imported = json(admin + "IMPORT " + lost + " 10 1000");
+        assertTrue(imported.getBoolean("ok"));
+        assertTrue(imported.getBoolean("added"));
+        assertEquals(10, json(admin + "USAGE " + lost).getJSONObject("quota").getInt("maxKeys"));
+        // idempotent, and the token now works
+        assertFalse(json(admin + "IMPORT " + lost).getBoolean("added"));
+        assertTrue(json("AUTH " + lost).getBoolean("ok"));
+        assertTrue(json("SET k v").getBoolean("ok"));
+        // garbage is refused
+        assertFalse(json(admin + "IMPORT not-a-token").getBoolean("ok"));
+    }
 }

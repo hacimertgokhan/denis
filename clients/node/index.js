@@ -490,6 +490,9 @@ class DenisClient extends DenisCommands {
       list: () => run("LIST").then((r) => r.projects),
       create: (quota = {}) => run(quota.maxKeys !== undefined || quota.maxBytes !== undefined
         ? `CREATE ${quota.maxKeys ?? 0} ${quota.maxBytes ?? 0}` : "CREATE"),
+      // adopt a token issued before the engine's registry was lost; idempotent
+      import: (token, quota = {}) => run(quota.maxKeys !== undefined || quota.maxBytes !== undefined
+        ? `IMPORT ${token} ${quota.maxKeys ?? 0} ${quota.maxBytes ?? 0}` : `IMPORT ${token}`),
       usage: (token) => run(`USAGE ${token}`),
       quota: (token, maxKeys, maxBytes) => run(`QUOTA ${token} ${maxKeys ?? 0} ${maxBytes ?? 0}`),
       flush: (token) => run(`FLUSH ${token}`).then(() => true),

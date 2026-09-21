@@ -90,6 +90,8 @@ export interface ProjectInfo {
 export interface DenisAdmin {
   list(): Promise<ProjectInfo[]>;
   create(quota?: Partial<ProjectQuota>): Promise<{ token: string; message: string }>;
+  /** Register a token issued elsewhere (restore after the engine lost its registry). Idempotent. */
+  import(token: string, quota?: Partial<ProjectQuota>): Promise<{ token: string; added: boolean; message: string }>;
   usage(token: string): Promise<ProjectInfo>;
   quota(token: string, maxKeys: number, maxBytes: number): Promise<ProjectInfo & { message: string }>;
   flush(token: string): Promise<true>;

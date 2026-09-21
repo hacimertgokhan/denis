@@ -20,7 +20,7 @@ export const GET = handler(async () => {
 });
 
 /**
- * Right to erasure (GDPR art. 17, KVKK art. 7): deletes the account, every
+ * Right to erasure (GDPR art. 17): deletes the account, every
  * database it owns (the engine projects are dropped first), its API keys,
  * memberships, database accounts and sessions. The body must repeat the
  * account email as confirmation. Audit rows keep a null user reference.

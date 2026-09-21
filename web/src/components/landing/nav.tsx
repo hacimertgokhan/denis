@@ -31,10 +31,13 @@ export function DenisMark({ className }: { className?: string }) {
 /** Mark and wordmark, "Cloud" set quiet so the name reads as one word. */
 export function Wordmark({ className }: { className?: string }) {
   return (
-    <Link href="/" className={cn("group inline-flex items-center gap-2.5", className)} aria-label="Denis Cloud home">
-      <DenisMark />
-      <span className="text-[16px] font-medium tracking-[-0.01em]">
-        Denis<span className="ml-1.5 font-normal text-[var(--l-ash)] transition-colors duration-300 group-hover:text-[var(--l-ink)]">Cloud</span>
+    <Link href="/" className={cn("group inline-flex items-center gap-3", className)} aria-label="Denis Cloud home">
+      <DenisMark className="size-8 transition-transform duration-300 group-hover:-rotate-6" />
+      <span className="flex flex-col leading-none">
+        <span className="text-[17px] font-semibold tracking-[-0.02em]">Denis</span>
+        <span className="mt-0.5 font-mono text-[10.5px] tracking-[0.18em] text-[var(--l-ash)] uppercase transition-colors duration-300 group-hover:text-[var(--l-ink)]">
+          Cloud
+        </span>
       </span>
     </Link>
   );

@@ -26,7 +26,7 @@ before 1.0.0 a minor bump may contain breaking changes, which are listed).
   `DenisCommands` base.
 - Platform: `GET /api/v1/usage` returns usage and limits for the database behind
   an API key or access token.
-- Platform: privacy policy with a KVKK notice, terms of service, security page
+- Platform: privacy policy (GDPR), terms of service, security page
   with responsible disclosure, cookie page; sign-up consent; account data export
   and deletion from Settings.
 - Platform: sitemap, robots, Open Graph image, JSON-LD and page metadata.

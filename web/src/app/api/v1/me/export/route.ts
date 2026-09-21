@@ -8,7 +8,7 @@ import { LIMITS, rateLimit } from "@/lib/rate-limit";
 import { currentUser } from "@/lib/session";
 
 /**
- * Data portability (GDPR art. 20, KVKK art. 11): everything the platform
+ * Data portability (GDPR art. 20): everything the platform
  * stores about the signed-in user, as one JSON download. Database contents
  * are not included — they belong to the user's databases and are exported
  * from the console or the API (KEYS / MGET, SELECT).

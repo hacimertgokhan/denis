@@ -4,7 +4,7 @@ import { env } from "@/lib/env";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
-  description: "What Denis Cloud stores about you, why, for how long, and your rights under the GDPR and the Turkish KVKK.",
+  description: "What Denis Cloud stores about you, why, for how long, and how to exercise your rights under the GDPR.",
   alternates: { canonical: "/privacy" },
 };
 
@@ -17,14 +17,14 @@ export default function PrivacyPage() {
       <p className="text-[13px] text-[var(--l-ash)]">Last updated {UPDATED}</p>
       <h1>Privacy Policy</h1>
       <p className="lead">
-        Denis Cloud is a hosted database service. This page says exactly what we store about you, why, for how long, and how you exercise your rights. It is
-        written to satisfy both the EU General Data Protection Regulation (GDPR) and the Turkish Personal Data Protection Law No. 6698 (KVKK); the KVKK notice (
-        <em>aydınlatma metni</em>) is section 9.
+        Denis Cloud is a hosted database service. This page says exactly what we store about you, why, for how long, and how you exercise your rights. It
+        follows the EU General Data Protection Regulation (GDPR) and applies to every user, wherever they are.
       </p>
 
       <h2>1. Who is responsible</h2>
       <p>
-        The data controller (GDPR) and <em>veri sorumlusu</em> (KVKK) is <strong>{e.LEGAL_ENTITY}</strong>, {e.LEGAL_ADDRESS}. Contact for anything in this
+        The data controller is <strong>{e.LEGAL_ENTITY}</strong>
+        {e.LEGAL_ADDRESS ? `, ${e.LEGAL_ADDRESS}` : ""}. Contact for anything in this
         policy: <a href={`mailto:${e.LEGAL_CONTACT_EMAIL}`}>{e.LEGAL_CONTACT_EMAIL}</a>.
       </p>
 
@@ -42,13 +42,13 @@ export default function PrivacyPage() {
           <tr>
             <td>Name, email address, password hash (or the identity returned by GitHub if you sign in that way)</td>
             <td>Your account: signing in, showing who did what, contacting you about the service</td>
-            <td>Contract (GDPR art. 6(1)(b); KVKK art. 5(2)(c))</td>
+            <td>Contract (GDPR art. 6(1)(b))</td>
             <td>Until you delete the account</td>
           </tr>
           <tr>
             <td>Session records: a random token, IP address, browser user agent, timestamps</td>
             <td>Keeping you signed in; spotting stolen sessions</td>
-            <td>Contract; legitimate interest in security (art. 6(1)(f); KVKK art. 5(2)(f))</td>
+            <td>Contract; legitimate interest in security (GDPR art. 6(1)(f))</td>
             <td>30 days after the last use, or until you sign out</td>
           </tr>
           <tr>
@@ -61,7 +61,7 @@ export default function PrivacyPage() {
             <td>The contents of your databases (keys, values, tables)</td>
             <td>Stored and returned on your instructions only. You decide what goes in; we do not read it except to operate the service</td>
             <td>
-              Contract; you are the controller of any personal data you put there and we act as processor (GDPR art. 28; KVKK <em>veri işleyen</em>)
+              Contract; you are the controller of any personal data you put there and we act as your processor (GDPR art. 28)
             </td>
             <td>Until you delete it; at most 30 days in backups afterwards</td>
           </tr>
@@ -113,7 +113,8 @@ export default function PrivacyPage() {
       <h2>5. Where the data lives</h2>
       <p>
         Account data and database contents are stored in the region shown on the database (<code>eu-central</code> at the moment). If we ever transfer data
-        outside the EEA or Türkiye, we rely on standard contractual clauses or the KVKK Board&apos;s approved undertakings and update this page first.
+        outside the European Economic Area, we rely on the European Commission&apos;s standard contractual clauses or an adequacy decision, and update this
+        page first.
       </p>
 
       <h2>6. How we protect it</h2>
@@ -125,9 +126,8 @@ export default function PrivacyPage() {
 
       <h2>7. Your rights</h2>
       <p>
-        Under the GDPR (arts. 15-22) and the KVKK (art. 11) you can ask what we hold about you, get a copy, have it corrected or deleted, restrict or object to
-        processing, take your data elsewhere, and complain to a supervisory authority (in Türkiye the <em>Kişisel Verileri Koruma Kurulu</em>, in the EU the
-        authority of your country). Two of these you can do yourself, right now:
+        Under the GDPR (articles 15 to 22) you can ask what we hold about you, get a copy, have it corrected or deleted, restrict or object to processing,
+        take your data elsewhere, and complain to the data protection authority of your country. Two of these you can do yourself, right now:
       </p>
       <ul>
         <li>
@@ -139,27 +139,14 @@ export default function PrivacyPage() {
         </li>
       </ul>
       <p>
-        For anything else write to <a href={`mailto:${e.LEGAL_CONTACT_EMAIL}`}>{e.LEGAL_CONTACT_EMAIL}</a> from the address on your account. We answer within 30
-        days (the KVKK requires it; we aim for a few days). No fee is charged.
+        For anything else write to <a href={`mailto:${e.LEGAL_CONTACT_EMAIL}`}>{e.LEGAL_CONTACT_EMAIL}</a> from the address on your account. We answer within
+        one month, as the GDPR requires, and aim for a few days. No fee is charged.
       </p>
 
       <h2>8. Children</h2>
       <p>The service is not directed at children under 16 and we do not knowingly create accounts for them.</p>
 
-      <h2>9. KVKK notice (6698 sayılı Kanun kapsamında aydınlatma)</h2>
-      <p>
-        This section is the notice required by article 10 of the Turkish Personal Data Protection Law. <strong>Veri sorumlusu</strong>: {e.LEGAL_ENTITY},{" "}
-        {e.LEGAL_ADDRESS}, {e.LEGAL_CONTACT_EMAIL}. <strong>Processed data and purposes</strong>: the categories, purposes and retention periods in section 2.{" "}
-        <strong>Method and legal basis</strong>: collected electronically through the sign-up form, the application and its API, processed under art. 5(2)(c)
-        (necessary for the performance of a contract), 5(2)(f) (legitimate interests of the controller, in particular the security of the service) and, for
-        anything beyond that, your explicit consent given at sign-up. <strong>Transfers</strong>: to the hosting processors in section 4, within the limits of
-        art. 8 and 9. <strong>Your rights under art. 11</strong>: to learn whether your data is processed, to request information, to learn the purpose and
-        whether it is used accordingly, to know the third parties it is transferred to, to request correction, deletion or destruction, to have those requests
-        notified to recipients, to object to a result produced by automated analysis, and to claim compensation for damage caused by unlawful processing.
-        Requests are made in writing to the address above or by email from your registered address, and are answered free of charge within 30 days.
-      </p>
-
-      <h2>10. Changes</h2>
+      <h2>9. Changes</h2>
       <p>
         When this policy changes in a way that matters, the date at the top moves and signed-in users see a notice in the application before the change takes
         effect. Earlier versions are available on request.

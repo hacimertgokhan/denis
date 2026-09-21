@@ -13,7 +13,7 @@ export default function CookiesPage() {
       <h1>Cookies</h1>
       <p className="lead">
         Denis Cloud sets no advertising, analytics or third-party cookies. The items below are strictly necessary for the service to work, which is why there is
-        no consent banner: the law (ePrivacy Directive art. 5(3); KVKK) exempts them.
+        no consent banner: the ePrivacy Directive (art. 5(3)) exempts them.
       </p>
       <table>
         <thead>

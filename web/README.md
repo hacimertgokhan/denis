@@ -121,7 +121,7 @@ the session cookie; a suspended user is signed out on their next request.
   JSON) and `DELETE /api/v1/me` (account, databases, keys, sessions) from
   Settings → Your data. Command history is pruned after 30 days, the audit
   log after a year.
-- Public policy pages: `/privacy` (GDPR + KVKK notice), `/terms`,
+- Public policy pages: `/privacy` (GDPR), `/terms`,
   `/security` (with responsible disclosure), `/cookies`. The legal identity
   comes from `LEGAL_ENTITY`, `LEGAL_CONTACT_EMAIL`, `LEGAL_ADDRESS`.
 

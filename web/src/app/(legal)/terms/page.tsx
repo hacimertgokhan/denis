@@ -90,13 +90,13 @@ export default function TermsPage() {
       <p>
         To the extent the law allows, we are not liable for indirect damage, lost profits or lost data resulting from use of a free service, and our total
         liability for any claim is limited to EUR 100. Nothing here limits liability for intent, gross negligence, or where consumer law says otherwise — in
-        particular your statutory rights under Turkish and EU consumer law are unaffected.
+        particular your statutory rights as a consumer are unaffected.
       </p>
 
       <h2>9. Governing law</h2>
       <p>
-        Turkish law applies; the courts of Türkiye have jurisdiction, without prejudice to the mandatory consumer protection rules and forums of the country you
-        live in.
+        The law of the operator&apos;s country of establishment applies and its courts have jurisdiction, without prejudice to the mandatory consumer protection
+        rules and forums of the country you live in.
       </p>
 
       <h2>10. Contact and changes to these terms</h2>

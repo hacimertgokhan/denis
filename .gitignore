@@ -1,8 +1,10 @@
 # Build output
-target/
-out/
-builds/
-lib/
+/target/
+web/target/
+java-driver/target/
+/out/
+/builds/
+/lib/
 dependency-reduced-pom.xml
 !.mvn/wrapper/maven-wrapper.jar
 

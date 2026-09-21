@@ -7,6 +7,23 @@ before 1.0.0 a minor bump may contain breaking changes, which are listed).
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-09-21
+
+### Added
+- **Denis Cloud** (`web/`): a hosted-database platform on Next.js 16 with
+  better-auth, Drizzle/PostgreSQL and shadcn/ui. Accounts, up to three
+  databases each, a web console, table and key browsers, usage charts and
+  quotas, per-database API keys with JWT exchange, a REST API
+  (`/api/v1/exec`) and a hosted MCP endpoint (`/api/mcp`). Deployed with
+  `compose.cloud.yaml`; see `web/README.md`.
+- **Server: per-project usage accounting, quotas and `ADMIN` commands.** The
+  server counts keys and characters per project (cache and persisted store),
+  stores optional limits in `ddb.json` and refuses writes that would exceed
+  them with `{"ok":false,"code":"QUOTA","resource":"keys|bytes","limit":n}`.
+  The main token authenticates `ADMIN LIST | CREATE [maxKeys maxBytes] |
+  USAGE | QUOTA | FLUSH | DROP`. `INFO` reports the project's usage and quota.
+- Node client 0.4.0: `admin(mainToken)` with `list/create/usage/quota/flush/drop`.
+
 ## [0.4.0] - 2026-09-21
 
 The three improvements the 0.3.1 benchmark asked for.
@@ -134,7 +151,8 @@ MCP server lets AI assistants inspect and query the database.
   `DenisServer`, `ProjectRegistry`); anything embedding the server classes
   directly must be updated.
 
-[Unreleased]: https://github.com/hacimertgokhan/denis/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/hacimertgokhan/denis/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/hacimertgokhan/denis/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/hacimertgokhan/denis/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/hacimertgokhan/denis/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/hacimertgokhan/denis/compare/v0.0.2.9alpha...v0.3.0

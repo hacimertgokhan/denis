@@ -26,6 +26,7 @@ Node.js and Java clients, a management CLI, a Docker image and an MCP server.
 - [Wire protocol](#wire-protocol)
 - [SQL](#sql)
 - [AI / MCP](#ai--mcp)
+- [Denis Cloud (hosted)](#denis-cloud-hosted)
 - [Client libraries](#client-libraries)
 - [Configuration](#configuration)
 - [Architecture](#architecture)
@@ -38,15 +39,15 @@ Requirements: Java 17+ (Maven to build from source; Node 18+ for the Node
 client and the MCP server).
 
 ```sh
-mvn package                                   # target/denis-0.4.0.jar (+ project bundle zip/tar.gz)
-java -jar target/denis-0.4.0.jar cli group create crm -p s3cret
-java -jar target/denis-0.4.0.jar server       # listens on 0.0.0.0:5142
+mvn package                                   # target/denis-0.5.0.jar (+ project bundle zip/tar.gz)
+java -jar target/denis-0.5.0.jar cli group create crm -p s3cret
+java -jar target/denis-0.5.0.jar server       # listens on 0.0.0.0:5142
 ```
 
 In a second terminal:
 
 ```sh
-java -jar target/denis-0.4.0.jar cli exec -g crm -p s3cret --create-project \
+java -jar target/denis-0.5.0.jar cli exec -g crm -p s3cret --create-project \
   "SET greeting hello world -&save" "GET greeting" \
   "CREATE TABLE users (id INT, name TEXT)" \
   "INSERT INTO users (id, name) VALUES (1, 'Ada'), (2, 'Grace')" \
@@ -223,9 +224,23 @@ self-describing object, `HELP` lists the commands as data, `SHOW TABLES` /
 `DESCRIBE` return the schema, and `docs/PROTOCOL.md` is the reference an agent
 can read.
 
+## Denis Cloud (hosted)
+
+[`web/`](web) is the platform behind **denis.hacimertgokhan.com**: sign up,
+create up to three databases, use them from a web console, a REST API with
+API keys and JWTs, or a hosted MCP endpoint for AI assistants. Storage and key
+quotas are enforced by the engine (`ADMIN QUOTA`), daily command budgets and
+rate limits by the platform, and usage is charted per database. Deploy the
+whole stack (engine + PostgreSQL + web) with `compose.cloud.yaml`; details in
+[web/README.md](web/README.md).
+
+The engine side of this is the `ADMIN` command family (main-token
+authenticated project create/usage/quota/flush/drop) documented in
+[docs/PROTOCOL.md](docs/PROTOCOL.md).
+
 ## Client libraries
 
-- **Node.js** — [`clients/node`](clients/node) (`denis-client` 0.3.0): promise
+- **Node.js** — [`clients/node`](clients/node) (`denis-client` 0.4.0): promise
   based, pooled, no dependencies; `get/set/del/exists/keys/mget`,
   `query/execute/tables/describe`, `info`.
 - **Java** — [`java-driver`](java-driver) (`denis-driver` 1.2.0): single
@@ -306,7 +321,7 @@ are listed under **Breaking** in [CHANGELOG.md](CHANGELOG.md). Client packages
 have their own versions (`clients/node`, `clients/mcp`, `java-driver`).
 
 To release: update `CHANGELOG.md` and the version in `pom.xml`, commit, tag
-(`git tag v0.4.0 && git push --tags`). The `Release` workflow verifies that the
+(`git tag v0.5.0 && git push --tags`). The `Release` workflow verifies that the
 tag matches `pom.xml`, builds the jar and the bundle, pushes the image to GHCR
 and creates the GitHub Release with the changelog section as notes.
 Release Drafter keeps a draft of the next version from merged PR labels

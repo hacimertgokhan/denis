@@ -2,3 +2,12 @@
 !pom.xml
 !src/
 !docker/
+!clients/node/
+!web/
+web/node_modules
+web/.next
+web/.env
+web/.env.*
+!web/.env.example
+web/next.log
+clients/node/node_modules

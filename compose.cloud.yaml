@@ -1,0 +1,88 @@
+# Denis Cloud: the web platform (denis.hacimertgokhan.com) with its Postgres
+# and the Denis engine on a private network. Only the web app is published.
+#
+#   cp web/.env.example .env.cloud   # fill the secrets (see the file)
+#   docker compose -f compose.cloud.yaml --env-file .env.cloud up -d --build
+#
+# Put a TLS-terminating reverse proxy (Caddy, nginx, Traefik) in front of :3000.
+services:
+  denis:
+    build:
+      context: .
+      args:
+        VERSION: "${DENIS_VERSION:-dev}"
+    image: denis:local
+    restart: unless-stopped
+    init: true
+    environment:
+      DDB_PORT: "5142"
+      DDB_MAIN_TOKEN: "${DENIS_MAIN_TOKEN}"
+      DENIS_BOOTSTRAP_GROUP: "${DENIS_GROUP:-platform}"
+      DENIS_BOOTSTRAP_GROUP_PASSWORD: "${DENIS_PASSWORD}"
+      DENIS_MAX_CONNECTIONS: "1024"
+      DENIS_MAX_CONNECTIONS_PER_IP: "1024"
+      DENIS_SEND_CLIENT_ACTIONS: "false"
+      DENIS_LANGUAGE: en
+    volumes:
+      - denis-data:/data
+    stop_grace_period: 15s
+    networks: [internal]
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: denis
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+      POSTGRES_DB: denis_platform
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U denis -d denis_platform"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [internal]
+
+  web:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    image: denis-web:local
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      denis:
+        condition: service_healthy
+    environment:
+      NEXT_PUBLIC_APP_URL: "${NEXT_PUBLIC_APP_URL:-https://denis.hacimertgokhan.com}"
+      DATABASE_URL: "postgres://denis:${POSTGRES_PASSWORD}@postgres:5432/denis_platform"
+      BETTER_AUTH_SECRET: "${BETTER_AUTH_SECRET}"
+      JWT_SECRET: "${JWT_SECRET}"
+      JWT_REFRESH_SECRET: "${JWT_REFRESH_SECRET}"
+      JWT_ACCESS_TTL: "${JWT_ACCESS_TTL:-900}"
+      JWT_REFRESH_TTL: "${JWT_REFRESH_TTL:-2592000}"
+      GITHUB_CLIENT_ID: "${GITHUB_CLIENT_ID:-}"
+      GITHUB_CLIENT_SECRET: "${GITHUB_CLIENT_SECRET:-}"
+      DENIS_HOST: denis
+      DENIS_PORT: "5142"
+      DENIS_GROUP: "${DENIS_GROUP:-platform}"
+      DENIS_PASSWORD: "${DENIS_PASSWORD}"
+      DENIS_MAIN_TOKEN: "${DENIS_MAIN_TOKEN}"
+      PLAN_MAX_DATABASES: "${PLAN_MAX_DATABASES:-3}"
+      PLAN_DB_MAX_BYTES: "${PLAN_DB_MAX_BYTES:-10485760}"
+      PLAN_DB_MAX_KEYS: "${PLAN_DB_MAX_KEYS:-50000}"
+      PLAN_DB_OPS_PER_DAY: "${PLAN_DB_OPS_PER_DAY:-100000}"
+      PLAN_API_RATE_PER_MINUTE: "${PLAN_API_RATE_PER_MINUTE:-600}"
+      DB_PUSH: "1"
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    networks: [internal]
+
+volumes:
+  denis-data:
+  postgres-data:
+
+networks:
+  internal:

@@ -44,3 +44,6 @@ clients/mcp/*.tgz
 
 # Compose environment
 /.env
+
+# Cloud stack secrets
+/.env.cloud

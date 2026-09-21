@@ -56,7 +56,7 @@ public class DenisToml {
         return data.get(key);
     }
 
-    // Ana başlık altında veri almak için
+    /** A value inside a section (TOML table). */
     public Object get(String section, String key) {
         Map<String, Object> sectionData = (Map<String, Object>) data.get(section);
         return sectionData != null ? sectionData.get(key) : null;
@@ -66,12 +66,12 @@ public class DenisToml {
         data.put(key, value);
     }
 
-    // Başlık altına veri eklemek için yeni metod
+    /** Replace a whole section. */
     public void setSection(String section, Map<String, Object> values) {
         data.put(section, values);
     }
 
-    // Başlık altındaki belirli bir değeri güncellemek için
+    /** Set one value inside a section, creating the section when missing. */
     public void updateSection(String section, String key, Object value) {
         Map<String, Object> sectionData = (Map<String, Object>) data.get(section);
         if (sectionData == null) {
@@ -81,12 +81,12 @@ public class DenisToml {
         sectionData.put(key, value);
     }
 
-    // Var olan bir başlığı kontrol etmek için
+    /** Whether a section exists. */
     public boolean hasSection(String section) {
         return data.containsKey(section);
     }
 
-    // Başlık altındaki tüm verileri almak için
+    /** Every value of a section. */
     public Map<String, Object> getSection(String section) {
         return (Map<String, Object>) data.get(section);
     }

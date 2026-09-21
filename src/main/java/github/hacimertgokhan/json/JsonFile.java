@@ -86,8 +86,8 @@ public class JsonFile {
 
 
     /**
-     * ddb.json dosyasından token dizisini okuyup listeler
-     * @return token dizisindeki tüm elementlerin listesi
+     * The {@code tokens} array of ddb.json.
+     * @return every token, or an empty list
      */
     public List<String> tokenList() throws IOException {
         List<String> tokens = new ArrayList<>();
@@ -101,10 +101,10 @@ public class JsonFile {
                     tokens.add(token);
                 }
             } else {
-                new DenisLogger(JsonFile.class).warn("ddb.json dosyasında 'token' anahtarı bulunamadı!");
+                new DenisLogger(JsonFile.class).debug("No 'tokens' array in " + filePath);
             }
         } catch (Exception e) {
-            new DenisLogger(JsonFile.class).warn("Token listesi okunurken hata oluştu: " + e.getMessage());
+            new DenisLogger(JsonFile.class).warn("Could not read the token list from " + filePath + ": " + e.getMessage());
         }
 
         return tokens;
@@ -112,8 +112,8 @@ public class JsonFile {
 
 
     /**
-     * String yapıda olan dizileri döndürür.
-     * @return token dizisindeki tüm elementlerin listesi
+     * A string array stored under {@code key}.
+     * @return its elements, or an empty list
      */
     public List<String> getList(String key) throws IOException {
         List<String> tokens = new ArrayList<>();
@@ -126,19 +126,19 @@ public class JsonFile {
                     tokens.add(token);
                 }
             } else {
-                new DenisLogger(JsonFile.class).warn(String.format("Json dosyasında '%s' anahtarı bulunamadı!", key));
+                new DenisLogger(JsonFile.class).debug(String.format("No '%s' array in %s", key, filePath));
             }
         } catch (Exception e) {
-            new DenisLogger(JsonFile.class).warn("Token listesi okunurken hata oluştu: " + e.getMessage());
+            new DenisLogger(JsonFile.class).warn("Could not read '" + key + "' from " + filePath + ": " + e.getMessage());
         }
 
         return tokens;
     }
 
     /**
-     * Belirtilen anahtara bir dizi yazar veya günceller
-     * @param key JSON anahtarı
-     * @param items Yazılacak liste
+     * Write (or replace) an array under {@code key}.
+     * @param key JSON key
+     * @param items the elements to write
      */
     public void writeArray(String key, List<?> items) throws IOException {
         JSONObject json = readJson();
@@ -148,9 +148,9 @@ public class JsonFile {
     }
 
     /**
-     * Belirtilen anahtardaki diziye yeni eleman ekler
-     * @param key JSON anahtarı
-     * @param item Eklenecek eleman
+     * Append one element to the array under {@code key}, creating it when missing.
+     * @param key JSON key
+     * @param item the element to append
      */
     public void appendToArray(String key, Object item) throws IOException {
         JSONObject json = readJson();
@@ -168,9 +168,9 @@ public class JsonFile {
     }
 
     /**
-     * Belirtilen anahtardaki diziden eleman siler
-     * @param key JSON anahtarı
-     * @param index Silinecek elemanın indeksi
+     * Remove one element from the array under {@code key}.
+     * @param key JSON key
+     * @param index index of the element to remove
      */
     public void removeFromArray(String key, int index) throws IOException {
         JSONObject json = readJson();
@@ -183,82 +183,4 @@ public class JsonFile {
             }
         }
     }
-
-    /**
-     * Belirtilen anahtardaki diziye yeni değer ekler ve günceller
-     * @param key JSON anahtarı
-     * @param newValue Eklenecek yeni değer
-     * @return Güncellenen dizideki toplam eleman sayısı
-     */
-    public int updateArrayWithNewValue(String key, String newValue) throws IOException {
-        JSONObject json = readJson();
-
-        if (!json.has(key)) {
-            // Eğer anahtar yoksa yeni dizi oluştur
-            JSONArray newArray = new JSONArray();
-            newArray.put(newValue);
-            json.put(key, newArray);
-            writeJson(json);
-            return 1;
-        }
-
-        // Mevcut diziyi al
-        JSONArray currentArray = json.getJSONArray(key);
-
-        // Değerleri ArrayList'e aktar
-        List<String> values = new ArrayList<>();
-        for (int i = 0; i < currentArray.length(); i++) {
-            values.add(currentArray.getString(i));
-        }
-
-        // Yeni değeri ekle
-        values.add(newValue);
-
-        // Diziyi güncelle
-        json.put(key, new JSONArray(values));
-
-        // Dosyaya yaz
-        writeJson(json);
-
-        return values.size();
-    }
-
-    /**
-     * Belirtilen anahtardaki diziyi birden fazla yeni değerle günceller
-     * @param key JSON anahtarı
-     * @param newValues Eklenecek yeni değerler listesi
-     * @return Güncellenen dizideki toplam eleman sayısı
-     */
-    public int updateArrayWithMultipleValues(String key, List<String> newValues) throws IOException {
-        JSONObject json = readJson();
-
-        if (!json.has(key)) {
-            // Eğer anahtar yoksa yeni dizi oluştur
-            json.put(key, new JSONArray(newValues));
-            writeJson(json);
-            return newValues.size();
-        }
-
-        // Mevcut diziyi al
-        JSONArray currentArray = json.getJSONArray(key);
-
-        // Değerleri ArrayList'e aktar
-        List<String> values = new ArrayList<>();
-        for (int i = 0; i < currentArray.length(); i++) {
-            values.add(currentArray.getString(i));
-        }
-
-        // Yeni değerleri ekle
-        values.addAll(newValues);
-
-        // Diziyi güncelle
-        json.put(key, new JSONArray(values));
-
-        // Dosyaya yaz
-        writeJson(json);
-
-        return values.size();
-    }
-
-
 }

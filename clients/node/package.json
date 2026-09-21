@@ -1,6 +1,6 @@
 {
   "name": "denis-client",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Node.js client for Denis Database (TCP, promise based, pooled connections)",
   "main": "index.js",
   "types": "index.d.ts",

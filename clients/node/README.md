@@ -63,6 +63,10 @@ await denis.close();
 | `command(line)` | any | raw reply object |
 | `close()` | `EXIT` | closes the pool |
 
+Commands are **pipelined**: a connection can have several commands in flight and
+replies are matched in order, so `Promise.all` of many operations uses the pool
+efficiently. Pass `pipeline: false` for one command per connection at a time.
+
 Keys are one word (no whitespace). Values may contain spaces, quotes and unicode
 but not line breaks, and no word may start with `-&` (that is the flag marker).
 

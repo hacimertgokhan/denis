@@ -41,6 +41,10 @@ const DEFAULTS = {
   // create a project with AUTH CREATE when no token is given
   createProject: false,
   poolSize: 4,
+  // Send several commands on one connection without waiting for each reply.
+  // The server answers in order per connection, so this is safe and is what
+  // gives the client its throughput; set false for one command per connection.
+  pipeline: true,
   connectTimeout: 5000,
   commandTimeout: 10000,
 };
@@ -190,6 +194,9 @@ class DenisClient {
     this.idle = [];
     this.size = 0;
     this.waiters = [];
+    // pipeline mode: every open connection, commands go to the least loaded one
+    this.all = [];
+    this.opening = null;
     this.closing = false;
     // the project token, once known (given, or created by the first connection)
     this.token = this.options.token;
@@ -236,8 +243,32 @@ class DenisClient {
     else this.idle.push(conn);
   }
 
+  /** Pipeline mode: the connection with the fewest in-flight commands, opening more up to poolSize. */
+  async _pick() {
+    if (this.closing) throw new DenisError("client is closed", "ECLOSED");
+    this.all = this.all.filter((conn) => !conn.closed);
+    if (this.all.length === 0) {
+      if (!this.opening) {
+        this.opening = this._create().then((conn) => { this.all.push(conn); return conn; }).finally(() => { this.opening = null; });
+      }
+      await this.opening;
+      if (this.all.length === 0) return this._pick();
+    }
+    let best = this.all[0];
+    for (const conn of this.all) if (conn.pending.length < best.pending.length) best = conn;
+    if (best.pending.length > 0 && !this.opening && this.all.length < this.options.poolSize) {
+      // busy: grow the pool in the background for the next commands
+      this.opening = this._create().then((conn) => { this.all.push(conn); return conn; }).catch(() => null).finally(() => { this.opening = null; });
+    }
+    return best;
+  }
+
   /** Run one command on a pooled connection and return the parsed reply. */
   async command(line) {
+    if (this.options.pipeline) {
+      const conn = await this._pick();
+      return conn.raw(line);
+    }
     const conn = await this._acquire();
     try {
       return await conn.raw(line);
@@ -254,6 +285,10 @@ class DenisClient {
 
   /** Open the pool eagerly (optional; commands connect on demand). */
   async connect() {
+    if (this.options.pipeline) {
+      await this._pick();
+      return this;
+    }
     const conn = await this._acquire();
     this._release(conn);
     return this;
@@ -417,8 +452,10 @@ class DenisClient {
     for (const waiter of this.waiters.splice(0)) {
       waiter.reject(new DenisError("client is closed", "ECLOSED"));
     }
-    for (const conn of this.idle.splice(0)) {
+    if (this.opening) await this.opening.catch(() => {});
+    for (const conn of [...this.idle.splice(0), ...this.all.splice(0)]) {
       try {
+        // let in-flight pipelined commands finish, then say goodbye
         await conn.raw("EXIT").catch(() => {});
       } finally {
         conn.destroy();

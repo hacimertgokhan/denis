@@ -13,6 +13,8 @@ export interface DenisClientOptions {
   createProject?: boolean;
   /** Connections kept open at most. Default 4 */
   poolSize?: number;
+  /** Send several commands per connection without waiting for each reply (replies arrive in order). Default true */
+  pipeline?: boolean;
   /** Milliseconds. Default 5000 */
   connectTimeout?: number;
   /** Milliseconds per command. Default 10000 */

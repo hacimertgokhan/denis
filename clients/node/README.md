@@ -1,6 +1,8 @@
 # denis-client (Node.js)
 
-Promise based, pooled TCP client for [Denis Database](https://github.com/hacimertgokhan/denis).
+Promise based client for [Denis Database](https://github.com/hacimertgokhan/denis)
+with two transports and one API: `DenisClient` talks TCP to a server you run,
+`DenisCloud` talks HTTPS to a database on Denis Cloud with an API key.
 No dependencies, Node 18+.
 
 ```sh
@@ -38,6 +40,33 @@ await denis.clear();                                  // HEAVEN: drop the projec
 await denis.close();
 ```
 
+## Denis Cloud
+
+A hosted database (denis.hacimertgokhan.com) is reached through its REST
+gateway, never over TCP. Create an API key in the database’s **Connect** tab
+and use it with `DenisCloud`; every method below works the same way:
+
+```js
+const { DenisCloud } = require("denis-client");
+
+const denis = new DenisCloud({ apiKey: process.env.DENIS_API_KEY });
+await denis.set("greeting", "hello world", { persist: true });
+await denis.get("greeting");                                   // "hello world"
+await denis.execute("CREATE TABLE products (id INT, name TEXT, price REAL)");
+await denis.query("SELECT name FROM products WHERE price > 10"); // [{ name: "Book" }]
+await denis.batch(["GET greeting", "EXISTS nope"]);              // up to 50 commands in one request
+await denis.usage();   // { usage: {persistedKeys, persistedBytes, opsToday, ...}, limits: {maxKeys, maxBytes, opsPerDay} }
+```
+
+Options: `apiKey` (or `accessToken`), `url` (default the public platform;
+use `http://localhost:3000` for a local one), `useJwt: true` to exchange the
+key for short-lived access tokens that are refreshed automatically, `timeout`
+(ms per request) and `fetch`. A read-scoped key can only run read commands:
+writes fail with `DenisError` code `ESERVER` and `err.reply.code === "READ_ONLY"`;
+a spent daily budget answers `ELIMIT`. `whoami()` returns the database and
+scope behind the credential. `createProject()`, `admin()` and `info()`
+are TCP-only: the platform manages projects itself.
+
 ## API
 
 | Method | Wire command | Notes |
@@ -71,7 +100,8 @@ Keys are one word (no whitespace). Values may contain spaces, quotes and unicode
 but not line breaks, and no word may start with `-&` (that is the flag marker).
 
 Errors are `DenisError` with a `code`: `ECONN`, `ETIMEOUT`, `EAUTH`, `EPROTO`,
-`ESERVER` (the server said `ok:false`; the reply is in `err.reply`), `ECLOSED`, `EINVAL`.
+`ESERVER` (the server said `ok:false`; the reply is in `err.reply`), `ECLOSED`, `EINVAL`,
+`ELIMIT` (Denis Cloud: rate limit or daily budget).
 
 ## How it talks to the server
 

@@ -14,6 +14,9 @@
  *   await denis.set("greeting", "hello world", { persist: true });
  *   await denis.get("greeting");            // "hello world"
  *   await denis.close();
+ *
+ * Against Denis Cloud there is no TCP: DenisCloud speaks to the REST gateway
+ * with an API key and offers the same methods (see below).
  */
 
 const net = require("node:net");
@@ -186,112 +189,20 @@ class DenisConnection {
   }
 }
 
-/** A pool of authenticated connections with the key-value / SQL API on top. */
-class DenisClient {
-  constructor(options = {}) {
-    this.options = { ...DEFAULTS, ...options };
-    if (this.options.poolSize < 1) throw new DenisError("poolSize must be >= 1", "EINVAL");
-    this.idle = [];
-    this.size = 0;
-    this.waiters = [];
-    // pipeline mode: every open connection, commands go to the least loaded one
-    this.all = [];
-    this.opening = null;
-    this.closing = false;
-    // the project token, once known (given, or created by the first connection)
-    this.token = this.options.token;
-  }
-
-  async _create() {
-    this.size++;
-    const conn = new DenisConnection({ ...this.options, token: this.token });
-    try {
-      await conn.connect();
-      await conn.handshake();
-    } catch (err) {
-      this.size--;
-      conn.destroy();
-      throw err;
-    }
-    if (!this.token && conn.token) this.token = conn.token;
-    return conn;
-  }
-
-  async _acquire() {
-    if (this.closing) throw new DenisError("client is closed", "ECLOSED");
-    while (this.idle.length > 0) {
-      const conn = this.idle.pop();
-      if (!conn.closed) return conn;
-      this.size--;
-    }
-    if (this.size < this.options.poolSize) {
-      return this._create();
-    }
-    return new Promise((resolve, reject) => this.waiters.push({ resolve, reject }));
-  }
-
-  _release(conn) {
-    if (conn.closed) {
-      this.size--;
-      // somebody may be waiting for a slot that just freed up
-      const waiter = this.waiters.shift();
-      if (waiter) this._create().then(waiter.resolve, waiter.reject);
-      return;
-    }
-    const waiter = this.waiters.shift();
-    if (waiter) waiter.resolve(conn);
-    else this.idle.push(conn);
-  }
-
-  /** Pipeline mode: the connection with the fewest in-flight commands, opening more up to poolSize. */
-  async _pick() {
-    if (this.closing) throw new DenisError("client is closed", "ECLOSED");
-    this.all = this.all.filter((conn) => !conn.closed);
-    if (this.all.length === 0) {
-      if (!this.opening) {
-        this.opening = this._create().then((conn) => { this.all.push(conn); return conn; }).finally(() => { this.opening = null; });
-      }
-      await this.opening;
-      if (this.all.length === 0) return this._pick();
-    }
-    let best = this.all[0];
-    for (const conn of this.all) if (conn.pending.length < best.pending.length) best = conn;
-    if (best.pending.length > 0 && !this.opening && this.all.length < this.options.poolSize) {
-      // busy: grow the pool in the background for the next commands
-      this.opening = this._create().then((conn) => { this.all.push(conn); return conn; }).catch(() => null).finally(() => { this.opening = null; });
-    }
-    return best;
-  }
-
-  /** Run one command on a pooled connection and return the parsed reply. */
-  async command(line) {
-    if (this.options.pipeline) {
-      const conn = await this._pick();
-      return conn.raw(line);
-    }
-    const conn = await this._acquire();
-    try {
-      return await conn.raw(line);
-    } finally {
-      this._release(conn);
-    }
+/**
+ * The key-value / SQL API shared by every transport. Subclasses implement
+ * command(line) -> reply; everything else is built on top of it.
+ */
+class DenisCommands {
+  /** Send one protocol line and resolve with the parsed reply object. */
+  async command(line) { // eslint-disable-line no-unused-vars
+    throw new DenisError("command() is not implemented", "EINVAL");
   }
 
   async _expectOk(line) {
     const reply = await this.command(line);
     if (!reply.ok) throw new DenisError(reply.error || "command failed", "ESERVER", reply);
     return reply;
-  }
-
-  /** Open the pool eagerly (optional; commands connect on demand). */
-  async connect() {
-    if (this.options.pipeline) {
-      await this._pick();
-      return this;
-    }
-    const conn = await this._acquire();
-    this._release(conn);
-    return this;
   }
 
   async ping() {
@@ -439,6 +350,110 @@ class DenisClient {
       throw err;
     }
   }
+}
+
+/** A pool of authenticated connections with the key-value / SQL API on top. */
+class DenisClient extends DenisCommands {
+  constructor(options = {}) {
+    super();
+    this.options = { ...DEFAULTS, ...options };
+    if (this.options.poolSize < 1) throw new DenisError("poolSize must be >= 1", "EINVAL");
+    this.idle = [];
+    this.size = 0;
+    this.waiters = [];
+    // pipeline mode: every open connection, commands go to the least loaded one
+    this.all = [];
+    this.opening = null;
+    this.closing = false;
+    // the project token, once known (given, or created by the first connection)
+    this.token = this.options.token;
+  }
+
+  async _create() {
+    this.size++;
+    const conn = new DenisConnection({ ...this.options, token: this.token });
+    try {
+      await conn.connect();
+      await conn.handshake();
+    } catch (err) {
+      this.size--;
+      conn.destroy();
+      throw err;
+    }
+    if (!this.token && conn.token) this.token = conn.token;
+    return conn;
+  }
+
+  async _acquire() {
+    if (this.closing) throw new DenisError("client is closed", "ECLOSED");
+    while (this.idle.length > 0) {
+      const conn = this.idle.pop();
+      if (!conn.closed) return conn;
+      this.size--;
+    }
+    if (this.size < this.options.poolSize) {
+      return this._create();
+    }
+    return new Promise((resolve, reject) => this.waiters.push({ resolve, reject }));
+  }
+
+  _release(conn) {
+    if (conn.closed) {
+      this.size--;
+      // somebody may be waiting for a slot that just freed up
+      const waiter = this.waiters.shift();
+      if (waiter) this._create().then(waiter.resolve, waiter.reject);
+      return;
+    }
+    const waiter = this.waiters.shift();
+    if (waiter) waiter.resolve(conn);
+    else this.idle.push(conn);
+  }
+
+  /** Pipeline mode: the connection with the fewest in-flight commands, opening more up to poolSize. */
+  async _pick() {
+    if (this.closing) throw new DenisError("client is closed", "ECLOSED");
+    this.all = this.all.filter((conn) => !conn.closed);
+    if (this.all.length === 0) {
+      if (!this.opening) {
+        this.opening = this._create().then((conn) => { this.all.push(conn); return conn; }).finally(() => { this.opening = null; });
+      }
+      await this.opening;
+      if (this.all.length === 0) return this._pick();
+    }
+    let best = this.all[0];
+    for (const conn of this.all) if (conn.pending.length < best.pending.length) best = conn;
+    if (best.pending.length > 0 && !this.opening && this.all.length < this.options.poolSize) {
+      // busy: grow the pool in the background for the next commands
+      this.opening = this._create().then((conn) => { this.all.push(conn); return conn; }).catch(() => null).finally(() => { this.opening = null; });
+    }
+    return best;
+  }
+
+  /** Run one command on a pooled connection and return the parsed reply. */
+  async command(line) {
+    if (this.options.pipeline) {
+      const conn = await this._pick();
+      return conn.raw(line);
+    }
+    const conn = await this._acquire();
+    try {
+      return await conn.raw(line);
+    } finally {
+      this._release(conn);
+    }
+  }
+
+  /** Open the pool eagerly (optional; commands connect on demand). */
+  async connect() {
+    if (this.options.pipeline) {
+      await this._pick();
+      return this;
+    }
+    const conn = await this._acquire();
+    this._release(conn);
+    return this;
+  }
 
   /**
    * Project administration with the server's main token (ddb-main-token); no
@@ -490,4 +505,126 @@ class DenisClient {
   }
 }
 
-module.exports = { DenisClient, DenisConnection, DenisError };
+/**
+ * The same API over Denis Cloud's REST gateway (https://denis.hacimertgokhan.com).
+ * No TCP, no group login: an API key from the database's Connect tab is all
+ * that is needed. Read-scoped keys can only run read commands; the gateway
+ * answers writes with a READ_ONLY error.
+ *
+ *   const { DenisCloud } = require("denis-client");
+ *   const denis = new DenisCloud({ apiKey: process.env.DENIS_API_KEY });
+ *   await denis.set("greeting", "hello world", { persist: true });
+ *   await denis.get("greeting");                              // "hello world"
+ *   await denis.query("SELECT * FROM products WHERE price > 10");
+ *   await denis.usage();                                      // { usage, limits, ... }
+ *
+ * Every command is one HTTPS request; batch() sends up to 50 in one request.
+ * With { useJwt: true } the key is exchanged for a short-lived access token
+ * (and refreshed automatically) so the key itself never travels after the
+ * first call.
+ */
+class DenisCloud extends DenisCommands {
+  constructor(options = {}) {
+    super();
+    this.url = String(options.url || "https://denis.hacimertgokhan.com").replace(/\/+$/, "");
+    this.apiKey = options.apiKey;
+    this.accessToken = options.accessToken;
+    if (!this.apiKey && !this.accessToken) throw new DenisError("apiKey or accessToken is required", "EINVAL");
+    this.timeout = options.timeout ?? 15000;
+    this.fetch = options.fetch || globalThis.fetch;
+    if (typeof this.fetch !== "function") throw new DenisError("fetch is not available; pass options.fetch", "EINVAL");
+    this.useJwt = options.useJwt === true && Boolean(this.apiKey);
+    this.refreshToken = undefined;
+    this.expiresAt = 0;
+    this.exchanging = null;
+  }
+
+  /** The Bearer credential for the next request; exchanges or refreshes the JWT pair when useJwt is on. */
+  async _bearer() {
+    if (!this.useJwt) return this.accessToken || this.apiKey;
+    if (this.accessToken && Date.now() < this.expiresAt - 30_000) return this.accessToken;
+    if (!this.exchanging) {
+      const body = this.refreshToken ? { refreshToken: this.refreshToken } : { apiKey: this.apiKey };
+      this.exchanging = this._request("POST", "/api/v1/token", body, { auth: false })
+        .catch((err) => {
+          // a dead refresh token falls back to the key once
+          if (this.refreshToken && err.code === "EAUTH") {
+            this.refreshToken = undefined;
+            return this._request("POST", "/api/v1/token", { apiKey: this.apiKey }, { auth: false });
+          }
+          throw err;
+        })
+        .then((tokens) => {
+          this.accessToken = tokens.accessToken;
+          this.refreshToken = tokens.refreshToken;
+          this.expiresAt = Date.now() + tokens.expiresIn * 1000;
+          return this.accessToken;
+        })
+        .finally(() => {
+          this.exchanging = null;
+        });
+    }
+    return this.exchanging;
+  }
+
+  async _request(method, path, body, { auth = true, retry = true } = {}) {
+    const headers = { Accept: "application/json" };
+    if (body !== undefined) headers["Content-Type"] = "application/json";
+    if (auth) headers.Authorization = `Bearer ${await this._bearer()}`;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.timeout);
+    let res;
+    try {
+      res = await this.fetch(this.url + path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), signal: controller.signal });
+    } catch (err) {
+      throw new DenisError(err.name === "AbortError" ? `request timed out after ${this.timeout} ms` : `request failed: ${err.message}`, err.name === "AbortError" ? "ETIMEOUT" : "ECONN");
+    } finally {
+      clearTimeout(timer);
+    }
+    const text = await res.text();
+    let json;
+    try {
+      json = text ? JSON.parse(text) : {};
+    } catch {
+      throw new DenisError(`unexpected response (${res.status}) from ${path}`, "EPROTO", { status: res.status, body: text });
+    }
+    if (res.ok) return json;
+    const error = json.error || {};
+    // an expired access token is exchanged once more, then given up on
+    if (res.status === 401 && auth && this.useJwt && retry) {
+      this.expiresAt = 0;
+      return this._request(method, path, body, { auth, retry: false });
+    }
+    const code = res.status === 401 ? "EAUTH" : res.status === 429 ? "ELIMIT" : "ESERVER";
+    throw new DenisError(error.message || `HTTP ${res.status}`, code, { status: res.status, code: error.code, ...json });
+  }
+
+  /** Send one protocol line through the gateway and resolve with the engine's reply. */
+  async command(line) {
+    if (/[\r\n]/.test(line)) throw new DenisError("a command is a single line", "EINVAL");
+    const { reply } = await this._request("POST", "/api/v1/exec", { command: line });
+    return reply;
+  }
+
+  /** Up to 50 commands in one request, answered in order; a failed command does not stop the rest. */
+  async batch(lines) {
+    if (!Array.isArray(lines) || lines.length === 0 || lines.length > 50) throw new DenisError("batch takes 1-50 commands", "EINVAL");
+    const { results } = await this._request("POST", "/api/v1/exec", { commands: lines });
+    return results.map((r) => r.reply);
+  }
+
+  /** The database and scope behind the credential: { database: {id, name}, scope, via }. */
+  async whoami() {
+    return this._request("GET", "/api/v1/exec");
+  }
+
+  /** Storage, key and daily-command usage against the database's limits. */
+  async usage() {
+    return this._request("GET", "/api/v1/usage");
+  }
+
+  /** Nothing to close over HTTP; kept so code can treat both clients alike. */
+  async close() {}
+}
+
+module.exports = { DenisClient, DenisCloud, DenisCommands, DenisConnection, DenisError };

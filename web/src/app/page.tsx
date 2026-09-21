@@ -39,6 +39,11 @@ export default async function Landing() {
       what: "Run commands, browse tables and keys, watch storage and daily commands on charts.",
       how: "Web console · REST API · JWT for apps",
     },
+    {
+      name: "Your code",
+      what: "npm install denis-client: the same get/set/query API over HTTPS with an API key, or over TCP against your own server.",
+      how: "DenisCloud · DenisClient · Java driver",
+    },
   ];
 
   return (

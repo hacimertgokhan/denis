@@ -7,6 +7,14 @@ before 1.0.0 a minor bump may contain breaking changes, which are listed).
 
 ## [Unreleased]
 
+### Added
+- `denis-client` 0.5.0: `DenisCloud`, the same key-value / SQL API over the
+  Denis Cloud REST gateway with an API key (optional JWT exchange, `batch()`,
+  `usage()`, `whoami()`). The TCP client and the cloud client share the
+  `DenisCommands` base.
+- Platform: `GET /api/v1/usage` returns usage and limits for the database behind
+  an API key or access token.
+
 ## [0.5.0] - 2026-09-21
 
 ### Added

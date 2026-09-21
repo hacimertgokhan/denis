@@ -21,7 +21,7 @@ export interface DenisClientOptions {
   commandTimeout?: number;
 }
 
-export type DenisErrorCode = "ECONN" | "ETIMEOUT" | "EAUTH" | "EPROTO" | "ESERVER" | "ECLOSED" | "EINVAL";
+export type DenisErrorCode = "ECONN" | "ETIMEOUT" | "EAUTH" | "EPROTO" | "ESERVER" | "ECLOSED" | "EINVAL" | "ELIMIT";
 
 export interface DenisReply {
   ok: boolean;
@@ -118,11 +118,10 @@ export class DenisConnection {
   destroy(): void;
 }
 
-export class DenisClient {
-  constructor(options?: DenisClientOptions);
-  /** The project token in use (given, or created by the first connection). */
-  token: string | undefined;
-  connect(): Promise<this>;
+/** The key-value / SQL API shared by DenisClient (TCP) and DenisCloud (HTTPS). */
+export class DenisCommands {
+  /** Send a raw protocol line and resolve with the parsed reply. */
+  command(line: string): Promise<DenisReply>;
   ping(): Promise<boolean>;
   get(key: string, opts?: { source?: "cache" | "protobuf" }): Promise<string | null>;
   getJSON<T = unknown>(key: string, opts?: { source?: "cache" | "protobuf" }): Promise<T | null>;
@@ -141,10 +140,50 @@ export class DenisClient {
   execute(sql: string): Promise<number>;
   tables(): Promise<TableInfo[]>;
   describe(table: string): Promise<TableInfo | null>;
+}
+
+export class DenisClient extends DenisCommands {
+  constructor(options?: DenisClientOptions);
+  /** The project token in use (given, or created by the first connection). */
+  token: string | undefined;
+  connect(): Promise<this>;
   createProject(): Promise<string>;
   /** ADMIN commands with the server's main token. */
   admin(mainToken: string): DenisAdmin;
-  /** Send a raw protocol line on a pooled connection. */
-  command(line: string): Promise<DenisReply>;
+  close(): Promise<void>;
+}
+
+export interface DenisCloudOptions {
+  /** API key from the database's Connect tab (dk_...). */
+  apiKey?: string;
+  /** An access token from POST /api/v1/token, instead of the key. */
+  accessToken?: string;
+  /** Platform URL. Default https://denis.hacimertgokhan.com */
+  url?: string;
+  /** Exchange the key for short-lived JWTs and refresh them automatically. Default false */
+  useJwt?: boolean;
+  /** Milliseconds per request. Default 15000 */
+  timeout?: number;
+  /** Custom fetch (tests, older runtimes). Default globalThis.fetch */
+  fetch?: typeof fetch;
+}
+
+export interface CloudUsage {
+  database: { id: string; name: string };
+  scope: "read" | "write";
+  usage: { cachedKeys: number; cachedBytes: number; persistedKeys: number; persistedBytes: number; opsToday: number; sampledAt: string | null };
+  limits: { maxBytes: number; maxKeys: number; opsPerDay: number };
+}
+
+/** The same API over Denis Cloud's REST gateway with an API key; one HTTPS request per command. */
+export class DenisCloud extends DenisCommands {
+  constructor(options: DenisCloudOptions);
+  url: string;
+  /** Up to 50 commands in one request, answered in order. */
+  batch(lines: string[]): Promise<DenisReply[]>;
+  /** The database and scope behind the credential. */
+  whoami(): Promise<{ database: { id: string; name: string }; scope: "read" | "write"; via: "api-key" | "jwt" }>;
+  /** Usage against the database's limits. */
+  usage(): Promise<CloudUsage>;
   close(): Promise<void>;
 }

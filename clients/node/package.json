@@ -1,7 +1,7 @@
 {
   "name": "denis-client",
-  "version": "0.4.0",
-  "description": "Node.js client for Denis Database (TCP, promise based, pooled connections)",
+  "version": "0.5.0",
+  "description": "Node.js client for Denis Database: pooled TCP connections to your own server, or HTTPS with an API key on Denis Cloud",
   "main": "index.js",
   "types": "index.d.ts",
   "license": "MIT",
@@ -10,7 +10,7 @@
     "url": "https://github.com/hacimertgokhan/denis.git",
     "directory": "clients/node"
   },
-  "keywords": ["denis", "cache", "key-value", "database", "client"],
+  "keywords": ["denis", "cache", "key-value", "database", "client", "denis-cloud"],
   "engines": {
     "node": ">=18"
   },

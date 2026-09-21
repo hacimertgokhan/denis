@@ -105,26 +105,27 @@ curl -X POST ${base}/api/v1/exec \\
               />
             </TabsContent>
             <TabsContent value="node">
+              <CodeBlock language="bash" code={`npm install denis-client`} className="mb-2" />
               <CodeBlock
                 language="typescript"
-                code={`const BASE = "${base}";
-const KEY = process.env.DENIS_API_KEY; // ${KEY}
+                code={`import { DenisCloud } from "denis-client";
 
-async function denis(command: string) {
-  const res = await fetch(BASE + "/api/v1/exec", {
-    method: "POST",
-    headers: { Authorization: "Bearer " + KEY, "Content-Type": "application/json" },
-    body: JSON.stringify({ command }),
-  });
-  const { reply, error } = await res.json();
-  if (error) throw new Error(error.message);
-  return reply; // { ok, ... } as documented in docs/PROTOCOL.md
-}
+const denis = new DenisCloud({
+  apiKey: process.env.DENIS_API_KEY, // ${KEY}
+  url: "${base}",
+  useJwt: true, // exchange the key for short-lived tokens, refreshed automatically
+});
 
-await denis("SET user:1 " + JSON.stringify({ name: "Ada" }) + " -&save");
-const { data } = await denis("GET user:1");          // '{"name":"Ada"}'
-const { rows } = await denis("SELECT * FROM products WHERE price > 10");`}
+await denis.set("user:1", { name: "Ada" }, { persist: true });
+const user = await denis.getJSON("user:1");                       // { name: "Ada" }
+const rows = await denis.query("SELECT * FROM products WHERE price > 10");
+const replies = await denis.batch(["GET greeting", "EXISTS user:2"]); // one request, up to 50 commands
+const { usage, limits } = await denis.usage();`}
               />
+              <p className="text-muted-foreground mt-2 text-[13px]">
+                The same package drives a self-hosted server over TCP (<code className="font-mono">DenisClient</code>); the method names are identical, so code
+                moves between the two without changes.
+              </p>
             </TabsContent>
             <TabsContent value="python">
               <CodeBlock

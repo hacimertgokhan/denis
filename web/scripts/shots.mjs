@@ -20,12 +20,13 @@ const page = await context.newPage();
 
 // account + data through the API (same origin, so cookies land in the context)
 const email = `shots-${Date.now()}@example.com`;
-await page.goto(BASE + "/login");
+await page.goto(BASE + "/register");
+await page.waitForTimeout(2500);
 const signup = await page.evaluate(
   async ({ email }) => {
     const r = await fetch("/api/auth/sign-up/email", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-form-started": String(Date.now() - 5000) },
+      headers: { "Content-Type": "application/json", "x-form-opened": "1" },
       body: JSON.stringify({ email, password: "shots-pass-123", name: "Ada Lovelace" }),
     });
     return r.status;
@@ -73,13 +74,14 @@ await page.evaluate(async () => {
 // a teammate (registered in a second context so the first session stays intact), a member row and two database accounts
 const mate = await browser.newContext();
 const matePage = await mate.newPage();
-await matePage.goto(BASE + "/login");
+await matePage.goto(BASE + "/register");
+await matePage.waitForTimeout(2500);
 const mateEmail = `mate-${Date.now()}@example.com`;
 await matePage.evaluate(
   async ({ email }) => {
     await fetch("/api/auth/sign-up/email", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-form-started": String(Date.now() - 5000) },
+      headers: { "Content-Type": "application/json", "x-form-opened": "1" },
       body: JSON.stringify({ email, password: "shots-pass-123", name: "Grace Hopper" }),
     });
   },
@@ -99,12 +101,13 @@ await page.evaluate(
 // the admin pages need an administrator: sign in as the smoke admin (PLATFORM_ADMINS) in a separate context
 const adminCtx = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
 const adminPage = await adminCtx.newPage();
-await adminPage.goto(BASE + "/login");
+await adminPage.goto(BASE + "/register");
+await adminPage.waitForTimeout(2500);
 const adminOk = await adminPage.evaluate(async () => {
   const body = { email: "smoke-admin@example.com", password: "smoke-admin-123", name: "Smoke Admin" };
   let r = await fetch("/api/auth/sign-up/email", {
     method: "POST",
-    headers: { "Content-Type": "application/json", "x-form-started": String(Date.now() - 5000) },
+    headers: { "Content-Type": "application/json", "x-form-opened": "1" },
     body: JSON.stringify(body),
   });
   if (r.status !== 200)

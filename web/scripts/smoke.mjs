@@ -16,7 +16,6 @@ async function call(path, { method = "GET", body, headers = {}, raw = false } = 
     headers: {
       "Content-Type": "application/json",
       Origin: BASE,
-      "x-form-started": String(Date.now() - 5000),
       ...(cookie ? { Cookie: cookie } : {}),
       ...headers,
     },
@@ -49,19 +48,22 @@ const email = `smoke-${Date.now()}@example.com`;
 let r;
 
 step("bot protection on sign-up");
-r = await fetch(BASE + "/api/auth/sign-up/email", {
+// a bot that never opened the page
+r = await call("/api/auth/sign-up/email", { method: "POST", body: { email: `bot-${Date.now()}@example.com`, password: "bot-pass-123", name: "Bot" } });
+assert.equal(r.status, 400, "no form cookie -> refused");
+// open the page (the response stamps the signed cookie), submit at once
+r = await call("/register", { raw: true });
+assert.ok(cookie.includes("denis_form="), "the form page sets its cookie");
+r = await call("/api/auth/sign-up/email", { method: "POST", body: { email: `fast-${Date.now()}@example.com`, password: "bot-pass-123", name: "Fast" } });
+assert.equal(r.status, 400, "submitted instantly -> refused");
+await new Promise((res) => setTimeout(res, 2500));
+r = await call("/api/auth/sign-up/email", {
   method: "POST",
-  headers: { "Content-Type": "application/json", Origin: BASE, "x-form-started": String(Date.now() - 5000), "x-form-website": "http://spam.example" },
-  body: JSON.stringify({ email: `bot-${Date.now()}@example.com`, password: "bot-pass-123", name: "Bot" }),
-}).then((x) => x.status);
-assert.equal(r, 400, "honeypot filled -> refused");
-r = await fetch(BASE + "/api/auth/sign-up/email", {
-  method: "POST",
-  headers: { "Content-Type": "application/json", Origin: BASE, "x-form-started": String(Date.now()) },
-  body: JSON.stringify({ email: `fast-${Date.now()}@example.com`, password: "bot-pass-123", name: "Fast" }),
-}).then((x) => x.status);
-assert.equal(r, 400, "submitted instantly -> refused");
-console.log("honeypot and instant submits are refused");
+  body: { email: `bot-${Date.now()}@example.com`, password: "bot-pass-123", name: "Bot" },
+  headers: { "x-form-website": "http://spam.example" },
+});
+assert.equal(r.status, 400, "honeypot filled -> refused");
+console.log("missing cookie, instant submits and filled honeypots are refused");
 
 step("register + session");
 r = await call("/api/auth/sign-up/email", { method: "POST", body: { email, password: "smoke-pass-123", name: "Smoke Test" } });

@@ -7,26 +7,46 @@ import { db, schema } from "@/lib/db";
 import { env } from "@/lib/env";
 import { newSignInMail, passwordResetMail, sendMail, signInCodeMail, verificationCodeMail } from "@/lib/mail";
 import { and, eq, ne } from "drizzle-orm";
+import { createHmac, timingSafeEqual } from "node:crypto";
 
 const e = env();
 
 /**
- * Bot protection without a third party: the sign-up and reset forms carry
- * a honeypot field and the moment the form was opened. A filled honeypot or
- * a form submitted within two seconds of opening is a script, not a person.
- * When Cloudflare Turnstile keys are configured, the captcha plugin verifies
- * its token on top of this.
+ * Bot protection without a third party. The public form pages are served
+ * with a signed cookie carrying the server's clock (see proxy.ts); a
+ * submission must arrive at least two seconds after that, and never with
+ * the honeypot field filled. Both checks use server time only, so a
+ * visitor with a wrong clock is never refused. When Cloudflare Turnstile
+ * keys are configured, the captcha plugin verifies its token on top.
  */
 const PROTECTED_PATHS = new Set(["/sign-up/email", "/request-password-reset", "/email-otp/send-verification-otp"]);
 const OTP_MINUTES = 10;
 const MIN_FORM_MS = 2000;
+const FORM_COOKIE = "denis_form";
+const FORM_MAX_AGE_MS = 60 * 60 * 1000;
+
+function formOpenedAt(cookieHeader: string | null): number | null {
+  const raw = cookieHeader
+    ?.split(";")
+    .map((c) => c.trim())
+    .find((c) => c.startsWith(FORM_COOKIE + "="))
+    ?.slice(FORM_COOKIE.length + 1);
+  if (!raw) return null;
+  const [ts, sig] = decodeURIComponent(raw).split(".");
+  if (!ts || !sig) return null;
+  const expected = createHmac("sha256", e.BETTER_AUTH_SECRET).update(`form:${ts}`).digest("hex");
+  if (sig.length !== expected.length || !timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
+  return Number(ts);
+}
 
 const humanCheck = createAuthMiddleware(async (ctx) => {
   if (!PROTECTED_PATHS.has(ctx.path)) return;
   const honeypot = ctx.headers?.get("x-form-website") ?? "";
-  const started = Number(ctx.headers?.get("x-form-started") ?? 0);
   if (honeypot.trim() !== "") throw new APIError("BAD_REQUEST", { message: "That did not work. Please try again." });
-  if (!started || Date.now() - started < MIN_FORM_MS) throw new APIError("BAD_REQUEST", { message: "Please take a moment and try again." });
+  const opened = formOpenedAt(ctx.headers?.get("cookie") ?? null);
+  const age = opened === null ? -1 : Date.now() - opened;
+  if (opened === null || age > FORM_MAX_AGE_MS) throw new APIError("BAD_REQUEST", { message: "The form has expired. Reload the page and try again." });
+  if (age < MIN_FORM_MS) throw new APIError("BAD_REQUEST", { message: "Please take a moment and try again." });
 });
 
 export const auth = betterAuth({
@@ -119,7 +139,6 @@ export const auth = betterAuth({
     cookieCache: { enabled: true, maxAge: 5 * 60 },
   },
   plugins: [
-    nextCookies(),
     // second factor by mail: on for accounts that turned it on under Settings -> Security
     twoFactor({
       skipVerificationOnEnable: true,
@@ -147,6 +166,8 @@ export const auth = betterAuth({
     ...(e.TURNSTILE_SECRET_KEY
       ? [captcha({ provider: "cloudflare-turnstile", secretKey: e.TURNSTILE_SECRET_KEY, endpoints: ["/sign-up/email", "/request-password-reset"] })]
       : []),
+    // last, so cookies set by plugin hooks reach the Next.js cookie store
+    nextCookies(),
   ],
 });
 

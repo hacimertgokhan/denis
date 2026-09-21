@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 
 /**
  * Bot protection for the public forms, matched by the server's humanCheck
- * hook: a honeypot input no person sees, the time the form was opened, and
+ * hook: a honeypot input no person sees (the "form opened" moment is a
+ * signed cookie the page itself sets, see proxy.ts), and
  * — when NEXT_PUBLIC_TURNSTILE_SITE_KEY is set — a Cloudflare Turnstile
  * token. useHumanCheck() gives the headers to send; <HumanCheck /> renders
  * the hidden field and the widget.
@@ -24,12 +25,10 @@ declare global {
 const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "";
 
 export function useHumanCheck() {
-  const [startedAt] = useState(() => Date.now());
   const [captcha, setCaptcha] = useState<string | null>(null);
   const [honeypot, setHoneypot] = useState("");
   const ready = !SITE_KEY || captcha !== null;
   const headers = (): Record<string, string> => ({
-    "x-form-started": String(startedAt),
     "x-form-website": honeypot,
     ...(captcha ? { "x-captcha-response": captcha } : {}),
   });

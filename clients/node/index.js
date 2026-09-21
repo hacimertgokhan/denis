@@ -440,6 +440,31 @@ class DenisClient {
     }
   }
 
+  /**
+   * Project administration with the server's main token (ddb-main-token); no
+   * login needed. Every method resolves with the server's reply fields.
+   *
+   *   const admin = denis.admin(process.env.DENIS_MAIN_TOKEN);
+   *   const { token } = await admin.create({ maxKeys: 50000, maxBytes: 10 * 1024 * 1024 });
+   *   await admin.usage(token);   // { token, usage: {cachedKeys, cachedBytes, persistedKeys, persistedBytes}, quota }
+   */
+  admin(mainToken) {
+    if (typeof mainToken !== "string" || mainToken.length === 0) throw new DenisError("mainToken is required", "EINVAL");
+    const run = async (line) => {
+      const { ok, ...reply } = await this._expectOk(`ADMIN ${mainToken} ${line}`);
+      return reply;
+    };
+    return {
+      list: () => run("LIST").then((r) => r.projects),
+      create: (quota = {}) => run(quota.maxKeys !== undefined || quota.maxBytes !== undefined
+        ? `CREATE ${quota.maxKeys ?? 0} ${quota.maxBytes ?? 0}` : "CREATE"),
+      usage: (token) => run(`USAGE ${token}`),
+      quota: (token, maxKeys, maxBytes) => run(`QUOTA ${token} ${maxKeys ?? 0} ${maxBytes ?? 0}`),
+      flush: (token) => run(`FLUSH ${token}`).then(() => true),
+      drop: (token) => run(`DROP ${token}`).then(() => true),
+    };
+  }
+
   /** Create a new project token on the server (does not switch this client to it). */
   async createProject() {
     const reply = await this._expectOk("AUTH CREATE");

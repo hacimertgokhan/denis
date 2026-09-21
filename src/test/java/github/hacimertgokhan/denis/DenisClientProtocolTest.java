@@ -210,6 +210,65 @@ class DenisClientProtocolTest {
     }
 
     @Test
+    void adminCreatesInspectsLimitsAndDeletesProjects() {
+        send("MODE json");
+        String admin = "ADMIN " + TestContext.MAIN_TOKEN + " ";
+        assertFalse(json("ADMIN wrong-token LIST").getBoolean("ok"));
+
+        JSONObject created = json(admin + "CREATE 3 100");
+        String token = created.getString("token");
+        assertTrue(created.getBoolean("ok"));
+        JSONObject usage = json(admin + "USAGE " + token);
+        assertEquals(3, usage.getJSONObject("quota").getLong("maxKeys"));
+        assertEquals(100, usage.getJSONObject("quota").getLong("maxBytes"));
+        assertEquals(1, json(admin + "LIST").getInt("count"));
+
+        // the project is usable through the normal flow and the quota bites
+        assertTrue(json("LIN " + TestContext.GROUP + " " + TestContext.PASSWORD).getBoolean("ok"));
+        assertTrue(json("AUTH " + token).getBoolean("ok"));
+        assertTrue(json("SET a 1 -&save").getBoolean("ok"));
+        assertTrue(json("SET b 2").getBoolean("ok"));
+        assertTrue(json("SET c 3").getBoolean("ok"));
+        JSONObject refused = json("SET d 4");
+        assertFalse(refused.getBoolean("ok"));
+        assertEquals("QUOTA", refused.getString("code"));
+        assertEquals("keys", refused.getString("resource"));
+        assertTrue(json("SET a 11").getBoolean("ok"), "overwriting an existing key is fine");
+        JSONObject big = json("SET a " + "x".repeat(200));
+        assertEquals("bytes", big.getString("resource"));
+
+        JSONObject info = json("INFO").getJSONObject("project");
+        assertEquals(3, info.getLong("cachedKeys"));
+        assertEquals(1, info.getLong("persistedKeys"));
+        assertEquals(3, info.getJSONObject("quota").getLong("maxKeys"));
+
+        // raise the limit, then the write goes through; a SQL insert is counted too
+        assertTrue(json(admin + "QUOTA " + token + " 0 0").getBoolean("ok"));
+        assertTrue(json("SET d 4").getBoolean("ok"));
+        json("CREATE TABLE t (id INT)");
+        assertTrue(json("INSERT INTO t (id) VALUES (1)").getBoolean("ok"));
+        assertTrue(json(admin + "USAGE " + token).getJSONObject("usage").getLong("persistedKeys") >= 3);
+
+        assertTrue(json(admin + "FLUSH " + token).getBoolean("ok"));
+        assertEquals(0, json("KEYS").getInt("count"));
+        assertEquals(0, json(admin + "USAGE " + token).getJSONObject("usage").getLong("cachedKeys"));
+        assertTrue(json(admin + "DROP " + token).getBoolean("ok"));
+        assertEquals(0, json(admin + "LIST").getInt("count"));
+        assertFalse(ctx.projects().exists(token));
+    }
+
+    @Test
+    void sqlInsertIsRefusedByTheQuota() throws IOException {
+        loginAndCreateProject();
+        ctx.projects().setQuota(client.getProjectToken(), new github.hacimertgokhan.denis.project.ProjectRegistry.Quota(4, 0));
+        json("CREATE TABLE t (id INT)"); // schema + seq = 2 keys
+        assertTrue(json("INSERT INTO t (id) VALUES (1)").getBoolean("ok"));
+        JSONObject refused = json("INSERT INTO t (id) VALUES (2), (3)");
+        assertFalse(refused.getBoolean("ok"));
+        assertEquals("QUOTA", refused.getString("code"));
+    }
+
+    @Test
     void helpAndInfoAreMachineReadable() {
         send("MODE json");
         JSONObject help = json("HELP");

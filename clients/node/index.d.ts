@@ -64,8 +64,36 @@ export interface ServerInfo {
   persistedDirty: boolean;
   projects: number;
   group: string;
-  project?: { cachedKeys: number; persistedKeys: number };
+  project?: ProjectUsage & { quota: ProjectQuota };
   memory: { usedMb: number; maxMb: number };
+}
+
+export interface ProjectQuota {
+  /** 0 = unlimited */
+  maxKeys: number;
+  maxBytes: number;
+}
+
+export interface ProjectUsage {
+  cachedKeys: number;
+  cachedBytes: number;
+  persistedKeys: number;
+  persistedBytes: number;
+}
+
+export interface ProjectInfo {
+  token: string;
+  usage: ProjectUsage;
+  quota: ProjectQuota;
+}
+
+export interface DenisAdmin {
+  list(): Promise<ProjectInfo[]>;
+  create(quota?: Partial<ProjectQuota>): Promise<{ token: string; message: string }>;
+  usage(token: string): Promise<ProjectInfo>;
+  quota(token: string, maxKeys: number, maxBytes: number): Promise<ProjectInfo & { message: string }>;
+  flush(token: string): Promise<true>;
+  drop(token: string): Promise<true>;
 }
 
 export interface CommandDoc {
@@ -114,6 +142,8 @@ export class DenisClient {
   tables(): Promise<TableInfo[]>;
   describe(table: string): Promise<TableInfo | null>;
   createProject(): Promise<string>;
+  /** ADMIN commands with the server's main token. */
+  admin(mainToken: string): DenisAdmin;
   /** Send a raw protocol line on a pooled connection. */
   command(line: string): Promise<DenisReply>;
   close(): Promise<void>;

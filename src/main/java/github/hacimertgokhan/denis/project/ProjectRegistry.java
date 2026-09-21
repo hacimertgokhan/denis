@@ -4,6 +4,8 @@ import github.hacimertgokhan.denis.CreateSecureToken;
 import github.hacimertgokhan.json.JsonFile;
 import github.hacimertgokhan.logger.DenisLogger;
 
+import org.json.JSONObject;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,9 +29,20 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ProjectRegistry {
     private static final DenisLogger log = new DenisLogger(ProjectRegistry.class);
     public static final String TOKENS_KEY = "tokens";
+    public static final String QUOTAS_KEY = "quotas";
+
+    /** Limits of one project; {@code 0} means unlimited. */
+    public record Quota(long maxKeys, long maxBytes) {
+        public static final Quota UNLIMITED = new Quota(0, 0);
+
+        public JSONObject toJson() {
+            return new JSONObject().put("maxKeys", maxKeys).put("maxBytes", maxBytes);
+        }
+    }
 
     private final JsonFile file;
     private final Set<String> tokens = ConcurrentHashMap.newKeySet();
+    private final ConcurrentHashMap<String, Quota> quotas = new ConcurrentHashMap<>();
 
     public ProjectRegistry(String path) {
         this(new JsonFile(path));
@@ -50,6 +63,14 @@ public class ProjectRegistry {
             List<String> current = file.getList(TOKENS_KEY);
             tokens.retainAll(current);
             tokens.addAll(current);
+            JSONObject stored = file.readJson().optJSONObject(QUOTAS_KEY);
+            quotas.clear();
+            if (stored != null) {
+                for (String token : stored.keySet()) {
+                    JSONObject q = stored.getJSONObject(token);
+                    quotas.put(token, new Quota(q.optLong("maxKeys", 0), q.optLong("maxBytes", 0)));
+                }
+            }
         } catch (IOException e) {
             log.error("Could not read project tokens: " + e.getMessage());
         }
@@ -63,7 +84,30 @@ public class ProjectRegistry {
         }
         file.writeArray(TOKENS_KEY, current);
         tokens.remove(token);
+        if (quotas.remove(token) != null) {
+            saveQuotas();
+        }
         return true;
+    }
+
+    public Quota quota(String token) {
+        return quotas.getOrDefault(token, Quota.UNLIMITED);
+    }
+
+    /** Set (or with {@code null} clear) the limits of a project and persist them. */
+    public synchronized void setQuota(String token, Quota quota) throws IOException {
+        if (quota == null || (quota.maxKeys() <= 0 && quota.maxBytes() <= 0)) {
+            quotas.remove(token);
+        } else {
+            quotas.put(token, quota);
+        }
+        saveQuotas();
+    }
+
+    private void saveQuotas() throws IOException {
+        JSONObject all = new JSONObject();
+        quotas.forEach((token, quota) -> all.put(token, quota.toJson()));
+        file.updateValue(QUOTAS_KEY, all);
     }
 
     public boolean exists(String token) {

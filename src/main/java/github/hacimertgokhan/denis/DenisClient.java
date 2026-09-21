@@ -1,7 +1,9 @@
 package github.hacimertgokhan.denis;
 
 import github.hacimertgokhan.denis.client.ClientStates;
+import github.hacimertgokhan.denis.project.ProjectRegistry;
 import github.hacimertgokhan.denis.server.ProjectStore;
+import github.hacimertgokhan.denis.server.QuotaExceededException;
 import github.hacimertgokhan.denis.server.ServerContext;
 import github.hacimertgokhan.denis.sql.SqlQueryEngine;
 import github.hacimertgokhan.denis.sql.SqlResult;
@@ -31,7 +33,7 @@ import java.util.Locale;
  * the MCP server use. {@code HELP} lists every command with its usage.
  *
  * <pre>
- *   no login    PING, MODE json|text, HELP, EXIT
+ *   no login    PING, MODE json|text, HELP, EXIT, ADMIN &lt;main-token&gt; ...
  *   LIN         LIN &lt;group&gt; &lt;password&gt;
  *   logged in   AUTH CREATE | AUTH &lt;token&gt;, INFO
  *   project     GET SET DEL UPDATE EXISTS KEYS MGET HEAVEN SAVE, SQL ... / SHOW TABLES / DESCRIBE
@@ -49,6 +51,8 @@ public class DenisClient {
             new CommandDoc("HELP", "HELP", "List every command with its usage.", false, false),
             new CommandDoc("EXIT", "EXIT", "Close the connection.", false, false),
             new CommandDoc("LIN", "LIN <group> <password>", "Log in with a group from denis.toml.", false, false),
+            new CommandDoc("ADMIN", "ADMIN <main-token> LIST | CREATE | USAGE <token> | QUOTA <token> <maxKeys> <maxBytes> | FLUSH <token> | DROP <token>",
+                    "Project administration with the server's main token (ddb-main-token): list projects with usage, create one, read usage, set limits (0 = unlimited), empty or delete one.", false, false),
             new CommandDoc("AUTH", "AUTH CREATE | AUTH <token>", "Create a project (key namespace) or select one by token.", true, false),
             new CommandDoc("INFO", "INFO", "Server statistics: version, uptime, connections, key counts.", true, false),
             new CommandDoc("GET", "GET <key> [-&from-cache | -&from-protobuff] [-&asa-json]", "Read a key (cache first, then the persisted store).", true, true),
@@ -111,6 +115,15 @@ public class DenisClient {
         }
     }
 
+    private void quotaExceeded(PrintWriter out, QuotaExceededException e) {
+        if (jsonMode) {
+            out.println(new JSONObject().put("ok", false).put("error", e.getMessage())
+                    .put("code", "QUOTA").put("resource", e.resource()).put("limit", e.limit()));
+        } else {
+            out.println(String.format("[Error - %s]: %s", new Date(), e.getMessage()));
+        }
+    }
+
     private void usage(PrintWriter out, String usage) {
         if (jsonMode) {
             error(out, usage);
@@ -170,15 +183,7 @@ public class DenisClient {
                     }
                     log.info(action);
                 }
-                boolean keepOpen;
-                try {
-                    keepOpen = handleLine(line, out);
-                } catch (RuntimeException e) {
-                    // A bug in one handler must not take the connection down silently.
-                    log.error("Command failed for " + peer + " (" + describe(line) + "): " + e);
-                    error(out, "internal error: " + e.getMessage());
-                    keepOpen = true;
-                }
+                boolean keepOpen = handleLine(line, out);
                 // Flush only when the client has nothing more queued: one syscall per
                 // batch for pipelining clients, one per command for interactive ones.
                 if (!keepOpen || !in.ready()) {
@@ -208,6 +213,20 @@ public class DenisClient {
 
     /** @return false when the connection should be closed. */
     public boolean handleLine(String inputLine, PrintWriter out) {
+        try {
+            return dispatch(inputLine, out);
+        } catch (QuotaExceededException e) {
+            quotaExceeded(out, e);
+            return true;
+        } catch (RuntimeException e) {
+            // A bug in one handler must not take the connection down silently.
+            log.error("Command failed (" + describe(inputLine) + "): " + e);
+            error(out, "internal error: " + e.getMessage());
+            return true;
+        }
+    }
+
+    private boolean dispatch(String inputLine, PrintWriter out) {
         ctx.commandHandled();
         String[] parts = inputLine.trim().split(" ", 3);
         String command = parts[0].toUpperCase(Locale.ROOT);
@@ -242,6 +261,10 @@ public class DenisClient {
             }
             case "HELP" -> {
                 handleHelp(out);
+                return true;
+            }
+            case "ADMIN" -> {
+                handleAdmin(out, inputLine.trim().split("\\s+"));
                 return true;
             }
             default -> {
@@ -390,6 +413,79 @@ public class DenisClient {
         }
     }
 
+    /** {@code ADMIN <main-token> <action> ...}: project administration, no login needed. */
+    private void handleAdmin(PrintWriter out, String[] words) {
+        if (words.length < 3) {
+            usage(out, "USAGE: ADMIN <main-token> LIST|CREATE|USAGE|QUOTA|FLUSH|DROP ...");
+            return;
+        }
+        if (!ctx.isMainToken(words[1])) {
+            error(out, "ADMIN refused: wrong main token");
+            return;
+        }
+        String action = words[2].toUpperCase(Locale.ROOT);
+        try {
+            switch (action) {
+                case "LIST" -> {
+                    JSONArray projects = new JSONArray();
+                    for (String token : ctx.projects().list()) {
+                        projects.put(projectJson(token));
+                    }
+                    json(out, new JSONObject().put("projects", projects).put("count", projects.length()),
+                            projects.isEmpty() ? "(no projects)" : String.join("\n", ctx.projects().list()));
+                }
+                case "CREATE" -> {
+                    String token = ctx.projects().create();
+                    if (words.length >= 5) {
+                        ctx.projects().setQuota(token, new ProjectRegistry.Quota(Long.parseLong(words[3]), Long.parseLong(words[4])));
+                    }
+                    json(out, new JSONObject().put("message", "Project created").put("token", token), token);
+                }
+                case "USAGE", "QUOTA", "FLUSH", "DROP" -> {
+                    if (words.length < 4 || !ctx.projects().exists(words[3])) {
+                        error(out, "Unknown project" + (words.length < 4 ? "" : ": " + words[3]));
+                        return;
+                    }
+                    String token = words[3];
+                    switch (action) {
+                        case "USAGE" -> json(out, projectJson(token), projectJson(token).toString());
+                        case "QUOTA" -> {
+                            if (words.length < 6) {
+                                usage(out, "USAGE: ADMIN <main-token> QUOTA <token> <maxKeys> <maxBytes>");
+                                return;
+                            }
+                            ctx.projects().setQuota(token, new ProjectRegistry.Quota(Long.parseLong(words[4]), Long.parseLong(words[5])));
+                            json(out, projectJson(token).put("message", "Quota updated"), "Quota updated");
+                        }
+                        case "FLUSH" -> {
+                            ctx.project(token).purge();
+                            ok(out, "Project emptied: " + token);
+                        }
+                        default -> {
+                            ctx.project(token).purge();
+                            ctx.projects().delete(token);
+                            ctx.usage().forget(token);
+                            ok(out, "Project deleted: " + token);
+                        }
+                    }
+                }
+                default -> usage(out, "USAGE: ADMIN <main-token> LIST|CREATE|USAGE|QUOTA|FLUSH|DROP ...");
+            }
+        } catch (NumberFormatException e) {
+            error(out, "Limits must be integers (0 = unlimited)");
+        } catch (IOException e) {
+            log.error("ADMIN " + action + " failed: " + e.getMessage());
+            error(out, "Could not update the project registry");
+        }
+    }
+
+    private JSONObject projectJson(String token) {
+        return new JSONObject()
+                .put("token", token)
+                .put("usage", ctx.usage().of(token).toJson())
+                .put("quota", ctx.projects().quota(token).toJson());
+    }
+
     private void handleInfo(PrintWriter out) {
         JSONObject info = new JSONObject()
                 .put("version", version())
@@ -403,9 +499,7 @@ public class DenisClient {
                 .put("projects", ctx.projects().size())
                 .put("group", group);
         if (project != null) {
-            info.put("project", new JSONObject()
-                    .put("cachedKeys", project.cachedCount())
-                    .put("persistedKeys", project.persistedCount()));
+            info.put("project", project.usage().toJson().put("quota", project.quota().toJson()));
         }
         Runtime rt = Runtime.getRuntime();
         info.put("memory", new JSONObject()

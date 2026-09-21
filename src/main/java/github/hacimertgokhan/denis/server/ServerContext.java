@@ -33,6 +33,8 @@ public class ServerContext implements AutoCloseable {
     private final String groupsFile;
     private final DenisTerminal activityLog;
     private final TableCatalog tables = new TableCatalog();
+    private final UsageTracker usage = new UsageTracker();
+    private volatile String mainToken;
     private final Instant startedAt = Instant.now();
     private final AtomicLong connectionsTotal = new AtomicLong();
     private final AtomicLong commandsTotal = new AtomicLong();
@@ -72,7 +74,9 @@ public class ServerContext implements AutoCloseable {
         int loaded = 0;
         for (String token : projects.list()) {
             for (Map.Entry<String, String> entry : persistence.findToken(token).entrySet()) {
+                usage.persistedPut(token, entry.getKey(), null, entry.getValue());
                 if (store.putIfAbsent(ProjectStore.fullKey(token, entry.getKey()), new Any(entry.getValue())) == null) {
+                    usage.cachePut(token, entry.getKey(), null, entry.getValue());
                     loaded++;
                 }
             }
@@ -107,7 +111,31 @@ public class ServerContext implements AutoCloseable {
     }
 
     public ProjectStore project(String token) {
-        return new ProjectStore(token, store, persistence, tables);
+        return new ProjectStore(token, store, persistence, tables, usage, () -> projects.quota(token));
+    }
+
+    public UsageTracker usage() {
+        return usage;
+    }
+
+    /** The 128-character main token; the credential for {@code ADMIN} commands. */
+    public String mainToken() {
+        return mainToken;
+    }
+
+    public void setMainToken(String mainToken) {
+        this.mainToken = mainToken;
+    }
+
+    /** Constant-time check of an {@code ADMIN} credential. */
+    public boolean isMainToken(String candidate) {
+        String expected = mainToken;
+        if (expected == null || candidate == null) {
+            return false;
+        }
+        return java.security.MessageDigest.isEqual(
+                expected.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                candidate.getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 
     public TableCatalog tables() {

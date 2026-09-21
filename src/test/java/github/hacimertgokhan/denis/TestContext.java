@@ -13,6 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class TestContext {
     public static final String GROUP = "test";
     public static final String PASSWORD = "s3cret";
+    public static final String MAIN_TOKEN = "M".repeat(128);
 
     private TestContext() {
     }
@@ -30,6 +31,8 @@ public final class TestContext {
         }
         ProtoDatabase persistence = new ProtoDatabase(dir.resolve(ServerContext.DATABASE_FILE), flushIntervalMillis);
         ProjectRegistry projects = new ProjectRegistry(dir.resolve(ServerContext.PROJECTS_FILE).toString());
-        return new ServerContext(new ConcurrentHashMap<>(), persistence, projects, groupsFile, null);
+        ServerContext ctx = new ServerContext(new ConcurrentHashMap<>(), persistence, projects, groupsFile, null);
+        ctx.setMainToken(MAIN_TOKEN);
+        return ctx;
     }
 }

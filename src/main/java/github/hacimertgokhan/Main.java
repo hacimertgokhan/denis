@@ -113,6 +113,7 @@ public class Main {
             System.exit(1);
             return;
         }
+        ctx.setMainToken(token);
         DenisServer server = new DenisServer(ctx, options);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             server.stop();

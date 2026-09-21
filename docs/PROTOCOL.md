@@ -76,6 +76,12 @@ Every field a reply can carry:
 | `HEAVEN` | `{"ok":true,"message":"Ok.","removed":n}` | drops the project's cached keys; persisted keys stay |
 | `SAVE` | `message: "Saved."` | flush `database.bin` now |
 | `SQL <statement>` or the bare statement | see below | |
+| `ADMIN <main-token> LIST` | `{"ok":true,"projects":[{token,usage,quota}],"count":n}` | no login; the main token is `ddb-main-token` from `denis.properties` / `DDB_MAIN_TOKEN` |
+| `ADMIN <main-token> CREATE [maxKeys maxBytes]` | `{"ok":true,"token":"..."}` | create a project, optionally with limits |
+| `ADMIN <main-token> USAGE <token>` | `{"ok":true,"token","usage":{cachedKeys,cachedBytes,persistedKeys,persistedBytes},"quota":{maxKeys,maxBytes}}` | |
+| `ADMIN <main-token> QUOTA <token> <maxKeys> <maxBytes>` | usage object | `0` = unlimited; limits apply to the cache and the persisted store separately |
+| `ADMIN <main-token> FLUSH <token>` | `message` | delete every key and table of the project, keep the project |
+| `ADMIN <main-token> DROP <token>` | `message` | delete the project and its data |
 
 ### Value rules
 
@@ -134,6 +140,8 @@ In text mode: a JSON array for rows/tables, `OK: <message>` and `ERROR: <message
 | `not found` (with `key`) | `GET` of a missing key |
 | `Unknown command: X (try HELP)` | |
 | `Table not found: t`, `Column not found: c`, `Table already exists: t`, `Unsupported SQL query`, `Unsupported WHERE clause: ...` | SQL |
+| `quota exceeded: keys (limit N)` / `... bytes ...` | the project reached its `ADMIN QUOTA`; json replies add `"code":"QUOTA","resource","limit"`. A multi-row INSERT may have stored the rows before the failing one |
+| `ADMIN refused: wrong main token` | |
 | `internal error: ...` | a bug; the connection stays open |
 | `line too long` | a request above 1 MiB; the connection is closed |
 

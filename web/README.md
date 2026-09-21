@@ -136,6 +136,16 @@ the session cookie; a suspended user is signed out on their next request.
   the server log when neither is set. Secrets stay in `.env`; a pre-commit
   hook (`.githooks/pre-commit`, enabled with
   `git config core.hooksPath .githooks`) refuses staged live keys and .env files.
+- **Backups** (`src/lib/backup.ts`): `GET /api/v1/databases/<id>/backup`
+  downloads the whole database as a zip (`manifest.json`, `keys.json`,
+  `tables/<name>.json`) for anyone who can read it; `POST` (multipart
+  `file` + `mode=merge|replace`) restores one for owners and admins, replaying
+  it as SET and INSERT through the gateway so quotas apply. Both in the
+  database's Settings tab.
+- **Account security**: an emailed six-digit code as second factor (Settings
+  -> Sign-in code; better-auth `twoFactor` with backup codes, trusted
+  devices) and a notice by mail whenever a browser the account has not used
+  before opens a session (`databaseHooks.session.create.after`).
 - **Data rights**: `GET /api/v1/me/export` (everything about the user as
   JSON) and `DELETE /api/v1/me` (account, databases, keys, sessions) from
   Settings → Your data. Command history is pruned after 30 days, the audit

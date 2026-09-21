@@ -8,10 +8,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ConfirmDialog } from "@/components/app/confirm-dialog";
+import { BackupPanel } from "@/components/app/backup-panel";
 import { SectionRow } from "@/components/app/page-primitives";
 import { apiFetch } from "@/lib/client-api";
 
-export function DatabaseSettings({ database }: { database: { id: string; name: string; region: string; createdAt: string } }) {
+export function DatabaseSettings({
+  database,
+  isOwner = true,
+}: {
+  database: { id: string; name: string; region: string; createdAt: string };
+  isOwner?: boolean;
+}) {
   const router = useRouter();
   const [name, setName] = useState(database.name);
   const [busy, setBusy] = useState(false);
@@ -75,6 +82,8 @@ export function DatabaseSettings({ database }: { database: { id: string; name: s
         </dl>
       </SectionRow>
 
+      <BackupPanel databaseId={database.id} canRestore />
+
       <SectionRow title="Empty the database" description="Deletes every key and table. API keys and the database itself stay.">
         <ConfirmDialog
           title="Empty this database?"
@@ -97,31 +106,33 @@ export function DatabaseSettings({ database }: { database: { id: string; name: s
         />
       </SectionRow>
 
-      <SectionRow title="Delete the database" description="Removes the data, the API keys and the usage history. This cannot be undone.">
-        <ConfirmDialog
-          title="Delete this database?"
-          description="All data, keys and history are removed permanently."
-          confirmLabel="Delete database"
-          confirmText={database.name}
-          onConfirm={async () => {
-            try {
-              await apiFetch(`/api/v1/databases/${database.id}`, {
-                method: "DELETE",
-              });
-              toast.success("Database deleted");
-              router.push("/databases");
-              router.refresh();
-            } catch (err) {
-              toast.error((err as Error).message);
+      {isOwner && (
+        <SectionRow title="Delete the database" description="Removes the data, the API keys and the usage history. This cannot be undone.">
+          <ConfirmDialog
+            title="Delete this database?"
+            description="All data, keys and history are removed permanently."
+            confirmLabel="Delete database"
+            confirmText={database.name}
+            onConfirm={async () => {
+              try {
+                await apiFetch(`/api/v1/databases/${database.id}`, {
+                  method: "DELETE",
+                });
+                toast.success("Database deleted");
+                router.push("/databases");
+                router.refresh();
+              } catch (err) {
+                toast.error((err as Error).message);
+              }
+            }}
+            trigger={
+              <Button variant="outline" className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive">
+                Delete database
+              </Button>
             }
-          }}
-          trigger={
-            <Button variant="outline" className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive">
-              Delete database
-            </Button>
-          }
-        />
-      </SectionRow>
+          />
+        </SectionRow>
+      )}
     </div>
   );
 }

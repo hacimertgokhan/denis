@@ -16,6 +16,10 @@ before 1.0.0 a minor bump may contain breaking changes, which are listed).
   six-digit codes confirm the address after sign-up and sign people in
   without a password (`/login/code`); product updates are opt-in with a
   signed one-click unsubscribe and are sent from `/admin/announcements`.
+- Platform: database backups as a zip (download for readers, merge or
+  replace restore for owners and admins).
+- Platform: emailed sign-in code as a second factor with backup codes and
+  trusted devices; a mail notice for every sign-in from a new browser.
 - Repository: a pre-commit hook that refuses staged live secrets and .env files.
 - Platform: softer aurora on the sign-in pages; the architecture diagram no
   longer draws a line through the project boxes.

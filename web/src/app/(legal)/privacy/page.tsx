@@ -82,7 +82,10 @@ export default function PrivacyPage() {
             <td>12 months</td>
           </tr>
           <tr>
-            <td>Email: your address, for verification and sign-in codes, password resets and — only if you opted in — product updates</td>
+            <td>
+              Email: your address, for verification and sign-in codes, password resets, notices about sign-ins from new browsers and — only if you opted in —
+              product updates
+            </td>
             <td>Confirming the address is yours, signing in without a password, recovering access; telling you about releases</td>
             <td>Contract for codes and resets; consent for product updates (withdraw with one click in any message or under Settings)</td>
             <td>Codes expire after 10 minutes; the opt-in until you withdraw it. Sent through Resend as our processor</td>

@@ -14,7 +14,7 @@ const tabs: { label: string; path: string; roles?: Role[] }[] = [
   { label: "History", path: "/history" },
   { label: "Connect", path: "/connect", roles: ["owner", "admin"] },
   { label: "Access", path: "/access", roles: ["owner", "admin"] },
-  { label: "Settings", path: "/settings", roles: ["owner"] },
+  { label: "Settings", path: "/settings", roles: ["owner", "admin"] },
 ];
 
 export function DatabaseTabs({ id, role, base: baseOverride }: { id: string; role: Role; base?: string }) {

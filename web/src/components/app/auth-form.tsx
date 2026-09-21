@@ -45,6 +45,10 @@ export function AuthForm({ mode, githubEnabled }: { mode: "login" | "register"; 
       toast.error(result.error.message ?? "That did not work. Check the details and try again.");
       return;
     }
+    if (mode === "login" && result.data && "twoFactorRedirect" in result.data && result.data.twoFactorRedirect) {
+      router.push(`/login/verify?next=${encodeURIComponent(next)}`);
+      return;
+    }
     // a new account confirms its address first; the code is already on its way
     router.push(mode === "register" ? `/verify-email?email=${encodeURIComponent(email)}&next=${encodeURIComponent(next)}` : next);
     router.refresh();

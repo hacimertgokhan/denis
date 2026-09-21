@@ -58,6 +58,13 @@ export default async function WorkspaceOverview({ params }: { params: Promise<{ 
         <Link href={`/db/${id}/history`} className="decoration-border hover:text-foreground underline underline-offset-4">
           Command history
         </Link>
+        <a
+          href={`/api/v1/databases/${id}/backup`}
+          download
+          className="decoration-border hover:text-foreground hover:decoration-foreground underline underline-offset-4"
+        >
+          Download backup
+        </a>
       </nav>
     </>
   );

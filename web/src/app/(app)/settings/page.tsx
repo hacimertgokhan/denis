@@ -2,6 +2,7 @@ import { SiteHeader } from "@/components/app/site-header";
 import { PageHeader, SectionRow } from "@/components/app/page-primitives";
 import { AccountData } from "@/components/app/account-data";
 import { MailPreferences } from "@/components/app/mail-preferences";
+import { TwoFactorSettings } from "@/components/app/two-factor";
 import { ProfileForm } from "@/components/app/profile-form";
 import { SignOutButton } from "@/components/app/sign-out-button";
 import { countDatabases } from "@/lib/databases";
@@ -42,6 +43,7 @@ export default async function SettingsPage() {
           <SectionRow title="Session" description="Sign out of this browser.">
             <SignOutButton />
           </SectionRow>
+          <TwoFactorSettings enabled={user.twoFactorEnabled} />
           <MailPreferences optIn={user.marketingOptIn} verified={user.emailVerified} email={user.email} />
           <AccountData email={user.email} />
         </div>

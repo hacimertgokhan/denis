@@ -80,6 +80,13 @@ export default async function OverviewPage({ params }: { params: Promise<{ id: s
         >
           Browse tables
         </Link>
+        <a
+          href={`/api/v1/databases/${database.id}/backup`}
+          download
+          className="decoration-border hover:text-foreground hover:decoration-foreground underline underline-offset-4"
+        >
+          Download backup
+        </a>
         <span className="ml-auto">
           Created {formatDate(database.createdAt)} · {database.region}
         </span>

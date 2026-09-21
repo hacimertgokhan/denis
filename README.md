@@ -1,66 +1,85 @@
 # Denis Database
 
-Denis Database is a small Java key-value server in the spirit of Redis: keys live in an in-memory cache, can be persisted to a protobuf file, and are grouped into projects (tokens) behind a group login. It speaks a line protocol over TCP and ships with Node.js and Java clients, a management CLI and a Docker image.
+Denis is a small Java key-value server in the spirit of Redis, with a SQL
+subset and an MCP server for AI assistants. Keys live in an in-memory cache and
+can be persisted to a protobuf file; they are grouped into projects (tokens)
+behind a group login. Denis speaks a line protocol over TCP and ships with
+Node.js and Java clients, a management CLI, a Docker image and an MCP server.
 
 [![CI](https://github.com/hacimertgokhan/denis/actions/workflows/ci.yml/badge.svg)](https://github.com/hacimertgokhan/denis/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/hacimertgokhan/denis?include_prereleases)](https://github.com/hacimertgokhan/denis/releases)
 
-## Quick Start
-
-Requirements: Java 17 or newer.
-
-Build locally:
-
-```sh
-mvn package
+```
+                 ┌────────────────────────────────────────────┐
+  Node client ──►│  Denis server (TCP :5142)                  │
+  Java driver ──►│  LIN group ─► AUTH project ─► GET/SET/SQL  │
+  denis cli   ──►│  cache (ConcurrentHashMap)                 │──► database.bin
+  MCP server  ──►│  + persisted keys + SQL tables             │    (write-behind, atomic)
+  AI assistant   └────────────────────────────────────────────┘
 ```
 
-Run from the generated jar:
+## Contents
+
+- [Quick start](#quick-start)
+- [Docker](#docker)
+- [CLI](#cli)
+- [Wire protocol](#wire-protocol)
+- [SQL](#sql)
+- [AI / MCP](#ai--mcp)
+- [Client libraries](#client-libraries)
+- [Configuration](#configuration)
+- [Architecture](#architecture)
+- [Versioning and releases](#versioning-and-releases)
+
+## Quick start
+
+Requirements: Java 17+ (Maven to build from source; Node 18+ for the Node
+client and the MCP server).
 
 ```sh
-java -jar target/denis-0.0.2.9-alpha.jar --help
-java -jar target/denis-0.0.2.9-alpha.jar server
-java -jar target/denis-0.0.2.9-alpha.jar cli
+mvn package                                   # target/denis-0.3.0.jar (+ project bundle zip/tar.gz)
+java -jar target/denis-0.3.0.jar cli group create crm -p s3cret
+java -jar target/denis-0.3.0.jar server       # listens on 0.0.0.0:5142
 ```
 
-## Install From Release
-
-Download `denis-<version>-project-bundle.zip` or `denis-<version>-project-bundle.tar.gz` from GitHub Releases, extract it, then run:
+In a second terminal:
 
 ```sh
-sh install.sh
+java -jar target/denis-0.3.0.jar cli exec -g crm -p s3cret --create-project \
+  "SET greeting hello world -&save" "GET greeting" \
+  "CREATE TABLE users (id INT, name TEXT)" \
+  "INSERT INTO users (id, name) VALUES (1, 'Ada'), (2, 'Grace')" \
+  "SELECT * FROM users ORDER BY id"
+```
+
+```
+Ok (Protobuf)
+hello world
+OK: table created
+OK: 2 rows inserted
+id | name
+---+------
+1  | Ada
+2  | Grace
+(2 row(s))
+```
+
+### Install from a release
+
+Download `denis-<version>-project-bundle.zip` / `.tar.gz` from
+[Releases](https://github.com/hacimertgokhan/denis/releases), extract, then:
+
+```sh
+sh install.sh        # Windows: install.bat
 denis --help
 denis server
-denis cli
-```
-
-Windows:
-
-```bat
-install.bat
-denis.bat --help
-denis.bat server
-denis.bat cli
-```
-
-## CLI Tools
-
-The release bundle includes `bin/denis` and `bin/denis.bat` wrappers.
-
-```sh
-denis --version
-denis server
-denis cli
 denis cli --help
-denis cli token -l
-denis cli token -c
-denis cli group create crm            # non-interactive; prints the generated password
-denis cli group create crm -p s3cret  # with a chosen password (stored hashed)
-denis cli group create crm --json     # {"group":"crm","password":"...","generated":true}
-denis cli group list
-denis cli group test crm s3cret       # exit code 0 when LIN would succeed
 ```
 
-Runtime files are kept next to the installed app by default: `denis.properties`, `denis.toml`, `ddb.json`, `pawd.dat`, `database.bin`, `storage/`, `logs/` and the per-run activity log in `denis/`. None of them belong in version control.
+Runtime files are kept next to the installed app: `denis.properties`,
+`denis.toml` (groups), `ddb.json` (project tokens), `pawd.dat`,
+`database.bin` (persisted keys and tables), `logs/` and the per-run activity
+log in `denis/`. None of them belong in version control.
 
 ## Docker
 
@@ -75,13 +94,143 @@ or with Compose (`cp .env.example .env`, edit, then):
 
 ```sh
 docker compose up -d
-docker compose exec denis /app/entrypoint.sh cli group list
+docker compose exec denis /app/entrypoint.sh cli status
+docker compose exec denis /app/entrypoint.sh cli token create
+docker compose exec denis /app/entrypoint.sh cli exec -g crm -p s3cret -t <token> "SELECT * FROM users"
 ```
 
-The image is a multi-stage build (Maven → `eclipse-temurin:17-jre`), runs as a
-non-root user, keeps all runtime state in the `/data` volume and has a
-`HEALTHCHECK` that sends `PING`. Any CLI command can be run against the same data
-with `docker exec <container> /app/entrypoint.sh cli ...`.
+Released images are published to `ghcr.io/hacimertgokhan/denis:<version>` and
+`:latest`. The image is a multi-stage build (Maven → `eclipse-temurin:17-jre`),
+runs as a non-root user, keeps all runtime state in the `/data` volume, has a
+`HEALTHCHECK` that sends `PING`, and flushes `database.bin` on `SIGTERM`. Any
+CLI command can be run against the same data with
+`docker exec denis /app/entrypoint.sh cli ...`.
+
+## CLI
+
+`denis cli` manages local files (groups, tokens, config) and talks to a
+running server (status, exec, shell). Remote commands accept
+`-H/--host`, `-P/--port`, `-g/--group`, `-p/--password`, `-t/--token`,
+`--create-project` and `--json`, or the environment variables `DENIS_HOST`,
+`DENIS_PORT`, `DENIS_GROUP`, `DENIS_PASSWORD`, `DENIS_TOKEN`.
+
+```sh
+denis cli group create crm            # prints a generated password
+denis cli group create crm -p s3cret  # chosen password (stored hashed)
+denis cli group list | test crm s3cret | delete crm
+denis cli token list | create | delete <token>
+denis cli config                      # effective configuration and where each value comes from
+
+denis cli status                      # PING
+denis cli status -g crm -p s3cret     # + INFO
+denis cli exec -g crm -p s3cret -t <token> "GET greeting" "SELECT COUNT(*) FROM users"
+denis cli exec ... --json "INFO"      # raw JSON replies for scripts
+denis cli shell -g crm -p s3cret -t <token>   # interactive; .help, .json on, .exit
+```
+
+Replies are rendered as tables/lists; exit code is 1 when any command failed.
+
+## Wire protocol
+
+One line in, one line out, UTF-8. `MODE json` switches a connection to exactly
+one JSON object per reply (`{"ok":true,...}` / `{"ok":false,"error":...}`),
+which is what every client uses. Full reference: [docs/PROTOCOL.md](docs/PROTOCOL.md).
+
+```
+PING                          -> PONG (no login needed)
+MODE json | MODE text         reply format for this connection
+HELP                          every command with usage (JSON array in json mode)
+LIN <group> <password>        log in with a group from denis.toml
+AUTH CREATE | AUTH <token>    create / select a project (key namespace)
+INFO                          version, uptime, connections, key counts, memory
+
+GET <key> [-&from-cache | -&from-protobuff] [-&asa-json]
+SET <key> <value> [-&save] [-&cache] [-&protobuff]      -&save persists the key
+UPDATE <key> <value>          cache-only overwrite
+DEL <key> [-&cache] [-&protobuff]
+EXISTS <key>
+MGET <key> [<key> ...]
+KEYS [pattern]                glob with * and ?
+HEAVEN                        drop the project's cached keys (persisted keys stay)
+SAVE                          flush database.bin now
+SQL <statement>               see below (the SQL prefix is optional)
+EXIT
+```
+
+Keys are one word; values may contain spaces but not line breaks, and no word
+of a value may start with `-&`.
+
+```json
+{"ok":true,"message":"Logged in to group: crm"}
+{"ok":true,"message":"Project created","token":"..."}
+{"ok":true,"key":"greeting","data":"hello world"}
+{"ok":false,"key":"missing","error":"not found"}
+{"ok":true,"keys":["greeting","user:1"],"count":2}
+```
+
+## SQL
+
+After `AUTH`, Denis accepts a single-table SQL subset. Tables are persisted and
+survive restarts.
+
+```sql
+CREATE TABLE [IF NOT EXISTS] users (id INT, name TEXT, price REAL);
+INSERT INTO users (id, name) VALUES (1, 'Ada'), (2, 'Grace');
+SELECT name, price FROM users WHERE price > 10 AND name LIKE 'A%' ORDER BY price DESC LIMIT 20 OFFSET 0;
+SELECT COUNT(*) FROM users WHERE name IS NOT NULL;
+UPDATE users SET name = 'Grace H.' WHERE id = 2;
+DELETE FROM users WHERE id = 1;
+SHOW TABLES;
+DESCRIBE users;
+DROP TABLE [IF EXISTS] users;
+```
+
+`WHERE` supports `= != <> < <= > >= LIKE IS NULL IS NOT NULL` joined by
+`AND`/`OR`. In json mode results are structured:
+
+```json
+{"ok":true,"type":"rows","columns":["name","price"],"rows":[{"name":"Ada","price":12.5}],"count":1}
+{"ok":true,"type":"affected","affected":2,"message":"2 rows inserted"}
+{"ok":true,"type":"tables","tables":[{"name":"users","columns":[{"name":"id","type":"INT"}],"rows":2}],"count":1}
+```
+
+## AI / MCP
+
+[`clients/mcp`](clients/mcp) is an MCP server (`denis-mcp-server`) that gives
+an AI assistant a safe, schema-first way to work with Denis: `denis_describe`
+returns the tables, columns and keys; `denis_query` runs read-only SQL;
+`denis_execute`, `denis_set` and `denis_delete` write (hidden with
+`DENIS_READ_ONLY=1`). Results come back as Markdown plus structured content,
+errors carry a next step, and resources `denis://schema`, `denis://protocol`
+and `denis://table/{name}` expose the same information.
+
+```json
+{
+  "mcpServers": {
+    "denis": {
+      "command": "node",
+      "args": ["/path/to/denis/clients/mcp/src/index.js"],
+      "env": { "DENIS_GROUP": "crm", "DENIS_PASSWORD": "s3cret", "DENIS_TOKEN": "<project token>" }
+    }
+  }
+}
+```
+
+The server side is designed for this: every reply in json mode is a
+self-describing object, `HELP` lists the commands as data, `SHOW TABLES` /
+`DESCRIBE` return the schema, and `docs/PROTOCOL.md` is the reference an agent
+can read.
+
+## Client libraries
+
+- **Node.js** — [`clients/node`](clients/node) (`denis-client` 0.2.0): promise
+  based, pooled, no dependencies; `get/set/del/exists/keys/mget`,
+  `query/execute/tables/describe`, `info`.
+- **Java** — [`java-driver`](java-driver) (`denis-driver` 1.2.0): single
+  connection, `org.json` only; the same operations.
+- **MCP** — [`clients/mcp`](clients/mcp) (`denis-mcp-server` 0.1.0).
+
+All three talk `MODE json` and are exercised against the Docker image in CI.
 
 ## Configuration
 
@@ -89,224 +238,79 @@ Every key of `denis.properties` can be set from the environment: upper-case it,
 replace `-` with `_` and prefix `DENIS_`. The `ddb-*` keys are also read without
 the prefix. Environment beats the external `denis.properties`, which beats the
 defaults bundled in the jar. `DENIS_CONFIG` (or `-Ddenis.config=`) points to a
-different properties file.
+different properties file; `denis cli config` shows the effective values.
 
 | Property | Environment | Default | Meaning |
 | --- | --- | --- | --- |
 | `ddb-port` | `DDB_PORT` / `DENIS_DDB_PORT` | `5142` | TCP port |
+| `bind-address` | `DENIS_BIND_ADDRESS` | `0.0.0.0` | interface to listen on |
 | `ddb-address` | `DDB_ADDRESS` | `localhost` | address shown at start-up |
-| `ddb-main-token` | `DDB_MAIN_TOKEN` | generated | 128-character main token; generated and written to `denis.properties` on first start when empty |
+| `ddb-main-token` | `DDB_MAIN_TOKEN` | generated | 128-character main token, written to `denis.properties` on first start when empty |
 | `bootstrap-group` | `DENIS_BOOTSTRAP_GROUP` | — | create this login group on start-up if it does not exist |
 | `bootstrap-group-password` | `DENIS_BOOTSTRAP_GROUP_PASSWORD` | — | its password (required with the above) |
-| `language` | `DENIS_LANGUAGE` | `auto` | `auto` or one of `en tr de fr es da fi el`; unsupported locales fall back to `en` |
+| `max-connections` | `DENIS_MAX_CONNECTIONS` | `256` | concurrent client connections (one worker thread each) |
 | `max-connections-per-ip` | `DENIS_MAX_CONNECTIONS_PER_IP` | `12` | concurrent connections per client address |
+| `client-idle-timeout-ms` | `DENIS_CLIENT_IDLE_TIMEOUT_MS` | `0` | close a silent connection after this long; `0` = never |
+| `persist-flush-interval-ms` | `DENIS_PERSIST_FLUSH_INTERVAL_MS` | `1000` | how often dirty persisted keys are written; `0` = synchronous |
+| `language` | `DENIS_LANGUAGE` | `auto` | `auto` or one of `en tr de fr es da fi el` |
 | `send-client-actions` | `DENIS_SEND_CLIENT_ACTIONS` | `true` | log every client command (credentials are masked) |
 | `use-delogg` | `DENIS_USE_DELOGG` | `false` | also write client actions to the activity log |
 | `open-log-terminal` | `DENIS_OPEN_LOG_TERMINAL` | `false` | open a desktop terminal that tails the activity log |
+| — | `DENIS_LOG_LEVEL` | `info` | log4j root level (`debug`, `info`, `warn`, `error`) |
 
-## Wire protocol
+Logs go to stderr and to the rolling file `logs/denis.log`.
 
-Denis speaks a line protocol over TCP (`telnet localhost 5142` works). One line
-in, one line out.
+## Architecture
 
 ```
-MODE json | MODE text        response format for this connection (default: text)
-PING                         -> PONG (no login needed)
-LIN <group> <password>       log in with a group from denis.toml
-AUTH CREATE                  create a project (key namespace) and print its token
-AUTH <token>                 select a project
-SET <key> <value> [-&save] [-&cache] [-&protobuff]
-GET <key> [-&from-cache | -&from-protobuff] [-&asa-json]
-DEL <key> [-&cache] [-&protobuff]
-UPDATE <key> <value>         cache-only overwrite
-HEAVEN                       drop the project's cached keys
-SQL <statement>              see "SQL Queries" below
-EXIT
+github.hacimertgokhan
+├── Main                         entry point: `server` / `cli` / `--version`
+├── denis
+│   ├── server/DenisServer       accept loop, connection limits, worker pool, graceful stop
+│   ├── server/ServerContext     what all connections share: cache, persistence, projects, groups, counters
+│   ├── server/ProjectStore      one project's view: key prefixing, cache + persisted store, KEYS
+│   ├── DenisClient              one session: state machine + command handlers, text/json replies
+│   ├── sql/SqlQueryEngine       the SQL subset on top of ProjectStore (tables persisted)
+│   ├── sql/SqlResult            rows / affected / tables / error, rendered as JSON or text
+│   ├── project/ProjectRegistry  project tokens (ddb.json), shared and persisted
+│   ├── sections/group           login groups in denis.toml (salted SHA-512)
+│   └── cli                      picocli commands; RemoteSession + ReplyRenderer for remote commands
+├── proto/ProtoDatabase          database.bin in memory, write-behind flush, atomic replace
+└── readers/DenisProperties      configuration: env > denis.properties > bundled defaults
 ```
 
-Keys are one word; values may contain spaces but not line breaks, and no word of
-a value may start with `-&`. In `text` mode replies are the human readable lines
-Denis always had (`[Info - <date>]: Ok (Cache)`, raw values for `GET`). In
-`json` mode every reply is exactly one JSON object per line, which is what the
-client libraries use:
+Request path: `DenisServer` accepts a socket → `DenisClient.handleClient` reads
+lines → `handleLine` dispatches → `ProjectStore` reads the cache and falls back
+to `ProtoDatabase`; writes go to the cache and, when persisted, mark
+`ProtoDatabase` dirty; a daemon thread flushes it to `database.bin.tmp` and
+renames it over `database.bin`.
 
-```json
-{"ok":true,"message":"Logged in to group: crm"}
-{"ok":true,"message":"Project created","token":"..."}
-{"ok":true,"key":"greeting","data":"hello world"}
-{"ok":false,"key":"missing","error":"not found"}
-{"ok":false,"error":"Please login first using LIN command"}
+## Versioning and releases
+
+Denis follows [Semantic Versioning](https://semver.org/): `MAJOR.MINOR.PATCH`,
+tags `vX.Y.Z`. Until 1.0.0 a minor release may contain breaking changes, which
+are listed under **Breaking** in [CHANGELOG.md](CHANGELOG.md). Client packages
+have their own versions (`clients/node`, `clients/mcp`, `java-driver`).
+
+To release: update `CHANGELOG.md` and the version in `pom.xml`, commit, tag
+(`git tag v0.3.0 && git push --tags`). The `Release` workflow verifies that the
+tag matches `pom.xml`, builds the jar and the bundle, pushes the image to GHCR
+and creates the GitHub Release with the changelog section as notes.
+Release Drafter keeps a draft of the next version from merged PR labels
+(`breaking`, `feature`, `bug`, ...).
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). `mvn package` runs the unit tests
+(protocol, SQL engine, storage engine, a real TCP server on an ephemeral port);
+the client integration tests need a running server:
+
+```sh
+DENIS_INTEGRATION=1 DENIS_GROUP=crm DENIS_PASSWORD=s3cret node --test clients/node/test/*.test.js
+DENIS_INTEGRATION=1 DENIS_GROUP=crm DENIS_PASSWORD=s3cret node --test clients/mcp/test/*.test.js
+cd java-driver && DENIS_INTEGRATION=1 DENIS_GROUP=crm DENIS_PASSWORD=s3cret mvn test
 ```
 
-## Client libraries
+## License
 
-- **Node.js** — [`clients/node`](clients/node): promise based, connection pool, no dependencies.
-- **Java** — [`java-driver`](java-driver): single-connection client (`DenisClient`), built with Maven.
-
-Both talk `MODE json` and are exercised against the Docker image in CI.
-
-## SQL Queries
-
-After logging in and authenticating to a project token, Denis accepts standard SQL-style queries over the TCP protocol. You can send them directly or prefix them with `SQL`.
-
-Supported query subset:
-
-- `CREATE TABLE <table> (<column> <type>, ...)`
-- `INSERT INTO <table> (<columns>) VALUES (<values>)`
-- `SELECT <columns|*> FROM <table> [WHERE <column> = <value>]`
-- `UPDATE <table> SET <column> = <value> [, ...] [WHERE <column> = <value>]`
-- `DELETE FROM <table> [WHERE <column> = <value>]`
-- `DROP TABLE <table>`
-
-Example:
-
-```sql
-CREATE TABLE users (id INT, name TEXT);
-INSERT INTO users (id, name) VALUES (1, 'Ada');
-SELECT * FROM users WHERE id = 1;
-UPDATE users SET name = 'Grace' WHERE id = 1;
-DELETE FROM users WHERE id = 1;
-DROP TABLE users;
-```
-
-## DAPI
-
----
-Detailed library information about DDB.
-
-# Actions
-
----
-
-## actString Class
-
-**`actString`** is a class designed to manage data with a `String key` and `String value` pair. This class is used for basic CRUD operations and checking data existence.
-
----
-
-### **Methods**
-| Method                   | Return Type | Description |
-|-------------------------|-------------|-------------|
-| `set(String key, String value)` | `Void`      | Saves or updates the specified key and value. |
-| `get(String key)`     | `String`    | Returns the value corresponding to the given key. Returns `null` if no value exists. |
-| `del(String key)`     | `Void`      | Deletes the specified key and its value. |
-| `exists(String key)`  | `Boolean`   | Checks whether the given key exists. |
-
----
-
-### **Usage Example**
-```java
-actString actstr = new actString();
-
-// Adding data
-actstr.set("key1", "value1");
-
-// Retrieving data
-String value = actstr.get("key1"); // "value1"
-
-// Data check
-boolean exists = actstr.exists("key1"); // true
-
-// Deleting data
-actstr.del("key1");
-```
-
----
-
-## actListrig Class
-
-**`actListrig`** is a structure that associates a `List<String>` key with a `String` value. It is created using `ConcurrentHashMap`, which is suitable for parallel operations.
-
----
-
-### **Methods**
-| Method                     | Return Type         | Description |
-|----------------------------|---------------------|-------------|
-| `set(List<String> key, String value)` | `Void`            | Saves or updates the specified list key and value pair. |
-| `get(List<String> key)`   | `String`          | Returns the value corresponding to the given list key. Returns `"null"` if no value exists. |
-| `del(List<String> key)`   | `Void`            | Deletes the specified list key and its value. |
-| `exists(String key)`      | `Boolean`         | Checks whether the given list key exists. |
-| `getStore()`              | `ConcurrentHashMap` | Returns all data. |
-
----
-
-### **Usage Example**
-```java
-import java.util.Arrays;
-import java.util.List;
-
-actListrig actlist = new actListrig();
-
-// Create key
-List<String> key = Arrays.asList("item1", "item2");
-
-// Add data
-actlist.set(key, "value1");
-
-// Retrieve data
-String value = actlist.get(key); // "value1"
-
-// Data check
-boolean exists = actlist.getStore().containsKey(key); // true
-
-// Delete data
-actlist.del(key);
-```
-
----
-
-## Class Differences and Usage Scenarios
-
-| Feature         | actString                        | actListrig                           |
-|-----------------|----------------------------------|--------------------------------------|
-| **Key Type**    | `String`                        | `List<String>`                      |
-| **Data Management**| Single key-value pair    | Managing multiple keys together     |
-| **Use Case**    | Managing simple structures       | Managing complex, hierarchical structures |
-
-**Example Scenarios:**
-- **`actString`** can be used to store username-password pairs in a database.
-- **`actListrig`** can be used to associate product categories and subcategories on an e-commerce site.
-
----
-
-## actStrist Class
-
-`actStrist` is a class that associates a `String` key with a `List<String>` value. It uses the `ConcurrentHashMap` infrastructure suitable for parallel operations. This class is designed to bind multiple values to a single key.
-
-### Methods
-
-| Method                             | Return Type             | Description                                                |
-|------------------------------------|-------------------------|-------------------------------------------------------------|
-| `set(String key, List<String> value)` | `Void`               | Saves or updates the specified key and value list. |
-| `get(String key)`                 | `List<String>`         | Returns the value list corresponding to the given key. Returns `["null"]` if no value exists. |
-| `del(String key)`                 | `Void`                | Deletes the specified key and its value list.          |
-| `exists(String key)`              | `Boolean`             | Checks whether the given key exists. |
-| `getStore()`                      | `ConcurrentHashMap`   | Returns all data.                                   |
-
-### Usage Example
-
-```java
-actStrist actstrist = new actStrist();
-
-// Create key and value list
-String key = "group1";
-List<String> values = Arrays.asList("item1", "item2", "item3");
-
-// Add data
-actstrist.set(key, values);
-
-// Retrieve data
-List<String> retrievedValues = actstrist.get(key);
-System.out.println(retrievedValues); // [item1, item2, item3]
-
-// Data check
-boolean exists = actstrist.exists(key);
-System.out.println(exists); // true
-
-// Delete data
-actstrist.del(key);
-
-// Check again
-exists = actstrist.exists(key);
-System.out.println(exists); // false
-```
+MIT — see [LICENSE](LICENSE).

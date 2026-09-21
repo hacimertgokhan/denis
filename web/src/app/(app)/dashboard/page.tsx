@@ -49,7 +49,7 @@ export default async function DashboardPage() {
   return (
     <>
       <SiteHeader crumbs={[{ label: "Dashboard" }]} />
-      <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-6 px-6 py-5 lg:px-10 lg:py-8">
+      <div className="flex w-full flex-1 flex-col gap-6 px-5 py-5 lg:px-8 lg:py-8">
         <PageHeader
           title={`Good to see you, ${user.name.split(" ")[0]}.`}
           description={databases.length === 0 ? "Create a database to get a console, an API key and an MCP endpoint." : `${databases.length} of ${limits.maxDatabases} databases in use.`}

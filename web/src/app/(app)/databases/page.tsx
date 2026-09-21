@@ -29,7 +29,7 @@ export default async function DatabasesPage() {
   return (
     <>
       <SiteHeader crumbs={[{ label: "Databases" }]} />
-      <div className="mx-auto w-full max-w-[1400px] flex-1 px-6 py-5 lg:px-10 lg:py-8">
+      <div className="w-full flex-1 px-5 py-5 lg:px-8 lg:py-8">
         <PageHeader
           title="Databases"
           description={`${databases.length} of ${limits.maxDatabases} on the free plan. Each one has ${formatBytes(limits.dbMaxBytes)}, ${formatNumber(limits.dbMaxKeys)} keys and ${formatNumber(limits.dbOpsPerDay)} commands a day.`}

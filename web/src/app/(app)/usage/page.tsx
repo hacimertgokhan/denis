@@ -39,7 +39,7 @@ export default async function UsagePage() {
   return (
     <>
       <SiteHeader crumbs={[{ label: "Usage" }]} />
-      <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-6 px-6 py-5 lg:px-10 lg:py-8">
+      <div className="flex w-full flex-1 flex-col gap-6 px-5 py-5 lg:px-8 lg:py-8">
         <PageHeader
           title="Usage"
           description={`Per database: ${formatBytes(limits.dbMaxBytes)} of storage, ${formatNumber(limits.dbMaxKeys)} keys and ${formatNumber(limits.dbOpsPerDay)} commands a day. Storage and keys are enforced by the engine, the daily budget by the gateway.`}

@@ -86,7 +86,10 @@ docker compose -f compose.cloud.yaml --env-file .env.cloud up -d --build
 `compose.cloud.yaml` starts the Denis engine, Postgres and the web app on a
 private network and publishes only the web app (`WEB_PORT`, default 3000);
 the web container applies the schema on start (`DB_PUSH=1`). Terminate TLS in
-front of it (Caddy: `denis.hacimertgokhan.com { reverse_proxy web:3000 }`).
+front of it (Caddy: `denis.hacimertgokhan.com { reverse_proxy web:3000 }`), or,
+on a host that already runs Coolify's Traefik, add `-f compose.traefik.yaml`:
+the app joins the `coolify` network with router labels and the proxy issues
+the certificate (`DOMAIN` in `.env.cloud`, default denis.hacimertgokhan.com).
 
 ## System administration
 

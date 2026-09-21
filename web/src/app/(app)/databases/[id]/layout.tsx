@@ -17,11 +17,11 @@ export default async function DatabaseLayout({ children, params }: { children: R
         actions={<Badge variant="outline">{database.region}</Badge>}
       />
       <div className="border-b">
-        <div className="mx-auto max-w-[1120px] px-5 lg:px-8">
+        <div className="mx-auto max-w-[1400px] px-6 lg:px-10">
           <DatabaseTabs id={database.id} />
         </div>
       </div>
-      <div className="mx-auto flex w-full max-w-[1120px] flex-1 flex-col gap-6 p-5 lg:p-8">{children}</div>
+      <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-6 px-6 py-5 lg:px-10 lg:py-8">{children}</div>
     </>
   );
 }

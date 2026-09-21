@@ -33,7 +33,7 @@ export default async function Landing() {
         {/* hero: a sentence and the thing itself */}
         <section className="relative">
           <HeroAtmosphere />
-          <div className="mx-auto grid max-w-[1120px] gap-12 px-5 pt-32 pb-20 lg:grid-cols-[minmax(0,26rem)_1fr] lg:items-center lg:gap-16 lg:pt-40">
+          <div className="mx-auto grid max-w-[1400px] gap-12 px-6 lg:px-10 pt-32 pb-20 lg:grid-cols-[minmax(0,26rem)_1fr] lg:items-center lg:gap-16 lg:pt-40">
           <div>
             <h1 className="text-[2.5rem] leading-[1.05] font-medium tracking-[-0.02em] text-balance sm:text-[3.25rem]">
               A database you talk to one line at a time.
@@ -68,7 +68,7 @@ export default async function Landing() {
         </section>
 
         {/* what you get: a table, not cards */}
-        <section className="mx-auto max-w-[1120px] px-5 py-16">
+        <section className="mx-auto max-w-[1400px] px-6 lg:px-10 py-16">
           <h2 className="text-[13px] font-medium text-[var(--l-ash)]">What a database gives you</h2>
           <dl className="mt-4 divide-y divide-[var(--l-line)] border-y border-[var(--l-line)]">
             {capabilities.map((c) => (
@@ -82,7 +82,7 @@ export default async function Landing() {
         </section>
 
         {/* architecture */}
-        <section className="mx-auto max-w-[1120px] px-5 py-16">
+        <section className="mx-auto max-w-[1400px] px-6 lg:px-10 py-16">
           <div className="grid gap-8 lg:grid-cols-[minmax(0,22rem)_1fr] lg:gap-16">
             <div>
               <h2 className="text-[1.5rem] leading-tight font-medium tracking-[-0.01em]">Your data has one door.</h2>
@@ -99,7 +99,7 @@ export default async function Landing() {
         </section>
 
         {/* assistants */}
-        <section className="mx-auto max-w-[1120px] px-5 py-16">
+        <section className="mx-auto max-w-[1400px] px-6 lg:px-10 py-16">
           <div className="grid gap-8 lg:grid-cols-[minmax(0,22rem)_1fr] lg:gap-16">
             <div>
               <h2 className="text-[1.5rem] leading-tight font-medium tracking-[-0.01em]">Let an assistant look at it.</h2>
@@ -128,7 +128,7 @@ export default async function Landing() {
         </section>
 
         {/* durability */}
-        <section className="mx-auto max-w-[1120px] px-5 py-16 pb-24">
+        <section className="mx-auto max-w-[1400px] px-6 lg:px-10 py-16 pb-24">
           <div className="grid gap-8 lg:grid-cols-[minmax(0,22rem)_1fr] lg:gap-16">
             <div>
               <h2 className="text-[1.5rem] leading-tight font-medium tracking-[-0.01em]">Fast because it is in memory. Safe because it is written down.</h2>

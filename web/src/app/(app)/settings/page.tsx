@@ -23,7 +23,7 @@ export default async function SettingsPage() {
   return (
     <>
       <SiteHeader crumbs={[{ label: "Settings" }]} />
-      <div className="mx-auto w-full max-w-[1120px] flex-1 p-5 lg:p-8">
+      <div className="mx-auto w-full max-w-[1400px] flex-1 px-6 py-5 lg:px-10 lg:py-8">
         <PageHeader title="Settings" description="Your account and the limits of the free plan." />
         <div className="mt-4">
           <ProfileForm user={{ name: user.name, email: user.email }} />

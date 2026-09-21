@@ -8,6 +8,9 @@ before 1.0.0 a minor bump may contain breaking changes, which are listed).
 ## [Unreleased]
 
 ### Added
+- `examples/inventory`: Stockroom, a stock-keeping app with accounts,
+  sessions, products and movements all kept in Denis through `denis-client`
+  (TCP or Denis Cloud), with an end-to-end test.
 - Platform: "Forgot your password" with a one-hour mailed link (SMTP through
   `SMTP_URL`, or the server log without it) and a reset page that signs out
   other sessions; bot protection on sign-up and reset requests (honeypot and

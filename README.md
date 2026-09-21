@@ -239,6 +239,14 @@ The engine side of this is the `ADMIN` command family (main-token
 authenticated project create/usage/quota/flush/drop) documented in
 [docs/PROTOCOL.md](docs/PROTOCOL.md).
 
+## Examples
+
+- **Stockroom** — [`examples/inventory`](examples/inventory): a small stock-keeping
+  app (accounts, sessions, products, movements, low-stock overview) where
+  every piece of state lives in one Denis database through `denis-client`;
+  runs against your own server over TCP or a Denis Cloud database with an
+  API key.
+
 ## Client libraries
 
 - **Node.js** — [`clients/node`](clients/node) (`denis-client` 0.5.0): promise

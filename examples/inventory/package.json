@@ -1,0 +1,21 @@
+{
+  "name": "denis-inventory",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A small stock-keeping app where users, sessions, products and movements all live in Denis",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "seed": "node src/seed.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "denis-client": "file:../../clients/node",
+    "express": "^5.1.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

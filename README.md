@@ -39,15 +39,15 @@ Requirements: Java 17+ (Maven to build from source; Node 18+ for the Node
 client and the MCP server).
 
 ```sh
-mvn package                                   # target/denis-0.5.0.jar (+ project bundle zip/tar.gz)
-java -jar target/denis-0.5.0.jar cli group create crm -p s3cret
-java -jar target/denis-0.5.0.jar server       # listens on 0.0.0.0:5142
+mvn package                                   # target/denis-0.6.0.jar (+ project bundle zip/tar.gz)
+java -jar target/denis-0.6.0.jar cli group create crm -p s3cret
+java -jar target/denis-0.6.0.jar server       # listens on 0.0.0.0:5142
 ```
 
 In a second terminal:
 
 ```sh
-java -jar target/denis-0.5.0.jar cli exec -g crm -p s3cret --create-project \
+java -jar target/denis-0.6.0.jar cli exec -g crm -p s3cret --create-project \
   "SET greeting hello world -&save" "GET greeting" \
   "CREATE TABLE users (id INT, name TEXT)" \
   "INSERT INTO users (id, name) VALUES (1, 'Ada'), (2, 'Grace')" \
@@ -152,6 +152,7 @@ UPDATE <key> <value>          cache-only overwrite
 DEL <key> [-&cache] [-&protobuff]
 EXISTS <key>
 MGET <key> [<key> ...]
+QUERY { a: get("k") { f } ... }   several reads in one round trip, GraphQL-shaped (see docs/PROTOCOL.md)
 KEYS [pattern]                glob with * and ?
 HEAVEN                        drop the project's cached keys (persisted keys stay)
 SAVE                          flush database.bin now
@@ -240,8 +241,10 @@ authenticated project create/usage/quota/flush/drop) documented in
 
 ## Client libraries
 
-- **Node.js** — [`clients/node`](clients/node) (`denis-client` 0.4.0): promise
-  based, pooled, no dependencies; `get/set/del/exists/keys/mget`,
+- **Node.js** — [`clients/node`](clients/node) (`denis-client` 0.5.0): promise
+  based, no dependencies; `DenisClient` pools TCP connections to your own
+  server, `DenisCloud` speaks HTTPS to Denis Cloud with an API key — same
+  methods: `get/set/del/exists/keys/mget`, `graph` (QUERY),
   `query/execute/tables/describe`, `info`.
 - **Java** — [`java-driver`](java-driver) (`denis-driver` 1.2.0): single
   connection, `org.json` only; the same operations.
@@ -321,7 +324,7 @@ are listed under **Breaking** in [CHANGELOG.md](CHANGELOG.md). Client packages
 have their own versions (`clients/node`, `clients/mcp`, `java-driver`).
 
 To release: update `CHANGELOG.md` and the version in `pom.xml`, commit, tag
-(`git tag v0.5.0 && git push --tags`). The `Release` workflow verifies that the
+(`git tag v0.6.0 && git push --tags`). The `Release` workflow verifies that the
 tag matches `pom.xml`, builds the jar and the bundle, pushes the image to GHCR
 and creates the GitHub Release with the changelog section as notes.
 Release Drafter keeps a draft of the next version from merged PR labels

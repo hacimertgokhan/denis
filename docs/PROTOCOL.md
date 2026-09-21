@@ -73,6 +73,7 @@ Every field a reply can carry:
 | `EXISTS <key>` | `{"ok":true,"key":"k","exists":true}` | |
 | `MGET <k1> <k2> ...` | `{"ok":true,"values":{"k1":"v","k2":null}}` | |
 | `KEYS [pattern]` | `{"ok":true,"keys":[...],"count":n}` | glob `*` and `?`; sorted; internal `__sql:` keys hidden unless the pattern starts with `__` |
+| `QUERY { ... }` | `{"ok":true,"data":{...},"errors":[...]}` | several reads in one round trip, see [QUERY](#query-one-round-trip-many-reads) |
 | `HEAVEN` | `{"ok":true,"message":"Ok.","removed":n}` | drops the project's cached keys; persisted keys stay |
 | `SAVE` | `message: "Saved."` | flush `database.bin` now |
 | `SQL <statement>` or the bare statement | see below | |
@@ -127,6 +128,49 @@ Replies in json mode:
 ```
 
 In text mode: a JSON array for rows/tables, `OK: <message>` and `ERROR: <message>`.
+
+## QUERY: one round trip, many reads
+
+`QUERY` takes a GraphQL-shaped document on the same line and resolves every
+field on the server. A page that needs a user, their cart and their last
+orders costs one command instead of five, and the reply carries only the
+fields that were asked for.
+
+```
+QUERY { user: get("user:1") { name address { city } } cart: prefix("cart:1:") { sku qty } orders: table("orders", where: "user_id = 1", order: "total desc", limit: 5) { id total } n: count("orders") }
+{"ok":true,"data":{"user":{"name":"Ada","address":{"city":"London"}},"cart":{"cart:1:a":{"sku":"pen","qty":2}},"orders":[{"id":2,"total":40},{"id":1,"total":36}],"n":3}}
+```
+
+Grammar (whitespace and commas between fields are free):
+
+```
+document  := '{' field* '}'
+field     := [alias ':'] resolver ['(' args ')'] [selection]
+args      := arg (',' arg)*            arg := [name ':'] value
+value     := "string" | number | true | false | null | identifier
+selection := '{' ( [alias ':'] name [selection] )* '}'
+```
+
+Resolvers, all read-only:
+
+| Resolver | Result | Selection |
+| --- | --- | --- |
+| `get(key)` | the value, or `null` | parses the value as JSON and keeps the selected fields (nested selections allowed) |
+| `mget(k1, k2, ...)` | `{ key: value }` | applied to every value |
+| `prefix("cart:1:")` | `{ key: value }` for every key with that prefix | applied to every value |
+| `keys(pattern)` | `[key]` | — |
+| `exists(key)` | boolean | — |
+| `count(table)` | number of rows | — |
+| `table(name, where: "...", order: "col desc", limit: n, offset: n)` | rows | becomes the `SELECT` list; without one, `*` |
+| `sql("SELECT ...")` | rows (also `SHOW TABLES`, `DESCRIBE`) | projects columns |
+| `tables()` | `[{ name, columns, rows }]` | — |
+| `describe(table)` | `{ name, columns, rows }` | — |
+
+A field that fails (unknown table, a value that is not JSON, a write inside
+`sql()`) comes back as `null` and is listed in `errors` as `{ path, error }`;
+the other fields still resolve. A syntax error fails the whole command with
+`ok:false`, `error: "syntax: ..."` and the character `offset`. A document
+selects at most 64 top-level fields. The reply is JSON in text mode too.
 
 ## Errors
 

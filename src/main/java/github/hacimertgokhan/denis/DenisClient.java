@@ -5,6 +5,7 @@ import github.hacimertgokhan.denis.project.ProjectRegistry;
 import github.hacimertgokhan.denis.server.ProjectStore;
 import github.hacimertgokhan.denis.server.QuotaExceededException;
 import github.hacimertgokhan.denis.server.ServerContext;
+import github.hacimertgokhan.denis.query.QueryExecutor;
 import github.hacimertgokhan.denis.sql.SqlQueryEngine;
 import github.hacimertgokhan.denis.sql.SqlResult;
 import github.hacimertgokhan.logger.DenisLogger;
@@ -36,7 +37,7 @@ import java.util.Locale;
  *   no login    PING, MODE json|text, HELP, EXIT, ADMIN &lt;main-token&gt; ...
  *   LIN         LIN &lt;group&gt; &lt;password&gt;
  *   logged in   AUTH CREATE | AUTH &lt;token&gt;, INFO
- *   project     GET SET DEL UPDATE EXISTS KEYS MGET HEAVEN SAVE, SQL ... / SHOW TABLES / DESCRIBE
+ *   project     GET SET DEL UPDATE EXISTS KEYS MGET QUERY HEAVEN SAVE, SQL ... / SHOW TABLES / DESCRIBE
  * </pre>
  */
 public class DenisClient {
@@ -61,6 +62,8 @@ public class DenisClient {
             new CommandDoc("DEL", "DEL <key> [-&cache] [-&protobuff]", "Delete a key from the cache and/or the persisted store (default: both).", true, true),
             new CommandDoc("EXISTS", "EXISTS <key>", "Whether a key exists in the cache or the persisted store.", true, true),
             new CommandDoc("MGET", "MGET <key> [<key> ...]", "Read several keys at once.", true, true),
+            new CommandDoc("QUERY", "QUERY { alias: resolver(args) { fields } ... }",
+                    "One round trip, many reads: a GraphQL-shaped document over get, mget, prefix, keys, exists, count, table, sql, tables and describe; selections project JSON values and rows.", true, true),
             new CommandDoc("KEYS", "KEYS [pattern]", "List the project's keys; pattern supports * and ? (default *).", true, true),
             new CommandDoc("HEAVEN", "HEAVEN", "Drop every cached key of the project (persisted keys stay).", true, true),
             new CommandDoc("SAVE", "SAVE", "Flush the persisted store to disk now.", true, true),
@@ -342,6 +345,16 @@ public class DenisClient {
                 }
             }
             case "MGET" -> handleMget(out, inputLine);
+            case "QUERY" -> {
+                String document = inputLine.trim().substring("QUERY".length()).trim();
+                if (document.isEmpty()) {
+                    usage(out, "USAGE: QUERY { alias: resolver(args) { fields } ... }");
+                } else {
+                    JSONObject reply = new QueryExecutor(project).run(document);
+                    // the document reply is JSON in both modes; there is no useful text rendering of a graph
+                    out.println(reply.toString());
+                }
+            }
             case "KEYS" -> {
                 List<String> keys = project.keys(key);
                 json(out, new JSONObject().put("keys", new JSONArray(keys)).put("count", keys.size()),

@@ -15,7 +15,7 @@ import { formatBytes, formatNumber } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-const ENGINE_VERSION = "0.5.0";
+const ENGINE_VERSION = "0.6.0";
 const REPO = "https://github.com/hacimertgokhan/denis";
 
 export const metadata: Metadata = {

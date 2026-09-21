@@ -7,7 +7,19 @@ before 1.0.0 a minor bump may contain breaking changes, which are listed).
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-09-21
+
 ### Added
+- **`QUERY`: one round trip, many reads.** A GraphQL-shaped document
+  (`QUERY { user: get("user:1") { name } orders: table("orders", where: "user_id = 1", limit: 5) { id total } n: count("orders") }`)
+  is parsed and resolved inside the engine: `get`, `mget`, `prefix`,
+  `keys`, `exists`, `count`, `table`, `sql` (SELECT only), `tables`,
+  `describe`. Selections parse stored JSON and keep only the requested
+  fields, or become the SELECT list of a table; a failing field is `null`
+  with an entry in `errors` while the others resolve
+  (`github.hacimertgokhan.denis.query`). Documented in docs/PROTOCOL.md;
+  `denis-client` gets `graph(document)` and the hosted MCP server
+  `denis_graph`.
 - `denis-client` 0.5.0: `DenisCloud`, the same key-value / SQL API over the
   Denis Cloud REST gateway with an API key (optional JWT exchange, `batch()`,
   `usage()`, `whoami()`). The TCP client and the cloud client share the
@@ -170,7 +182,8 @@ MCP server lets AI assistants inspect and query the database.
   `DenisServer`, `ProjectRegistry`); anything embedding the server classes
   directly must be updated.
 
-[Unreleased]: https://github.com/hacimertgokhan/denis/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/hacimertgokhan/denis/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/hacimertgokhan/denis/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/hacimertgokhan/denis/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/hacimertgokhan/denis/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/hacimertgokhan/denis/compare/v0.3.0...v0.3.1

@@ -90,6 +90,26 @@ assert.equal(replies[5].tables[0].rows, 3);
 assert.equal(replies[6].ok, false);
 console.log("LIN through the gateway refused:", replies[6].error);
 
+step("QUERY: one round trip, many reads");
+r = await call(`/api/v1/databases/${dbId}/exec`, {
+  method: "POST",
+  body: {
+    command:
+      'QUERY { hello: get("greeting") sold: table("products", where: "price > 10", order: "price desc") { name } n: count("products") nope: get("missing") }',
+  },
+});
+assert.equal(r.status, 200, JSON.stringify(r.json));
+const graph = r.json.results[0].reply;
+assert.equal(graph.ok, true, JSON.stringify(graph));
+assert.equal(graph.data.hello, "hello world");
+assert.deepEqual(
+  graph.data.sold.map((x) => x.name),
+  ["Bag", "Book"],
+);
+assert.equal(graph.data.n, 3);
+assert.equal(graph.data.nope, null);
+console.log("graph:", JSON.stringify(graph.data));
+
 step("isolation: another user cannot see it");
 const other = cookie;
 cookie = "";
@@ -336,6 +356,12 @@ m = await mcp(writeKey, "tools/call", { name: "denis_describe", arguments: {} })
 assert.ok(m.result.structuredContent.tables.some((t) => t.name === "products"));
 m = await mcp(writeKey, "tools/call", { name: "denis_query", arguments: { sql: "SELECT COUNT(*) FROM products" } });
 assert.equal(m.result.structuredContent.rows[0].count, 3);
+m = await mcp(readKey, "tools/call", {
+  name: "denis_graph",
+  arguments: { document: '{ n: count("products") first: table("products", order: "price desc", limit: 1) { name } }' },
+});
+assert.equal(m.result.structuredContent.data.n, 3);
+assert.equal(m.result.structuredContent.data.first[0].name, "Bag");
 m = await mcp(readKey, "tools/call", { name: "denis_query", arguments: { sql: "DELETE FROM products" } });
 assert.equal(m.result.isError, true);
 console.log("denis_query refused a DELETE:", m.result.content[0].text.split("\n")[0]);

@@ -15,6 +15,7 @@ function fakeGateway({ scope = "write", expireAccessAfter = Infinity } = {}) {
     if (verb === "GET") return key === "greeting" ? { ok: true, key, data: "hello world" } : { ok: false, error: "not found" };
     if (verb === "SQL") return { ok: true, type: "rows", columns: ["n"], rows: [{ n: 1 }], count: 1 };
     if (verb === "PING") return { ok: true, message: "PONG" };
+    if (verb === "QUERY") return { ok: true, data: { n: 3, user: { name: "Ada" } }, errors: [{ path: "bad", error: "unknown resolver" }] };
     return { ok: false, error: `unknown ${verb} ${rest.join(" ")}` };
   };
   const fetch = async (url, init) => {
@@ -55,6 +56,20 @@ test("commands go through /api/v1/exec with the key as Bearer", async () => {
   assert.equal(gw.calls[0].auth, "Bearer dk_test");
   assert.equal(gw.calls[0].body.command, "SET greeting hello world -&cache -&save");
   assert.equal(gw.calls[2].body.command, "GET missing");
+});
+
+test("graph sends one QUERY line and returns data with errors", async () => {
+  const gw = fakeGateway();
+  const denis = new DenisCloud({ apiKey: "dk_test", url: "https://cloud.test", fetch: gw.fetch });
+  const { data, errors } = await denis.graph(`{
+    n: count("products")
+    user: get("user:1") { name }
+  }`);
+  assert.equal(data.n, 3);
+  assert.equal(data.user.name, "Ada");
+  assert.equal(errors[0].path, "bad");
+  assert.equal(gw.calls[0].body.command, 'QUERY {     n: count("products")     user: get("user:1") { name }   }');
+  assert.ok(!/[\r\n]/.test(gw.calls[0].body.command), "line breaks collapsed");
 });
 
 test("batch, whoami and usage", async () => {

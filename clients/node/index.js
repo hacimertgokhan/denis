@@ -307,6 +307,23 @@ class DenisCommands {
   }
 
   /**
+   * QUERY: several reads shaped like GraphQL, resolved by the server in one
+   * round trip. Resolves with { data, errors } where errors lists the fields
+   * that failed (the others still resolve).
+   *
+   *   const { data } = await denis.graph(`{
+   *     user: get("user:1") { name email }
+   *     orders: table("orders", where: "user_id = 1", limit: 5) { id total }
+   *     n: count("orders")
+   *   }`);
+   */
+  async graph(document) {
+    if (typeof document !== "string" || !document.trim()) throw new DenisError("document is required", "EINVAL");
+    const { data, errors } = await this._expectOk("QUERY " + document.replace(/[\r\n]+/g, " ").trim());
+    return { data, errors: errors || [] };
+  }
+
+  /**
    * Run a Denis SQL statement and return the structured result:
    *   { type: "rows", columns, rows, count }
    *   { type: "affected", affected, message }

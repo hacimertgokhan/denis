@@ -135,6 +135,8 @@ export class DenisCommands {
   save(): Promise<true>;
   info(): Promise<ServerInfo>;
   help(): Promise<CommandDoc[]>;
+  /** QUERY: a GraphQL-shaped document of reads resolved in one round trip. */
+  graph<T = Record<string, unknown>>(document: string): Promise<{ data: T; errors: { path: string; error: string }[] }>;
   sql(query: string): Promise<SqlResult>;
   query(sql: string): Promise<SqlRow[]>;
   execute(sql: string): Promise<number>;

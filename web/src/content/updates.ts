@@ -4,6 +4,13 @@ export type Update = { date: string; version: string; title: string; text: strin
 export const UPDATES: Update[] = [
   {
     date: "2026-09-21",
+    version: "0.6.0",
+    title: "QUERY: one round trip, many reads",
+    text: "A GraphQL-shaped document fetches keys, prefixes and table rows together and returns only the fields you asked for. In the console, the Node client (graph) and MCP (denis_graph).",
+    href: "https://github.com/hacimertgokhan/denis/blob/master/docs/PROTOCOL.md#query-one-round-trip-many-reads",
+  },
+  {
+    date: "2026-09-21",
     version: "cloud",
     title: "Roles, database accounts and command history",
     text: "Share a database with teammates as admin, editor or viewer; give systems their own username at the database's login page; every command is now recorded with who ran it.",

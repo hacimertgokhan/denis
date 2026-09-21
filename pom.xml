@@ -6,7 +6,7 @@
 
     <groupId>github.hacimertgokhan</groupId>
     <artifactId>denis</artifactId>
-    <version>0.5.0</version>
+    <version>0.6.0</version>
     <name>Denis Database</name>
     <description>Lightweight Java cache database with CLI management tools.</description>
 

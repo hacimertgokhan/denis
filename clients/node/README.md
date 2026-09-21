@@ -84,6 +84,7 @@ are TCP-only: the platform manages projects itself.
 | `save()` | `SAVE` | flush the persisted store now |
 | `info()` | `INFO` | server statistics object |
 | `help()` | `HELP` | command reference `[{name, usage, description}]` |
+| `graph(document)` | `QUERY { ... }` | several reads in one round trip: `{ data, errors }` (see below) |
 | `sql(query)` | `SQL ...` | structured result: `{type:"rows",columns,rows,count}` | `{type:"affected",affected,message}` | `{type:"tables",tables}` |
 | `query(select)` | `SQL SELECT ...` | the row objects |
 | `execute(statement)` | `SQL INSERT/UPDATE/...` | the affected row count |
@@ -102,6 +103,33 @@ but not line breaks, and no word may start with `-&` (that is the flag marker).
 Errors are `DenisError` with a `code`: `ECONN`, `ETIMEOUT`, `EAUTH`, `EPROTO`,
 `ESERVER` (the server said `ok:false`; the reply is in `err.reply`), `ECLOSED`, `EINVAL`,
 `ELIMIT` (Denis Cloud: rate limit or daily budget).
+
+## One round trip, many reads: `graph()`
+
+`QUERY` takes a GraphQL-shaped document and resolves every field on the
+server, so a page that needs a user, their cart and their last orders costs
+one request instead of five:
+
+```js
+const { data, errors } = await denis.graph(`{
+  user:   get("user:1") { name email address { city } }
+  cart:   prefix("cart:1:") { sku qty }
+  orders: table("orders", where: "user_id = 1", order: "total desc", limit: 5) { id total }
+  n:      count("orders")
+  has:    exists("greeting")
+}`);
+// data.user  -> { name, email, address: { city } }   (only the selected fields)
+// data.cart  -> { "cart:1:a": { sku, qty }, ... }
+// data.orders-> [{ id, total }, ...]                 (the selection is the SELECT list)
+```
+
+Resolvers, all read-only: `get(key)`, `mget(k1, k2, ...)`, `prefix(p)`,
+`keys(pattern)`, `exists(key)`, `count(table)`, `table(name, where:, order:,
+limit:, offset:)`, `sql("SELECT ...")`, `tables()`, `describe(table)`. A
+selection on a key parses the stored JSON and keeps only those fields
+(nested selections work); a selection on rows projects columns. A field that
+fails comes back as `null` with an entry in `errors` (`{ path, error }`) while
+the others still resolve. Works the same on Denis Cloud.
 
 ## How it talks to the server
 

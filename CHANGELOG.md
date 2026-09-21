@@ -7,6 +7,23 @@ before 1.0.0 a minor bump may contain breaking changes, which are listed).
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-09-21
+
+### Fixed
+- **Server accepted only 4 concurrent connections.** The worker pool used an
+  unbounded queue, so `ThreadPoolExecutor` never grew past its core threads and
+  every further connection waited for a free worker (the handshake hung).
+  Found by the new benchmark suite; the pool now uses a `SynchronousQueue` and
+  grows to `max-connections`. The server test now opens 12 clients at once.
+
+### Added
+- `bench/`: reproducible benchmarks against Redis 7 (key-value) and
+  PostgreSQL 16 (SQL) with identical container limits; results and analysis in
+  `docs/BENCHMARKS.md`.
+- Node client 0.3.0: **pipelining** (default on) — several commands in flight
+  per connection, replies matched in order; `pipeline: false` restores one
+  command per connection. Roughly 4-5x more throughput at high concurrency.
+
 ## [0.3.0] - 2026-09-21
 
 The first release under Semantic Versioning (the previous tag was
@@ -89,5 +106,6 @@ MCP server lets AI assistants inspect and query the database.
   `DenisServer`, `ProjectRegistry`); anything embedding the server classes
   directly must be updated.
 
-[Unreleased]: https://github.com/hacimertgokhan/denis/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/hacimertgokhan/denis/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/hacimertgokhan/denis/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/hacimertgokhan/denis/compare/v0.0.2.9alpha...v0.3.0

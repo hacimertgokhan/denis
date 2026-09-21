@@ -1,5 +1,6 @@
 package github.hacimertgokhan.denis.server;
 
+import github.hacimertgokhan.denis.sql.TableCatalog;
 import github.hacimertgokhan.pointers.Any;
 import github.hacimertgokhan.proto.ProtoDatabase;
 
@@ -20,12 +21,30 @@ public class ProjectStore {
     private final String prefix;
     private final ConcurrentHashMap<String, Any> cache;
     private final ProtoDatabase persistence;
+    private final TableCatalog tables;
 
     public ProjectStore(String token, ConcurrentHashMap<String, Any> cache, ProtoDatabase persistence) {
+        this(token, cache, persistence, new TableCatalog());
+    }
+
+    public ProjectStore(String token, ConcurrentHashMap<String, Any> cache, ProtoDatabase persistence, TableCatalog tables) {
         this.token = token;
         this.prefix = token + ":";
         this.cache = cache;
         this.persistence = persistence;
+        this.tables = tables;
+    }
+
+    /** The in-memory SQL tables shared by every connection of the server. */
+    public TableCatalog tables() {
+        return tables;
+    }
+
+    /** Called when a raw key command touches the SQL namespace, so loaded tables are rebuilt. */
+    private void touched(String key) {
+        if (key.startsWith(github.hacimertgokhan.denis.sql.SqlQueryEngine.NAMESPACE)) {
+            tables.invalidate(token);
+        }
     }
 
     public static String fullKey(String token, String key) {
@@ -130,6 +149,12 @@ public class ProjectStore {
 
     /** Write to the cache and, with {@code persist}, to the persisted store as well. */
     public void set(String key, String value, boolean persist) {
+        touched(key);
+        put(key, value, persist);
+    }
+
+    /** {@link #set} without the table-catalog check; used by the SQL engine for its own keys. */
+    public void put(String key, String value, boolean persist) {
         cache.put(prefix + key, new Any(value));
         if (persist) {
             persistence.setData(token, key, value);
@@ -137,11 +162,18 @@ public class ProjectStore {
     }
 
     public void setCached(String key, String value) {
+        touched(key);
         cache.put(prefix + key, new Any(value));
     }
 
     /** @return true when the key existed in any of the selected stores */
     public boolean delete(String key, boolean fromCache, boolean fromPersistence) {
+        touched(key);
+        return remove(key, fromCache, fromPersistence);
+    }
+
+    /** {@link #delete} without the table-catalog check; used by the SQL engine for its own keys. */
+    public boolean remove(String key, boolean fromCache, boolean fromPersistence) {
         boolean removed = false;
         if (fromCache) {
             removed |= cache.remove(prefix + key) != null;

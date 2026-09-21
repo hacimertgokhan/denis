@@ -4,6 +4,7 @@ import github.hacimertgokhan.denis.server.ProjectStore;
 import github.hacimertgokhan.pointers.Any;
 import github.hacimertgokhan.proto.ProtoDatabase;
 import org.json.JSONArray;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -28,6 +29,11 @@ class SqlQueryEngineTest {
         cache = new ConcurrentHashMap<>();
         persistence = new ProtoDatabase(dir.resolve("database.bin"), 0);
         sql = new SqlQueryEngine(new ProjectStore("project-token", cache, persistence));
+    }
+
+    @AfterEach
+    void tearDown() throws IOException {
+        persistence.close();
     }
 
     private JSONArray rows(String query) {
@@ -128,6 +134,47 @@ class SqlQueryEngineTest {
         assertEquals("Ada", rows("SELECT name FROM users").getJSONObject(0).getString("name"));
         sql.execute("INSERT INTO users (id, name) VALUES (2, 'Grace')");
         assertEquals(2, rows("SELECT COUNT(*) FROM users").getJSONObject(0).getInt("count"));
+    }
+
+    @Test
+    void indexLookupMatchesFullScanSemantics() {
+        sql.execute("CREATE TABLE t (id INT, tag TEXT, ok BOOL)");
+        sql.execute("INSERT INTO t (id, tag, ok) VALUES (1, 'a', true), (2, 'b', false), (3, '1', true), (4, NULL, true)");
+        // numbers and numeric text are the same key; booleans and their text too
+        assertEquals(2, rows("SELECT id FROM t WHERE id = '1' OR tag = '1'").length());
+        assertEquals(1, rows("SELECT id FROM t WHERE tag = 1").length());
+        assertEquals(3, rows("SELECT id FROM t WHERE ok = true").length());
+        assertEquals(3, rows("SELECT id FROM t WHERE ok = 'true'").length());
+        assertEquals(1, rows("SELECT id FROM t WHERE ok = true AND id > 3").length());
+        assertEquals(0, rows("SELECT id FROM t WHERE tag = 'missing'").length());
+        // index follows updates and deletes
+        sql.execute("UPDATE t SET tag = 'z' WHERE id = 2");
+        assertEquals(0, rows("SELECT id FROM t WHERE tag = 'b'").length());
+        assertEquals(2, rows("SELECT id FROM t WHERE tag = 'z'").getJSONObject(0).getInt("id"));
+        sql.execute("DELETE FROM t WHERE tag = 'z'");
+        assertEquals(0, rows("SELECT id FROM t WHERE tag = 'z'").length());
+        assertEquals(3, rows("SELECT COUNT(*) FROM t").getJSONObject(0).getInt("count"));
+    }
+
+    @Test
+    void tablesReloadFromTheStoreInAFreshCatalog() {
+        sql.execute("CREATE TABLE users (id INT, name TEXT)");
+        sql.execute("INSERT INTO users (id, name) VALUES (1, 'Ada'), (2, 'Grace')");
+        // a new catalog (as after a restart) rebuilds rows, index and sequence from the store
+        SqlQueryEngine fresh = new SqlQueryEngine(new ProjectStore("project-token", cache, persistence, new github.hacimertgokhan.denis.sql.TableCatalog()));
+        assertEquals("Grace", fresh.execute("SELECT name FROM users WHERE id = 2").rows().getJSONObject(0).getString("name"));
+        assertEquals(1, fresh.execute("INSERT INTO users (id, name) VALUES (3, 'Linus')").affected());
+        assertEquals(3, fresh.execute("SELECT COUNT(*) FROM users").rows().getJSONObject(0).getInt("count"));
+        assertTrue(persistence.exists("project-token", "__sql:users:row:3"));
+    }
+
+    @Test
+    void rawKeyCommandsOnTheSqlNamespaceInvalidateTheTable() {
+        sql.execute("CREATE TABLE users (id INT)");
+        sql.execute("INSERT INTO users (id) VALUES (1), (2)");
+        ProjectStore store = new ProjectStore("project-token", cache, persistence, sql.catalog());
+        store.delete("__sql:users:row:1", true, true);
+        assertEquals(1, rows("SELECT COUNT(*) FROM users").getJSONObject(0).getInt("count"));
     }
 
     @Test

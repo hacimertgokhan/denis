@@ -10,7 +10,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -49,12 +48,17 @@ public class SqlQueryEngine {
     private static final Pattern CONDITION = Pattern.compile("(?is)^([a-zA-Z_][a-zA-Z0-9_]*)\\s*(IS\\s+NOT\\s+NULL|IS\\s+NULL|!=|<>|>=|<=|=|>|<|LIKE)\\s*(.*)$");
 
     public static final String NAMESPACE = "__sql:";
-    private static final ConcurrentHashMap<String, Object> TABLE_LOCKS = new ConcurrentHashMap<>();
 
     private final ProjectStore store;
+    private final TableCatalog catalog;
 
     public SqlQueryEngine(ProjectStore store) {
         this.store = store;
+        this.catalog = store.tables();
+    }
+
+    public TableCatalog catalog() {
+        return catalog;
     }
 
     public SqlResult execute(String rawQuery) {
@@ -119,209 +123,185 @@ public class SqlQueryEngine {
 
     private SqlResult showTables() {
         JSONArray tables = new JSONArray();
-        for (Map.Entry<String, String> entry : store.entriesWithPrefix(NAMESPACE).entrySet()) {
-            String key = entry.getKey();
-            if (!key.endsWith(":schema")) {
-                continue;
+        for (String name : catalog.names(store)) {
+            Table table = catalog.get(store, name);
+            if (table != null) {
+                tables.put(describeTable(table));
             }
-            String table = key.substring(NAMESPACE.length(), key.length() - ":schema".length());
-            tables.put(describeTable(table, new JSONArray(entry.getValue())));
         }
         return SqlResult.tables(tables);
     }
 
-    private SqlResult describe(String table) {
-        JSONArray columns = getSchemaColumns(table);
-        return SqlResult.tables(new JSONArray().put(describeTable(normalizeIdentifier(table), columns)));
+    private SqlResult describe(String name) {
+        return SqlResult.tables(new JSONArray().put(describeTable(table(name))));
     }
 
-    private JSONObject describeTable(String table, JSONArray columns) {
+    private JSONObject describeTable(Table table) {
         return new JSONObject()
-                .put("name", table)
-                .put("columns", columns)
-                .put("rows", rows(table).size());
+                .put("name", table.name())
+                .put("columns", table.schema())
+                .put("rows", table.size());
     }
 
-    private SqlResult createTable(String table, String columnsSql, boolean ifNotExists) {
-        String schemaKey = schemaKey(table);
-        synchronized (lock(table)) {
-            if (store.exists(schemaKey)) {
-                if (ifNotExists) {
-                    return SqlResult.affected(0, "table already exists");
-                }
-                return SqlResult.error("Table already exists: " + table);
+    private SqlResult createTable(String name, String columnsSql, boolean ifNotExists) {
+        String table = normalizeIdentifier(name);
+        JSONArray columns = new JSONArray();
+        for (String definition : splitCommaAware(columnsSql)) {
+            String[] parts = definition.trim().split("\\s+", 2);
+            if (parts.length == 0 || parts[0].isBlank()) {
+                throw new IllegalArgumentException("Invalid column definition");
             }
-            JSONArray columns = new JSONArray();
-            for (String definition : splitCommaAware(columnsSql)) {
-                String[] parts = definition.trim().split("\\s+", 2);
-                if (parts.length == 0 || parts[0].isBlank()) {
-                    throw new IllegalArgumentException("Invalid column definition");
-                }
-                columns.put(new JSONObject()
-                        .put("name", normalizeIdentifier(parts[0]))
-                        .put("type", parts.length > 1 ? parts[1].trim().toUpperCase(Locale.ROOT) : "TEXT"));
+            columns.put(new JSONObject()
+                    .put("name", normalizeIdentifier(parts[0]))
+                    .put("type", parts.length > 1 ? parts[1].trim().toUpperCase(Locale.ROOT) : "TEXT"));
+        }
+        if (catalog.create(store, table, columns) == null) {
+            if (ifNotExists) {
+                return SqlResult.affected(0, "table already exists");
             }
-            store.set(schemaKey, columns.toString(), true);
-            store.set(sequenceKey(table), "0", true);
+            return SqlResult.error("Table already exists: " + name);
         }
         return SqlResult.affected(0, "table created");
     }
 
-    private SqlResult insert(String table, String columnsSql, String valuesSql) {
-        List<String> schema = getSchema(table);
+    private SqlResult insert(String name, String columnsSql, String valuesSql) {
+        Table table = table(name);
         List<String> columns = splitCommaAware(columnsSql).stream().map(SqlQueryEngine::normalizeIdentifier).toList();
-        columns.forEach(column -> ensureColumnExists(schema, column));
+        columns.forEach(column -> ensureColumnExists(table, column));
 
-        List<List<String>> tuples = splitTuples(valuesSql);
-        int inserted = 0;
-        synchronized (lock(table)) {
-            for (List<String> values : tuples) {
-                if (columns.size() != values.size()) {
-                    throw new IllegalArgumentException("Column count does not match value count");
-                }
-                JSONObject row = new JSONObject();
-                for (int i = 0; i < columns.size(); i++) {
-                    row.put(columns.get(i), parseValue(values.get(i)));
-                }
-                long rowId = nextRowId(table);
-                row.put("_rowid", rowId);
-                store.set(rowKey(table, rowId), row.toString(), true);
-                inserted++;
+        List<JSONObject> rows = new ArrayList<>();
+        for (List<String> values : splitTuples(valuesSql)) {
+            if (columns.size() != values.size()) {
+                throw new IllegalArgumentException("Column count does not match value count");
             }
+            JSONObject row = new JSONObject();
+            for (int i = 0; i < columns.size(); i++) {
+                row.put(columns.get(i), parseValue(values.get(i)));
+            }
+            rows.add(row);
         }
+        int inserted = table.insert(rows);
         return SqlResult.affected(inserted, inserted + " row" + (inserted == 1 ? "" : "s") + " inserted");
     }
 
-    private SqlResult select(String columnsSql, String table, String whereSql, String orderBy, String direction,
+    private SqlResult select(String columnsSql, String name, String whereSql, String orderBy, String direction,
                              String limitSql, String offsetSql) {
-        List<String> schema = getSchema(table);
+        Table table = table(name);
         boolean count = COUNT_ALL.matcher(columnsSql.trim()).matches();
         List<String> selected = count || columnsSql.trim().equals("*")
-                ? schema
+                ? table.columns()
                 : splitCommaAware(columnsSql).stream().map(SqlQueryEngine::normalizeIdentifier).toList();
-        selected.forEach(column -> ensureColumnExists(schema, column));
-
+        selected.forEach(column -> ensureColumnExists(table, column));
+        String orderColumn = orderBy == null ? null : normalizeIdentifier(orderBy);
+        if (orderColumn != null) {
+            ensureColumnExists(table, orderColumn);
+        }
         Predicate<JSONObject> condition = parseCondition(whereSql);
-        List<JSONObject> matched = new ArrayList<>();
-        for (JSONObject row : rows(table)) {
-            if (condition.test(row)) {
-                matched.add(row);
-            }
-        }
-        if (count) {
-            JSONArray rows = new JSONArray().put(new JSONObject().put("count", matched.size()));
-            return SqlResult.rows(List.of("count"), rows);
-        }
-        if (orderBy != null) {
-            String column = normalizeIdentifier(orderBy);
-            ensureColumnExists(schema, column);
-            Comparator<JSONObject> comparator = Comparator.comparing(row -> row.opt(column), SqlQueryEngine::compareValues);
-            if ("DESC".equalsIgnoreCase(direction)) {
-                comparator = comparator.reversed();
-            }
-            matched.sort(comparator);
-        }
         int offset = offsetSql == null ? 0 : Integer.parseInt(offsetSql);
         int limit = limitSql == null ? Integer.MAX_VALUE : Integer.parseInt(limitSql);
 
-        JSONArray rows = new JSONArray();
-        for (int i = offset; i < matched.size() && rows.length() < limit; i++) {
-            JSONObject row = matched.get(i);
-            JSONObject projected = new JSONObject();
-            for (String column : selected) {
-                projected.put(column, row.has(column) ? row.get(column) : JSONObject.NULL);
+        // Snapshot the matching rows under the read lock, then project outside it.
+        List<JSONObject> matched = scan(table, whereSql, condition, rows -> {
+            if (count && (whereSql == null || whereSql.isBlank())) {
+                return List.of(new JSONObject().put("count", rows.size()));
             }
-            rows.put(projected);
+            List<JSONObject> out = new ArrayList<>();
+            for (JSONObject row : rows) {
+                if (condition.test(row)) {
+                    out.add(row);
+                }
+            }
+            if (count) {
+                return List.of(new JSONObject().put("count", out.size()));
+            }
+            if (orderColumn != null) {
+                Comparator<JSONObject> comparator = Comparator.comparing(row -> row.opt(orderColumn), SqlQueryEngine::compareValues);
+                out.sort("DESC".equalsIgnoreCase(direction) ? comparator.reversed() : comparator);
+            }
+            List<JSONObject> page = new ArrayList<>();
+            for (int i = offset; i < out.size() && page.size() < limit; i++) {
+                JSONObject row = out.get(i);
+                JSONObject copy = new JSONObject();
+                for (String column : selected) {
+                    copy.put(column, row.has(column) ? row.get(column) : JSONObject.NULL);
+                }
+                page.add(copy);
+            }
+            return page;
+        });
+        if (count) {
+            return SqlResult.rows(List.of("count"), new JSONArray(matched));
         }
-        return SqlResult.rows(selected, rows);
+        return SqlResult.rows(selected, new JSONArray(matched));
     }
 
-    private SqlResult update(String table, String assignmentsSql, String whereSql) {
-        List<String> schema = getSchema(table);
+    private SqlResult update(String name, String assignmentsSql, String whereSql) {
+        Table table = table(name);
         Map<String, Object> assignments = parseAssignments(assignmentsSql);
-        assignments.keySet().forEach(column -> ensureColumnExists(schema, column));
-        Predicate<JSONObject> condition = parseCondition(whereSql);
-
-        int updated = 0;
-        synchronized (lock(table)) {
-            for (JSONObject row : rows(table)) {
-                if (!condition.test(row)) {
-                    continue;
-                }
-                assignments.forEach(row::put);
-                store.set(rowKey(table, row.getLong("_rowid")), row.toString(), true);
-                updated++;
-            }
-        }
+        assignments.keySet().forEach(column -> ensureColumnExists(table, column));
+        Object[] probe = indexProbe(table, whereSql);
+        int updated = table.update(parseCondition(whereSql), assignments,
+                probe == null ? null : (String) probe[0], probe == null ? null : probe[1]);
         return SqlResult.affected(updated, updated + " row(s) updated");
     }
 
-    private SqlResult delete(String table, String whereSql) {
-        getSchema(table);
-        Predicate<JSONObject> condition = parseCondition(whereSql);
-        int deleted = 0;
-        synchronized (lock(table)) {
-            for (JSONObject row : rows(table)) {
-                if (!condition.test(row)) {
-                    continue;
-                }
-                store.delete(rowKey(table, row.getLong("_rowid")), true, true);
-                deleted++;
-            }
-        }
+    private SqlResult delete(String name, String whereSql) {
+        Table table = table(name);
+        Object[] probe = indexProbe(table, whereSql);
+        int deleted = table.delete(parseCondition(whereSql),
+                probe == null ? null : (String) probe[0], probe == null ? null : probe[1]);
         return SqlResult.affected(deleted, deleted + " row(s) deleted");
     }
 
-    private SqlResult dropTable(String table, boolean ifExists) {
-        synchronized (lock(table)) {
-            if (!store.exists(schemaKey(table))) {
-                if (ifExists) {
-                    return SqlResult.affected(0, "table does not exist");
-                }
-                throw new IllegalArgumentException("Table not found: " + table);
+    private SqlResult dropTable(String name, boolean ifExists) {
+        if (!catalog.drop(store, normalizeIdentifier(name))) {
+            if (ifExists) {
+                return SqlResult.affected(0, "table does not exist");
             }
-            store.deleteWithPrefix(tablePrefix(table));
+            throw new IllegalArgumentException("Table not found: " + name);
         }
         return SqlResult.affected(0, "table dropped");
     }
 
     // ---------------------------------------------------------------- helpers
 
-    private JSONArray getSchemaColumns(String table) {
-        String schema = store.get(schemaKey(table));
-        if (schema == null) {
-            throw new IllegalArgumentException("Table not found: " + table);
+    private Table table(String name) {
+        Table table = catalog.get(store, normalizeIdentifier(name));
+        if (table == null) {
+            throw new IllegalArgumentException("Table not found: " + name);
         }
-        return new JSONArray(schema);
+        return table;
     }
 
-    private List<String> getSchema(String table) {
-        JSONArray columns = getSchemaColumns(table);
-        List<String> names = new ArrayList<>();
-        for (int i = 0; i < columns.length(); i++) {
-            names.add(columns.getJSONObject(i).getString("name"));
+    /**
+     * Read the candidate rows for a WHERE clause: an index lookup when the
+     * clause is a conjunction containing {@code col = literal}, otherwise every
+     * row. The reader still applies the full condition.
+     */
+    private static <T> T scan(Table table, String whereSql, Predicate<JSONObject> condition,
+                              java.util.function.Function<java.util.Collection<JSONObject>, T> reader) {
+        Object[] probe = indexProbe(table, whereSql);
+        if (probe != null) {
+            return table.readEqual((String) probe[0], probe[1], reader);
         }
-        return names;
+        return table.read(reader);
     }
 
-    private List<JSONObject> rows(String table) {
-        return store.entriesWithPrefix(rowPrefix(table)).values().stream()
-                .map(JSONObject::new)
-                .sorted(Comparator.comparingLong(row -> row.getLong("_rowid")))
-                .toList();
-    }
-
-    /** Must be called under the table lock. */
-    private long nextRowId(String table) {
-        String key = sequenceKey(table);
-        String current = store.get(key);
-        long next = (current == null ? 0 : Long.parseLong(current)) + 1;
-        store.set(key, String.valueOf(next), true);
-        return next;
-    }
-
-    private static Object lock(String table) {
-        return TABLE_LOCKS.computeIfAbsent(normalizeIdentifier(table), t -> new Object());
+    /** {@code [column, value]} of the first indexed equality in an AND-only WHERE, or null. */
+    private static Object[] indexProbe(Table table, String whereSql) {
+        if (whereSql == null || whereSql.isBlank() || splitKeyword(whereSql, "OR").size() > 1) {
+            return null;
+        }
+        for (String conjunct : splitKeyword(whereSql, "AND")) {
+            Matcher m = CONDITION.matcher(conjunct.trim());
+            if (m.matches() && m.group(2).equals("=") && !m.group(3).trim().isEmpty()) {
+                String column = normalizeIdentifier(m.group(1));
+                if (table.hasIndex(column)) {
+                    return new Object[]{column, parseValue(m.group(3).trim())};
+                }
+            }
+        }
+        return null;
     }
 
     private Map<String, Object> parseAssignments(String assignmentsSql) {
@@ -398,7 +378,7 @@ public class SqlQueryEngine {
     }
 
     /** Numbers compare numerically, everything else as text; NULL sorts first. */
-    private static int compareValues(Object left, Object right) {
+    static int compareValues(Object left, Object right) {
         boolean leftNull = left == null || JSONObject.NULL.equals(left);
         boolean rightNull = right == null || JSONObject.NULL.equals(right);
         if (leftNull || rightNull) {
@@ -412,7 +392,7 @@ public class SqlQueryEngine {
         return String.valueOf(left).compareTo(String.valueOf(right));
     }
 
-    private static Double asNumber(Object value) {
+    static Double asNumber(Object value) {
         if (value instanceof Number number) {
             return number.doubleValue();
         }
@@ -561,29 +541,9 @@ public class SqlQueryEngine {
         return identifier.trim().replace("`", "").toLowerCase(Locale.ROOT);
     }
 
-    private void ensureColumnExists(List<String> schema, String column) {
-        if (!schema.contains(column)) {
+    private static void ensureColumnExists(Table table, String column) {
+        if (!table.columns().contains(column)) {
             throw new IllegalArgumentException("Column not found: " + column);
         }
-    }
-
-    private String tablePrefix(String table) {
-        return NAMESPACE + normalizeIdentifier(table) + ":";
-    }
-
-    private String schemaKey(String table) {
-        return tablePrefix(table) + "schema";
-    }
-
-    private String sequenceKey(String table) {
-        return tablePrefix(table) + "seq";
-    }
-
-    private String rowPrefix(String table) {
-        return tablePrefix(table) + "row:";
-    }
-
-    private String rowKey(String table, long rowId) {
-        return rowPrefix(table) + rowId;
     }
 }

@@ -3,6 +3,7 @@ package github.hacimertgokhan.denis.server;
 import github.hacimertgokhan.denis.DenisTerminal;
 import github.hacimertgokhan.denis.project.ProjectRegistry;
 import github.hacimertgokhan.denis.sections.group.GroupManager;
+import github.hacimertgokhan.denis.sql.TableCatalog;
 import github.hacimertgokhan.logger.DenisLogger;
 import github.hacimertgokhan.pointers.Any;
 import github.hacimertgokhan.proto.ProtoDatabase;
@@ -31,6 +32,7 @@ public class ServerContext implements AutoCloseable {
     private final ProjectRegistry projects;
     private final String groupsFile;
     private final DenisTerminal activityLog;
+    private final TableCatalog tables = new TableCatalog();
     private final Instant startedAt = Instant.now();
     private final AtomicLong connectionsTotal = new AtomicLong();
     private final AtomicLong commandsTotal = new AtomicLong();
@@ -42,7 +44,11 @@ public class ServerContext implements AutoCloseable {
     }
 
     public static ServerContext open(Path dataDir, long flushIntervalMillis, DenisTerminal activityLog) throws IOException {
-        ProtoDatabase persistence = new ProtoDatabase(dataDir.resolve(DATABASE_FILE), flushIntervalMillis);
+        return open(dataDir, flushIntervalMillis, flushIntervalMillis, activityLog);
+    }
+
+    public static ServerContext open(Path dataDir, long journalSyncMillis, long snapshotIntervalMillis, DenisTerminal activityLog) throws IOException {
+        ProtoDatabase persistence = new ProtoDatabase(dataDir.resolve(DATABASE_FILE), journalSyncMillis, snapshotIntervalMillis);
         ProjectRegistry projects = new ProjectRegistry(dataDir.resolve(PROJECTS_FILE).toString());
         String groupsFile = dataDir.resolve(GroupManager.DEFAULT_TOML).toString();
         return new ServerContext(new ConcurrentHashMap<>(), persistence, projects, groupsFile, activityLog);
@@ -101,7 +107,11 @@ public class ServerContext implements AutoCloseable {
     }
 
     public ProjectStore project(String token) {
-        return new ProjectStore(token, store, persistence);
+        return new ProjectStore(token, store, persistence, tables);
+    }
+
+    public TableCatalog tables() {
+        return tables;
     }
 
     public Instant startedAt() {

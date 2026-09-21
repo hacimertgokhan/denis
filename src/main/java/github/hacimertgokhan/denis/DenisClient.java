@@ -152,7 +152,8 @@ public class DenisClient {
         }
         String peer = socket.getInetAddress().getHostAddress();
         try (BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
-             PrintWriter out = new PrintWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8), true)) {
+             // No autoflush: replies to a burst of pipelined commands leave in one write (see below).
+             PrintWriter out = new PrintWriter(new java.io.BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8), 64 * 1024), false)) {
             String line;
             while ((line = in.readLine()) != null) {
                 if (line.isBlank()) {
@@ -178,10 +179,16 @@ public class DenisClient {
                     error(out, "internal error: " + e.getMessage());
                     keepOpen = true;
                 }
+                // Flush only when the client has nothing more queued: one syscall per
+                // batch for pipelining clients, one per command for interactive ones.
+                if (!keepOpen || !in.ready()) {
+                    out.flush();
+                }
                 if (!keepOpen) {
                     break;
                 }
             }
+            out.flush();
         } catch (java.net.SocketTimeoutException e) {
             log.info("Idle connection closed: " + peer);
         } catch (IOException e) {

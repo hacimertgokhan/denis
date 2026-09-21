@@ -5,6 +5,9 @@
 #   docker compose -f compose.cloud.yaml --env-file .env.cloud up -d --build
 #
 # Put a TLS-terminating reverse proxy (Caddy, nginx, Traefik) in front of :3000.
+# Services are addressed by unique aliases (denis-engine, denis-platform-db):
+# when the web container also joins a shared proxy network, plain names like
+# "postgres" could resolve to another stack's database.
 services:
   denis:
     build:
@@ -26,7 +29,9 @@ services:
     volumes:
       - denis-data:/data
     stop_grace_period: 15s
-    networks: [internal]
+    networks:
+      internal:
+        aliases: [denis-engine]
 
   postgres:
     image: postgres:16-alpine
@@ -42,7 +47,9 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-    networks: [internal]
+    networks:
+      internal:
+        aliases: [denis-platform-db]
 
   web:
     build:
@@ -57,7 +64,7 @@ services:
         condition: service_healthy
     environment:
       NEXT_PUBLIC_APP_URL: "${NEXT_PUBLIC_APP_URL:-https://denis.hacimertgokhan.com}"
-      DATABASE_URL: "postgres://denis:${POSTGRES_PASSWORD}@postgres:5432/denis_platform"
+      DATABASE_URL: "postgres://denis:${POSTGRES_PASSWORD}@denis-platform-db:5432/denis_platform"
       BETTER_AUTH_SECRET: "${BETTER_AUTH_SECRET}"
       JWT_SECRET: "${JWT_SECRET}"
       JWT_REFRESH_SECRET: "${JWT_REFRESH_SECRET}"
@@ -65,7 +72,7 @@ services:
       JWT_REFRESH_TTL: "${JWT_REFRESH_TTL:-2592000}"
       GITHUB_CLIENT_ID: "${GITHUB_CLIENT_ID:-}"
       GITHUB_CLIENT_SECRET: "${GITHUB_CLIENT_SECRET:-}"
-      DENIS_HOST: denis
+      DENIS_HOST: denis-engine
       DENIS_PORT: "5142"
       DENIS_GROUP: "${DENIS_GROUP:-platform}"
       DENIS_PASSWORD: "${DENIS_PASSWORD}"

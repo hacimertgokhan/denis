@@ -28,17 +28,12 @@ export function DenisMark({ className }: { className?: string }) {
   );
 }
 
-/** Mark and wordmark, "Cloud" set quiet so the name reads as one word. */
+/** Mark and a single word. */
 export function Wordmark({ className }: { className?: string }) {
   return (
-    <Link href="/" className={cn("group inline-flex items-center gap-3", className)} aria-label="Denis Cloud home">
-      <DenisMark className="size-8 transition-transform duration-300 group-hover:-rotate-6" />
-      <span className="flex flex-col leading-none">
-        <span className="text-[17px] font-semibold tracking-[-0.02em]">Denis</span>
-        <span className="mt-0.5 font-mono text-[10.5px] tracking-[0.18em] text-[var(--l-ash)] uppercase transition-colors duration-300 group-hover:text-[var(--l-ink)]">
-          Cloud
-        </span>
-      </span>
+    <Link href="/" className={cn("inline-flex items-center gap-2.5", className)} aria-label="Denis Cloud home">
+      <DenisMark className="size-6" />
+      <span className="text-[15.5px] font-medium tracking-[-0.01em]">Denis</span>
     </Link>
   );
 }
@@ -47,9 +42,13 @@ const links: { label: string; href: string; external?: boolean }[] = [
   { label: "Benchmarks", href: "/#benchmarks" },
   { label: "Protocol", href: `${REPO}/blob/master/docs/PROTOCOL.md`, external: true },
   { label: "Security", href: "/security" },
+  { label: "GitHub", href: REPO, external: true },
 ];
 
-/** Wordmark left, links in the middle, actions right. Transparent until the page scrolls. */
+/**
+ * One quiet row: the mark on the left, text links and the two actions on the
+ * right. Transparent over the hero, a hairline and blur once the page scrolls.
+ */
 export function LandingNav({ signedIn }: { signedIn: boolean }) {
   const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
@@ -61,66 +60,55 @@ export function LandingNav({ signedIn }: { signedIn: boolean }) {
   }, []);
 
   const link = (active = false) =>
-    cn(
-      "rounded-full px-3 py-1.5 text-[14px] transition-colors duration-300",
-      active ? "bg-[var(--l-ink)]/[0.06] text-[var(--l-ink)]" : "text-[var(--l-ash)] hover:bg-[var(--l-ink)]/[0.05] hover:text-[var(--l-ink)]",
-    );
+    cn("px-2.5 py-1.5 text-[14px] transition-colors duration-300", active ? "text-[var(--l-ink)]" : "text-[var(--l-ash)] hover:text-[var(--l-ink)]");
 
   return (
     <header
       className={cn(
-        "fixed inset-x-0 top-0 z-20 transition-[background-color,border-color,box-shadow] duration-500",
+        "fixed inset-x-0 top-0 z-20 transition-[background-color,border-color] duration-500",
         scrolled ? "border-b border-[var(--l-line)] bg-[var(--l-bg)]/85 backdrop-blur-md" : "border-b border-transparent bg-transparent",
       )}
     >
-      <div className="mx-auto grid h-16 max-w-[1560px] grid-cols-[1fr_auto_1fr] items-center px-6 lg:px-10">
+      <div className="mx-auto flex h-16 max-w-[1560px] items-center justify-between px-6 lg:px-10">
         <Wordmark />
-
-        <nav
-          className="hidden items-center gap-0.5 rounded-full border border-[var(--l-line)]/70 bg-[var(--l-bg)]/60 p-1 backdrop-blur-sm md:flex"
-          aria-label="Primary"
-        >
+        <nav className="flex items-center gap-1" aria-label="Primary">
           {links.map((l) =>
             l.external ? (
-              <a key={l.label} href={l.href} target="_blank" rel="noreferrer" className={link()}>
+              <a key={l.label} href={l.href} target="_blank" rel="noreferrer" className={cn(link(), "hidden items-center gap-1.5 sm:inline-flex")}>
+                {l.label === "GitHub" && <GitHubIcon className="size-3.5" />}
                 {l.label}
               </a>
             ) : (
-              <Link key={l.label} href={l.href} className={link(pathname === l.href)}>
+              <Link key={l.label} href={l.href} className={cn(link(pathname === l.href), "hidden sm:inline-block")}>
                 {l.label}
               </Link>
             ),
           )}
-          <a href={REPO} target="_blank" rel="noreferrer" className={cn(link(), "inline-flex items-center gap-1.5")}>
-            <GitHubIcon className="size-3.5" /> GitHub
-          </a>
-        </nav>
-
-        <div className="flex items-center justify-end gap-1">
+          <span className="mx-1 hidden h-4 w-px bg-[var(--l-line)] sm:block" aria-hidden />
           <span className="[&_button]:text-[var(--l-ash)] [&_button]:hover:bg-transparent [&_button]:hover:text-[var(--l-ink)]">
             <ThemeToggle />
           </span>
           {signedIn ? (
             <Link
               href="/dashboard"
-              className="ml-2 rounded-full bg-[var(--l-ink)] px-4 py-1.5 text-[14px] font-medium text-[var(--l-bg)] transition-opacity hover:opacity-90"
+              className="ml-2 rounded-md bg-[var(--l-ink)] px-3.5 py-1.5 text-[14px] font-medium text-[var(--l-bg)] transition-opacity hover:opacity-90"
             >
               Open dashboard
             </Link>
           ) : (
             <>
-              <Link href="/login" className={cn(link(), "hidden sm:inline-block")}>
+              <Link href="/login" className={link()}>
                 Sign in
               </Link>
               <Link
                 href="/register"
-                className="ml-1 rounded-full bg-[var(--l-ink)] px-4 py-1.5 text-[14px] font-medium text-[var(--l-bg)] transition-opacity hover:opacity-90"
+                className="ml-1 rounded-md bg-[var(--l-ink)] px-3.5 py-1.5 text-[14px] font-medium text-[var(--l-bg)] transition-opacity hover:opacity-90"
               >
                 Create a database
               </Link>
             </>
           )}
-        </div>
+        </nav>
       </div>
     </header>
   );

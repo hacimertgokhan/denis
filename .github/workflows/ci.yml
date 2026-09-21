@@ -20,7 +20,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: denis-jar
-          path: target/denis-*-alpha.jar
+          path: target/denis-[0-9]*.jar
           if-no-files-found: error
 
   java-driver:
@@ -63,10 +63,12 @@ jobs:
           done
           docker logs denis
           [ "$status" = healthy ]
-      - name: Non-interactive CLI works inside the container
+      - name: CLI works inside the container
         run: |
           docker exec denis /app/entrypoint.sh cli group list | grep -x ci
           docker exec denis /app/entrypoint.sh cli group test ci ci-password
+          docker exec denis /app/entrypoint.sh cli status
+          docker exec denis /app/entrypoint.sh cli exec -g ci -p ci-password --create-project "SET k v -&save" "GET k" "CREATE TABLE t (id INT)" "INSERT INTO t (id) VALUES (1)" "SELECT * FROM t" | grep -x v
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
@@ -77,6 +79,15 @@ jobs:
           DENIS_GROUP: ci
           DENIS_PASSWORD: ci-password
         run: node --test test/integration.test.js
+      - name: MCP server tests (unit + integration through the SDK client)
+        working-directory: clients/mcp
+        env:
+          DENIS_INTEGRATION: "1"
+          DENIS_GROUP: ci
+          DENIS_PASSWORD: ci-password
+        run: |
+          npm install --no-audit --no-fund
+          node --test test/*.test.js
       - uses: actions/setup-java@v4
         with:
           distribution: temurin

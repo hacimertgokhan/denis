@@ -69,10 +69,22 @@ class DenisClientIntegrationTest {
     void sqlSubsetWorks() throws IOException {
         try (DenisClient client = connect()) {
             client.createProject();
-            assertTrue(client.sql("CREATE TABLE users (id INT, name TEXT)").startsWith("OK"));
-            assertTrue(client.sql("INSERT INTO users (id, name) VALUES (1, 'Ada')").startsWith("OK"));
-            assertTrue(client.sql("SELECT * FROM users WHERE id = 1").contains("Ada"));
-            assertTrue(client.sql("DROP TABLE users").startsWith("OK"));
+            String table = "jd" + System.currentTimeMillis();
+            assertEquals("affected", client.sql("CREATE TABLE " + table + " (id INT, name TEXT)").getString("type"));
+            assertEquals(2, client.execute("INSERT INTO " + table + " (id, name) VALUES (1, 'Ada'), (2, 'Grace')"));
+            assertEquals("Ada", client.query("SELECT name FROM " + table + " WHERE id = 1").getJSONObject(0).getString("name"));
+            assertTrue(client.tables().toString().contains(table));
+            assertEquals(0, client.execute("DROP TABLE " + table));
+
+            String key = "jd_" + System.currentTimeMillis();
+            client.set(key, "v", true);
+            assertTrue(client.exists(key));
+            assertTrue(client.keys("jd_*").contains(key));
+            assertEquals("v", client.mget(java.util.List.of(key, "nope")).get(key));
+            assertNull(client.mget(java.util.List.of(key, "nope")).get("nope"));
+            client.save();
+            assertTrue(client.info().has("version"));
+            client.delete(key);
         }
     }
 

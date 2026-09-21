@@ -4,7 +4,12 @@ import github.hacimertgokhan.drivers.connection.ConnectionManager;
 import github.hacimertgokhan.drivers.operations.AuthOperation;
 import github.hacimertgokhan.drivers.operations.DataOperation;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Java client for Denis Database.
@@ -89,8 +94,43 @@ public class DenisClient implements AutoCloseable {
         dataOperation.clear();
     }
 
-    public String sql(String query) throws IOException {
+    /** Structured SQL result; see {@link DataOperation#sql}. */
+    public JSONObject sql(String query) throws IOException {
         return dataOperation.sql(query);
+    }
+
+    /** Rows of a SELECT. */
+    public JSONArray query(String select) throws IOException {
+        return dataOperation.query(select);
+    }
+
+    /** Affected row count of INSERT/UPDATE/DELETE/DDL. */
+    public int execute(String statement) throws IOException {
+        return dataOperation.execute(statement);
+    }
+
+    public JSONArray tables() throws IOException {
+        return dataOperation.tables();
+    }
+
+    public boolean exists(String key) throws IOException {
+        return dataOperation.exists(key);
+    }
+
+    public List<String> keys(String pattern) throws IOException {
+        return dataOperation.keys(pattern);
+    }
+
+    public Map<String, String> mget(List<String> keys) throws IOException {
+        return dataOperation.mget(keys);
+    }
+
+    public JSONObject info() throws IOException {
+        return dataOperation.info();
+    }
+
+    public void save() throws IOException {
+        dataOperation.save();
     }
 
     @Override

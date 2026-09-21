@@ -85,6 +85,17 @@ public class GroupManager {
         return new CreatedGroup(name, pwd, generated);
     }
 
+    /** @return true when the group existed and was removed from denis.toml */
+    public boolean delete(String name) throws IOException {
+        DenisToml toml = new DenisToml(tomlPath);
+        if (toml.get(name) == null) {
+            return false;
+        }
+        toml.getData().remove(name);
+        toml.save();
+        return true;
+    }
+
     public boolean verify(String name, String password) {
         Group group = new Group(name, tomlPath);
         return group.isExists() && group.in(password);

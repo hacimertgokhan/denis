@@ -1,6 +1,6 @@
 {
   "name": "denis-client",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Node.js client for Denis Database (TCP, promise based, pooled connections)",
   "main": "index.js",
   "types": "index.d.ts",
@@ -16,7 +16,7 @@
   },
   "files": ["index.js", "index.d.ts", "README.md"],
   "scripts": {
-    "test": "node --test test/",
-    "test:integration": "DENIS_INTEGRATION=1 node --test test/"
+    "test": "node --test test/*.test.js",
+    "test:integration": "DENIS_INTEGRATION=1 node --test test/*.test.js"
   }
 }

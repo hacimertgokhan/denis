@@ -37,3 +37,10 @@ clients/node/*.tgz
 # OS
 .DS_Store
 Thumbs.db
+
+# MCP server
+clients/mcp/node_modules/
+clients/mcp/*.tgz
+
+# Compose environment
+/.env

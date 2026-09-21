@@ -44,6 +44,11 @@ async function call(path, { method = "GET", body, headers = {}, raw = false } = 
 }
 
 const step = (name) => console.log(`\n== ${name}`);
+// The sign-up form must have been open for two seconds (signed cookie from /register).
+const openForm = async () => {
+  await call("/register", { raw: true });
+  await new Promise((res) => setTimeout(res, 2500));
+};
 const email = `smoke-${Date.now()}@example.com`;
 let r;
 
@@ -66,6 +71,7 @@ assert.equal(r.status, 400, "honeypot filled -> refused");
 console.log("missing cookie, instant submits and filled honeypots are refused");
 
 step("register + session");
+await openForm();
 r = await call("/api/auth/sign-up/email", { method: "POST", body: { email, password: "smoke-pass-123", name: "Smoke Test" } });
 assert.equal(r.status, 200, JSON.stringify(r.json));
 r = await call("/api/v1/me");
@@ -160,6 +166,7 @@ step("isolation: another user cannot see it");
 const other = cookie;
 cookie = "";
 const otherUserEmail = `other-${Date.now()}@example.com`;
+await openForm();
 r = await call("/api/auth/sign-up/email", { method: "POST", body: { email: otherUserEmail, password: "smoke-pass-123", name: "Other" } });
 assert.equal(r.status, 200);
 const otherCookie = cookie;
@@ -276,6 +283,7 @@ console.log("ordinary user gets 403 on the admin API");
 const userCookie = cookie;
 cookie = "";
 const ADMIN_EMAIL = "smoke-admin@example.com";
+await openForm();
 r = await call("/api/auth/sign-up/email", { method: "POST", body: { email: ADMIN_EMAIL, password: "smoke-admin-123", name: "Smoke Admin" } });
 if (r.status !== 200) {
   r = await call("/api/auth/sign-in/email", { method: "POST", body: { email: ADMIN_EMAIL, password: "smoke-admin-123" } });

@@ -238,7 +238,7 @@ export default async function Landing() {
                 ))}
               </dl>
             </div>
-            <Cross className="left-[calc(max(0px,(100%-1560px)/2)-4px)]" />
+            <Cross className="left-[calc(max(0px,(100%-1400px)/2)-4px)]" />
           </Section>
 
           {/* architecture */}

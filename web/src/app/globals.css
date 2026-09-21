@@ -329,7 +329,7 @@
  * grid behind everything and a beam of light that runs down each rail.
  */
 .lf-frame {
-  --lf-col: min(1560px, 100%);
+  --lf-col: min(1400px, 100%);
 }
 /* the dot grid lives on its own layer so the fade never touches the content */
 .lf-frame::before {
@@ -480,4 +480,3 @@
     animation: none;
   }
 }
-

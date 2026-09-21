@@ -71,7 +71,7 @@ export function LandingNav({ signedIn }: { signedIn: boolean }) {
         scrolled ? "border-b border-[var(--l-line)] bg-[var(--l-bg)]/85 backdrop-blur-md" : "border-b border-transparent bg-transparent",
       )}
     >
-      <div className="mx-auto flex h-16 max-w-[1560px] items-center justify-between px-6 lg:px-10">
+      <div className="mx-auto flex h-16 max-w-[1400px] items-center justify-between px-6 lg:px-10">
         <Wordmark />
         <nav className="flex items-center gap-1" aria-label="Primary">
           {links.map((l) =>

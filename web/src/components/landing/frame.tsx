@@ -32,7 +32,7 @@ export function Section({
 }) {
   return (
     <section id={id} className={cn("relative", rule && "lf-rule", className)}>
-      <div className={cn("mx-auto max-w-[1560px] px-6 lg:px-10", inner)}>{children}</div>
+      <div className={cn("mx-auto max-w-[1400px] px-6 lg:px-10", inner)}>{children}</div>
     </section>
   );
 }

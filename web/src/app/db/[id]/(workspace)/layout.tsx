@@ -16,7 +16,7 @@ export default async function WorkspaceLayout({ children, params }: { children: 
   if (!access) redirect(`/db/${id}/login`);
   const { database, actor } = access;
   return (
-    <div className="mx-auto flex min-h-svh w-full max-w-[1560px] flex-col border-x">
+    <div className="mx-auto flex min-h-svh w-full max-w-[1400px] flex-col border-x">
       <header className="flex h-14 items-center justify-between border-b px-5 lg:px-8">
         <div className="flex items-center gap-3">
           <Link href={`/db/${id}`} className="text-[15px] font-medium tracking-tight">

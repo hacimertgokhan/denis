@@ -22,7 +22,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     // The whole workbench (left sidebar, content, right sidebar) sits in a
     // centred frame with side borders; the sidebar is sticky inside it.
-    <div className="bg-background mx-auto min-h-svh w-full max-w-[1560px] border-x [&_[data-slot=sidebar-container]]:!sticky [&_[data-slot=sidebar-container]]:!top-0 [&_[data-slot=sidebar-container]]:!h-svh [&_[data-slot=sidebar-gap]]:!hidden">
+    <div className="bg-background mx-auto min-h-svh w-full max-w-[1400px] border-x [&_[data-slot=sidebar-container]]:!sticky [&_[data-slot=sidebar-container]]:!top-0 [&_[data-slot=sidebar-container]]:!h-svh [&_[data-slot=sidebar-gap]]:!hidden">
       <SidebarProvider>
         <AppSidebar
           user={{ name: user.name, email: user.email, role: user.role }}

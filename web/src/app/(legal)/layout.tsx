@@ -13,7 +13,7 @@ export default async function LegalLayout({ children }: { children: React.ReactN
   return (
     <div className="landing min-h-screen font-sans text-[var(--l-ink)]">
       <LandingNav signedIn={Boolean(user)} />
-      <main className="mx-auto max-w-[1560px] px-6 pt-28 pb-24 lg:px-10">
+      <main className="mx-auto max-w-[1400px] px-6 pt-28 pb-24 lg:px-10">
         <div className="grid gap-10 lg:grid-cols-[15rem_1fr] lg:gap-16">
           <aside className="order-last lg:order-none">
             <div className="lg:sticky lg:top-28">

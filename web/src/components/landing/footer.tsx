@@ -50,7 +50,7 @@ const groups: { title: string; links: { label: string; href: string }[] }[] = [
 export function LandingFooter({ version }: { version: string }) {
   return (
     <footer className="relative border-t border-[var(--l-line)]">
-      <div className="mx-auto max-w-[1560px] border-x border-[var(--l-line)]">
+      <div className="mx-auto max-w-[1400px] border-x border-[var(--l-line)]">
         <div className="grid divide-y divide-[var(--l-line)] lg:grid-cols-[1.6fr_repeat(4,1fr)] lg:divide-x lg:divide-y-0">
           <div className="px-6 py-10 lg:px-10 lg:py-12">
             <p className="inline-flex items-center gap-3 text-[1.6rem] leading-none font-medium tracking-[-0.02em]">

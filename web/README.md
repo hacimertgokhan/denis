@@ -101,6 +101,38 @@ the matching `/api/admin/*` routes. Authorization lives in
 which read the role from the database on every request instead of trusting
 the session cookie; a suspended user is signed out on their next request.
 
+## Security
+
+- **Isolation and authorization**: one engine project per database; every
+  request is resolved by `requestAccess()` / `requireAdminApi()` from the
+  database, never from a cached claim.
+- **Credentials**: scrypt password hashes, SHA-256 API key hashes shown once,
+  15-minute access JWTs, httpOnly/SameSite/secure cookies.
+- **Abuse limits** (`src/lib/rate-limit.ts`, better-auth rules): sign-in and
+  sign-up, database-account sign-in (per address and per username), token
+  exchange, console commands, management writes and account export/deletion
+  are all rate limited; API keys have `PLAN_API_RATE_PER_MINUTE`.
+- **Browser**: CSP, HSTS, `X-Frame-Options`, `Referrer-Policy`,
+  `Permissions-Policy` and COOP on every response (`next.config.ts`); a
+  CSRF guard in `src/proxy.ts` refuses cross-site state changes on `/api/*`;
+  JSON bodies must carry `application/json` and are capped at 256 KB; a
+  command line is at most 64 KB.
+- **Data rights**: `GET /api/v1/me/export` (everything about the user as
+  JSON) and `DELETE /api/v1/me` (account, databases, keys, sessions) from
+  Settings → Your data. Command history is pruned after 30 days, the audit
+  log after a year.
+- Public policy pages: `/privacy` (GDPR + KVKK notice), `/terms`,
+  `/security` (with responsible disclosure), `/cookies`. The legal identity
+  comes from `LEGAL_ENTITY`, `LEGAL_CONTACT_EMAIL`, `LEGAL_ADDRESS`.
+
+## SEO
+
+Site-wide metadata (`src/app/layout.tsx`: Open Graph, Twitter card, robots,
+canonical), a generated share image (`src/app/opengraph-image.tsx`),
+`sitemap.xml` and `robots.txt` (`src/app/sitemap.ts`, `robots.ts`), JSON-LD
+(SoftwareApplication + FAQPage) on the landing, and `noindex` on every
+signed-in area. English is the only language.
+
 ## Environment
 
 See [`.env.example`](.env.example). Required: `DATABASE_URL`,
@@ -109,13 +141,15 @@ See [`.env.example`](.env.example). Required: `DATABASE_URL`,
 `NEXT_PUBLIC_APP_URL`. Plan limits: `PLAN_MAX_DATABASES`,
 `PLAN_DB_MAX_BYTES`, `PLAN_DB_MAX_KEYS`, `PLAN_DB_OPS_PER_DAY`,
 `PLAN_API_RATE_PER_MINUTE`. Administrators: `PLATFORM_ADMINS` (comma-separated
-emails).
+emails). Legal pages: `LEGAL_ENTITY`, `LEGAL_CONTACT_EMAIL`, `LEGAL_ADDRESS`.
 
 ## Layout
 
 ```
 src/app
-  page.tsx                 landing (own palette in .landing, see globals.css)
+  page.tsx                 landing (ruled frame with beams: components/landing/frame.tsx, .lf-* in globals.css)
+  (legal)/privacy, terms, security, cookies   policy pages
+  sitemap.ts, robots.ts, opengraph-image.tsx  SEO
   (auth)/login, register   better-auth email/password (+ GitHub when configured)
   (app)/                   signed-in shell: sidebar + header
     dashboard, databases, databases/[id]/{console,tables,keys,history,connect,access,settings}, usage, settings

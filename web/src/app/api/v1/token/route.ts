@@ -1,4 +1,5 @@
 import { handler, ok, readJson } from "@/lib/api";
+import { LIMITS, clientIp, rateLimit } from "@/lib/rate-limit";
 import { GatewayError } from "@/lib/denis/client";
 import { authenticateApiKey, issueTokens, verifyRefreshToken } from "@/lib/api-keys";
 
@@ -9,6 +10,7 @@ import { authenticateApiKey, issueTokens, verifyRefreshToken } from "@/lib/api-k
  * Access tokens are accepted wherever an API key is (Bearer). Revoking the key invalidates both.
  */
 export const POST = handler(async (request: Request) => {
+  rateLimit(`token:${clientIp(request)}`, LIMITS.token.max, LIMITS.token.windowMs, "token requests");
   const body = await readJson<{ apiKey?: string; refreshToken?: string }>(request);
   const principal = body.refreshToken
     ? await verifyRefreshToken(String(body.refreshToken))

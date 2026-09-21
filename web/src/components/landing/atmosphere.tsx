@@ -59,9 +59,9 @@ export function AuthAtmosphere({
     <SilkAurora
       className={className}
       baseColor="#000000"
-      midColor="#272727"
-      sheenColor="#c9c7c7"
-      accentColor="#5c5959"
+      midColor="#1a1a1a"
+      sheenColor="#f2f0f0"
+      accentColor="#969393"
       intensity={intensity}
       grain={0.5}
       vignette={0.9}

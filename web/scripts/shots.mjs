@@ -103,13 +103,17 @@ await adminPage.goto(BASE + "/login");
 const adminOk = await adminPage.evaluate(async () => {
   const body = { email: "smoke-admin@example.com", password: "smoke-admin-123", name: "Smoke Admin" };
   let r = await fetch("/api/auth/sign-up/email", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-  if (r.status !== 200) r = await fetch("/api/auth/sign-in/email", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  if (r.status !== 200)
+    r = await fetch("/api/auth/sign-in/email", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   return r.status === 200;
 });
 
 const pages = [
   ["landing", "/"],
   ["login", "/login"],
+  ["privacy", "/privacy"],
+  ["security", "/security"],
+  ["terms", "/terms"],
   ["register", "/register"],
   ["dashboard", "/dashboard"],
   ["databases", "/databases"],
@@ -171,7 +175,7 @@ for (const theme of ["light", "dark"]) {
       await page.waitForTimeout(400);
     }
     await page.waitForTimeout(name === "landing" ? 2500 : 500);
-    await page.screenshot({ path: `${OUT}/${name}-${theme}.png`, fullPage: name === "landing" });
+    await page.screenshot({ path: `${OUT}/${name}-${theme}.png`, fullPage: ["landing", "privacy", "security", "terms"].includes(name) });
     console.log("shot", name, theme);
   }
 }

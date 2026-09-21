@@ -14,6 +14,17 @@ before 1.0.0 a minor bump may contain breaking changes, which are listed).
   `DenisCommands` base.
 - Platform: `GET /api/v1/usage` returns usage and limits for the database behind
   an API key or access token.
+- Platform: privacy policy with a KVKK notice, terms of service, security page
+  with responsible disclosure, cookie page; sign-up consent; account data export
+  and deletion from Settings.
+- Platform: sitemap, robots, Open Graph image, JSON-LD and page metadata.
+
+### Security
+- Platform: CSRF guard for cross-site `/api/*` state changes, JSON-only bodies
+  capped at 256 KB, 64 KB command lines, CSP/HSTS/frame/referrer/permissions
+  headers, rate limits on database-account sign-in, token exchange, console
+  commands, management writes and account export/deletion; better-auth rate
+  limiting on in every environment; password length bounded at 128.
 
 ## [0.5.0] - 2026-09-21
 

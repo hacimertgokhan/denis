@@ -23,6 +23,11 @@ export function AuthForm({ mode, githubEnabled }: { mode: "login" | "register"; 
     const email = String(form.get("email") ?? "").trim();
     const password = String(form.get("password") ?? "");
     const name = String(form.get("name") ?? "").trim();
+    if (mode === "register" && form.get("consent") !== "on") {
+      setBusy(false);
+      toast.error("Please accept the Terms of Service and the Privacy Policy");
+      return;
+    }
     const result =
       mode === "register"
         ? await authClient.signUp.email({
@@ -46,9 +51,7 @@ export function AuthForm({ mode, githubEnabled }: { mode: "login" | "register"; 
       <aside className="hidden lg:block">
         <AuthAtmosphere>
           <div className="-mt-10 flex min-h-[calc(100vh-10rem)] flex-col justify-between">
-            <Link href="/" className="text-[15px] font-medium tracking-tight text-white">
-              Denis Cloud
-            </Link>
+            <span />
             <div className="max-w-[30rem]">
               <p className="text-[2rem] leading-[1.2] font-medium tracking-[-0.015em] text-balance text-white">
                 Keys, small tables and an MCP endpoint, one line at a time.
@@ -73,10 +76,7 @@ export function AuthForm({ mode, githubEnabled }: { mode: "login" | "register"; 
 
       {/* right: the form */}
       <div className="flex flex-col px-6 py-8 sm:px-10">
-        <div className="flex items-center justify-between lg:justify-end">
-          <Link href="/" className="text-[15px] font-medium tracking-tight lg:hidden">
-            Denis Cloud
-          </Link>
+        <div className="flex items-center justify-end">
           <p className="text-[14px] text-[var(--l-ash)]">
             {mode === "login" ? (
               <>
@@ -129,6 +129,22 @@ export function AuthForm({ mode, githubEnabled }: { mode: "login" | "register"; 
                 className={field}
               />
             </label>
+            {mode === "register" && (
+              <label className="flex items-start gap-2.5 text-[13px] leading-relaxed text-[var(--l-ash)]">
+                <input name="consent" type="checkbox" required className="mt-1 size-3.5 accent-[var(--l-ink)]" />
+                <span>
+                  I have read the{" "}
+                  <Link href="/terms" className="underline decoration-[var(--l-line)] underline-offset-4 hover:text-[var(--l-ink)]" target="_blank">
+                    Terms of Service
+                  </Link>{" "}
+                  and the{" "}
+                  <Link href="/privacy" className="underline decoration-[var(--l-line)] underline-offset-4 hover:text-[var(--l-ink)]" target="_blank">
+                    Privacy Policy
+                  </Link>
+                  , and I agree to my account data being processed as described there.
+                </span>
+              </label>
+            )}
             <button
               type="submit"
               disabled={busy}

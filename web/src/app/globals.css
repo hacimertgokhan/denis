@@ -251,3 +251,204 @@
 .wb-terminal th {
   color: #8b919c;
 }
+
+/* --------------------------------------------------------------------- legal
+ * Reading pages (privacy, terms, security, cookies): one measure, quiet
+ * headings, hairline tables.
+ */
+.legal h1 {
+  margin-top: 0.5rem;
+  font-size: 2rem;
+  line-height: 1.1;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+.legal .lead {
+  margin-top: 1.25rem;
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  color: var(--l-ash);
+}
+.legal h2 {
+  margin-top: 2.75rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--l-line);
+  font-size: 1.125rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.legal p,
+.legal li {
+  margin-top: 0.85rem;
+  font-size: 0.9375rem;
+  line-height: 1.65;
+}
+.legal ul {
+  padding-left: 1.25rem;
+  list-style: disc;
+}
+.legal li {
+  margin-top: 0.4rem;
+}
+.legal a {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-color: var(--l-line);
+}
+.legal a:hover {
+  text-decoration-color: currentColor;
+}
+.legal code {
+  font-size: 0.85em;
+}
+.legal table {
+  margin-top: 1.25rem;
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+.legal th,
+.legal td {
+  padding: 0.6rem 0.75rem 0.6rem 0;
+  border-bottom: 1px solid var(--l-line);
+  text-align: left;
+  vertical-align: top;
+}
+.legal th {
+  font-weight: 500;
+  color: var(--l-ash);
+  font-size: 0.8125rem;
+}
+
+/* ------------------------------------------------------------- landing frame
+ * Rails on both sides of the content column, rules between sections, a dot
+ * grid behind everything and a beam of light that runs down each rail.
+ */
+.lf-frame {
+  --lf-col: min(1560px, 100%);
+}
+/* the dot grid lives on its own layer so the fade never touches the content */
+.lf-frame::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(color-mix(in oklab, var(--l-ink) 9%, transparent) 1px, transparent 1px);
+  background-size: 24px 24px;
+  background-position: center top;
+  -webkit-mask-image: linear-gradient(to bottom, black 0, black 45%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 0, black 45%, transparent 100%);
+}
+.lf-frame > * {
+  position: relative;
+}
+.lf-rail {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--l-line);
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 1;
+}
+.lf-rail-left {
+  left: max(0px, calc((100% - var(--lf-col)) / 2));
+}
+.lf-rail-right {
+  right: max(0px, calc((100% - var(--lf-col)) / 2));
+}
+.lf-rail::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: -30%;
+  width: 1px;
+  height: 30%;
+  background: linear-gradient(to bottom, transparent, var(--l-ink) 60%, transparent);
+  animation: lf-beam 9s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+.lf-rail-right::after {
+  animation-delay: 4.5s;
+}
+@keyframes lf-beam {
+  0% {
+    top: -30%;
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
+}
+.lf-rule {
+  border-bottom: 1px solid var(--l-line);
+}
+.lf-cross {
+  position: absolute;
+  bottom: -5px;
+  width: 9px;
+  height: 9px;
+  pointer-events: none;
+  z-index: 2;
+}
+.lf-cross::before,
+.lf-cross::after {
+  content: "";
+  position: absolute;
+  background: var(--l-ash);
+}
+.lf-cross::before {
+  left: 4px;
+  top: 0;
+  width: 1px;
+  height: 9px;
+}
+.lf-cross::after {
+  left: 0;
+  top: 4px;
+  width: 9px;
+  height: 1px;
+}
+/* a horizontal beam that sweeps once across the hero rule */
+.lf-sweep {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  overflow: hidden;
+  pointer-events: none;
+}
+.lf-sweep::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -20%;
+  width: 20%;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--l-ink), transparent);
+  animation: lf-sweep 7s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+@keyframes lf-sweep {
+  0% {
+    left: -20%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lf-rail::after,
+  .lf-sweep::after {
+    animation: none;
+    display: none;
+  }
+}

@@ -1,4 +1,5 @@
 import { handler, ok, publicKey, readJson } from "@/lib/api";
+import { LIMITS, rateLimit } from "@/lib/rate-limit";
 import { requestAccess } from "@/lib/access";
 import { createApiKey, listApiKeys } from "@/lib/api-keys";
 
@@ -13,6 +14,7 @@ export const GET = handler(async (_request: Request, { params }: Ctx) => {
 export const POST = handler(async (request: Request, { params }: Ctx) => {
   const { id } = await params;
   const { database, actor } = await requestAccess(id, "manage_keys");
+  rateLimit(`manage:${actor.type}:${actor.id}`, LIMITS.manage.max, LIMITS.manage.windowMs, "changes");
   const body = await readJson<{ name?: string; scope?: "read" | "write" }>(request);
   const scope = body.scope === "read" ? "read" : "write";
   // keys created by a database-local admin are attributed to the owner

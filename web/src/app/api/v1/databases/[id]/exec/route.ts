@@ -1,4 +1,5 @@
 import { handler, ok, readJson } from "@/lib/api";
+import { LIMITS, rateLimit } from "@/lib/rate-limit";
 import { can, requestAccess } from "@/lib/access";
 import { GatewayError } from "@/lib/denis/client";
 import { runCommand } from "@/lib/databases";
@@ -9,6 +10,7 @@ type Ctx = { params: Promise<{ id: string }> };
 export const POST = handler(async (request: Request, { params }: Ctx) => {
   const { id } = await params;
   const { database, actor } = await requestAccess(id, "read");
+  rateLimit(`console:${actor.type}:${actor.id}`, LIMITS.console.max, LIMITS.console.windowMs, "commands");
   const body = await readJson<{ command?: string; commands?: string[] }>(request);
   const lines = (body.commands ?? (body.command ? [body.command] : [])).map((l) => String(l).trim()).filter(Boolean);
   if (lines.length === 0 || lines.length > 50) throw new GatewayError("Send 1-50 commands", 400, "BAD_REQUEST");

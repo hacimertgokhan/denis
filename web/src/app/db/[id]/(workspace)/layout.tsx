@@ -7,6 +7,7 @@ import { ThemeToggle } from "@/components/app/theme-toggle";
 import { currentAccountAccess } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
+export const metadata = { robots: { index: false, follow: false } };
 
 /** The shell a database-local account sees: this database and nothing else. */
 export default async function WorkspaceLayout({ children, params }: { children: React.ReactNode; params: Promise<{ id: string }> }) {

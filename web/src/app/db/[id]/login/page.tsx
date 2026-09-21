@@ -4,7 +4,7 @@ import { DbLoginForm } from "@/components/app/db-login-form";
 import { currentAccountAccess } from "@/lib/access";
 import { db, schema } from "@/lib/db";
 
-export const metadata = { title: "Sign in to your database" };
+export const metadata = { title: "Sign in to your database", robots: { index: false, follow: false } };
 
 export default async function DbLoginPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

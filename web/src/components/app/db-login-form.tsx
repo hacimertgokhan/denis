@@ -44,7 +44,7 @@ export function DbLoginForm({ databaseId, databaseName }: { databaseId: string; 
     <div className="landing grid min-h-screen lg:grid-cols-[1fr_minmax(0,34rem)]">
       {/* the silk panel: black with a soft grey light, dimmed so the text carries */}
       <aside className="relative hidden overflow-hidden bg-black lg:block">
-        <AuthAtmosphere intensity={0.55} className="absolute inset-0 h-full rounded-none" />
+        <AuthAtmosphere soft className="absolute inset-0 h-full rounded-none" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_40%,transparent_20%,rgba(0,0,0,0.55)_100%)]" aria-hidden />
         <div className="relative flex h-full min-h-screen flex-col justify-between p-10 text-white lg:p-12">
           <span className="inline-flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1.5 text-[12.5px] text-white/70 backdrop-blur-md">

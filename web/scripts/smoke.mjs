@@ -13,7 +13,13 @@ let cookie = "";
 async function call(path, { method = "GET", body, headers = {}, raw = false } = {}) {
   const res = await fetch(BASE + path, {
     method,
-    headers: { "Content-Type": "application/json", Origin: BASE, ...(cookie ? { Cookie: cookie } : {}), ...headers },
+    headers: {
+      "Content-Type": "application/json",
+      Origin: BASE,
+      "x-form-started": String(Date.now() - 5000),
+      ...(cookie ? { Cookie: cookie } : {}),
+      ...headers,
+    },
     body: body === undefined ? undefined : JSON.stringify(body),
     redirect: "manual",
   });
@@ -40,14 +46,39 @@ async function call(path, { method = "GET", body, headers = {}, raw = false } = 
 
 const step = (name) => console.log(`\n== ${name}`);
 const email = `smoke-${Date.now()}@example.com`;
+let r;
+
+step("bot protection on sign-up");
+r = await fetch(BASE + "/api/auth/sign-up/email", {
+  method: "POST",
+  headers: { "Content-Type": "application/json", Origin: BASE, "x-form-started": String(Date.now() - 5000), "x-form-website": "http://spam.example" },
+  body: JSON.stringify({ email: `bot-${Date.now()}@example.com`, password: "bot-pass-123", name: "Bot" }),
+}).then((x) => x.status);
+assert.equal(r, 400, "honeypot filled -> refused");
+r = await fetch(BASE + "/api/auth/sign-up/email", {
+  method: "POST",
+  headers: { "Content-Type": "application/json", Origin: BASE, "x-form-started": String(Date.now()) },
+  body: JSON.stringify({ email: `fast-${Date.now()}@example.com`, password: "bot-pass-123", name: "Fast" }),
+}).then((x) => x.status);
+assert.equal(r, 400, "submitted instantly -> refused");
+console.log("honeypot and instant submits are refused");
 
 step("register + session");
-let r = await call("/api/auth/sign-up/email", { method: "POST", body: { email, password: "smoke-pass-123", name: "Smoke Test" } });
+r = await call("/api/auth/sign-up/email", { method: "POST", body: { email, password: "smoke-pass-123", name: "Smoke Test" } });
 assert.equal(r.status, 200, JSON.stringify(r.json));
 r = await call("/api/v1/me");
 assert.equal(r.status, 200);
 assert.equal(r.json.plan.databasesUsed, 0);
 console.log("user", r.json.user.email, "plan", r.json.plan.name, "max", r.json.plan.maxDatabases);
+
+step("forgot password");
+r = await call("/api/auth/request-password-reset", { method: "POST", body: { email, redirectTo: "/reset-password" } });
+assert.equal(r.status, 200, JSON.stringify(r.json));
+r = await call("/api/auth/request-password-reset", { method: "POST", body: { email: "nobody-" + Date.now() + "@example.com", redirectTo: "/reset-password" } });
+assert.equal(r.status, 200, "unknown addresses get the same answer");
+r = await call("/api/auth/reset-password", { method: "POST", body: { newPassword: "new-pass-12345", token: "not-a-real-token" } });
+assert.equal(r.status, 400);
+console.log("reset link requested (mailed, or logged without SMTP); bad tokens refused");
 
 step("create databases up to the plan limit");
 const ids = [];

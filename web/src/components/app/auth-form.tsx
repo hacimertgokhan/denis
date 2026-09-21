@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Loader2Icon } from "lucide-react";
 import { toast } from "sonner";
 import { GitHubIcon } from "@/components/app/brand-icons";
+import { HumanCheck, useHumanCheck } from "@/components/app/human-check";
 import { AuthAtmosphere } from "@/components/landing/atmosphere";
 import { authClient } from "@/lib/auth-client";
 
@@ -17,6 +18,7 @@ export function AuthForm({ mode, githubEnabled }: { mode: "login" | "register"; 
   const params = useSearchParams();
   const next = params.get("next") || "/dashboard";
   const [busy, setBusy] = useState(false);
+  const human = useHumanCheck();
 
   async function submit(form: FormData) {
     setBusy(true);
@@ -34,6 +36,7 @@ export function AuthForm({ mode, githubEnabled }: { mode: "login" | "register"; 
             email,
             password,
             name: name || email.split("@")[0],
+            fetchOptions: { headers: human.headers() },
           })
         : await authClient.signIn.email({ email, password });
     setBusy(false);
@@ -49,7 +52,7 @@ export function AuthForm({ mode, githubEnabled }: { mode: "login" | "register"; 
     <div className="landing grid min-h-screen lg:grid-cols-[1.1fr_1fr]">
       {/* left: atmosphere and a short promise */}
       <aside className="hidden lg:block">
-        <AuthAtmosphere>
+        <AuthAtmosphere soft>
           <div className="-mt-10 flex min-h-[calc(100vh-10rem)] flex-col justify-between">
             <span />
             <div className="max-w-[30rem]">
@@ -118,7 +121,17 @@ export function AuthForm({ mode, githubEnabled }: { mode: "login" | "register"; 
               <input name="email" type="email" required autoComplete="email" placeholder="you@example.com" className={field} />
             </label>
             <label className="grid gap-1.5 text-[13.5px] font-medium">
-              Password
+              <span className="flex items-baseline justify-between">
+                Password
+                {mode === "login" && (
+                  <Link
+                    href="/forgot-password"
+                    className="text-[12.5px] font-normal text-[var(--l-ash)] underline decoration-[var(--l-line)] underline-offset-4 hover:text-[var(--l-ink)]"
+                  >
+                    Forgot your password?
+                  </Link>
+                )}
+              </span>
               <input
                 name="password"
                 type="password"
@@ -145,9 +158,10 @@ export function AuthForm({ mode, githubEnabled }: { mode: "login" | "register"; 
                 </span>
               </label>
             )}
+            {mode === "register" && <HumanCheck check={human} />}
             <button
               type="submit"
-              disabled={busy}
+              disabled={busy || (mode === "register" && !human.ready)}
               className="mt-2 inline-flex h-11 items-center justify-center gap-2 rounded-md bg-[var(--l-ink)] text-[15px] font-medium text-[var(--l-bg)] transition-opacity hover:opacity-90 disabled:opacity-60"
             >
               {busy && <Loader2Icon className="size-4 animate-spin" />}

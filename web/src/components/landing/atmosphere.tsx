@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import { GrainGradient } from "@/components/ui/grain-gradient";
 import { SilkAurora } from "@/components/ui/silk-aurora";
+import { cn } from "@/lib/utils";
 
 function useMounted() {
   const [mounted, setMounted] = useState(false);
@@ -50,19 +51,22 @@ export function AuthAtmosphere({
   children,
   intensity = 0.85,
   className = "h-full min-h-screen rounded-none",
+  soft = false,
 }: {
   children?: React.ReactNode;
   intensity?: number;
   className?: string;
+  /** Dimmer and blurred, for panels where the text has to carry. */
+  soft?: boolean;
 }) {
   return (
     <SilkAurora
-      className={className}
+      className={cn(className, soft && "[&_canvas]:scale-110 [&_canvas]:opacity-70 [&_canvas]:blur-2xl")}
       baseColor="#000000"
       midColor="#1a1a1a"
       sheenColor="#f2f0f0"
       accentColor="#969393"
-      intensity={intensity}
+      intensity={soft ? Math.min(intensity, 0.5) : intensity}
       grain={0.5}
       vignette={0.9}
       speed={0.7}

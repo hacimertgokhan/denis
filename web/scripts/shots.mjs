@@ -25,7 +25,7 @@ const signup = await page.evaluate(
   async ({ email }) => {
     const r = await fetch("/api/auth/sign-up/email", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "x-form-started": String(Date.now() - 5000) },
       body: JSON.stringify({ email, password: "shots-pass-123", name: "Ada Lovelace" }),
     });
     return r.status;
@@ -79,7 +79,7 @@ await matePage.evaluate(
   async ({ email }) => {
     await fetch("/api/auth/sign-up/email", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "x-form-started": String(Date.now() - 5000) },
       body: JSON.stringify({ email, password: "shots-pass-123", name: "Grace Hopper" }),
     });
   },
@@ -102,7 +102,11 @@ const adminPage = await adminCtx.newPage();
 await adminPage.goto(BASE + "/login");
 const adminOk = await adminPage.evaluate(async () => {
   const body = { email: "smoke-admin@example.com", password: "smoke-admin-123", name: "Smoke Admin" };
-  let r = await fetch("/api/auth/sign-up/email", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  let r = await fetch("/api/auth/sign-up/email", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-form-started": String(Date.now() - 5000) },
+    body: JSON.stringify(body),
+  });
   if (r.status !== 200)
     r = await fetch("/api/auth/sign-in/email", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   return r.status === 200;

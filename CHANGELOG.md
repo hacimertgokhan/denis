@@ -7,6 +7,14 @@ before 1.0.0 a minor bump may contain breaking changes, which are listed).
 
 ## [Unreleased]
 
+### Added
+- Platform: "Forgot your password" with a one-hour mailed link (SMTP through
+  `SMTP_URL`, or the server log without it) and a reset page that signs out
+  other sessions; bot protection on sign-up and reset requests (honeypot and
+  minimum form time checked server-side, optional Cloudflare Turnstile).
+- Platform: softer aurora on the sign-in pages; the architecture diagram no
+  longer draws a line through the project boxes.
+
 ## [0.6.1] - 2026-09-21
 
 ### Added

@@ -117,6 +117,13 @@ the session cookie; a suspended user is signed out on their next request.
   CSRF guard in `src/proxy.ts` refuses cross-site state changes on `/api/*`;
   JSON bodies must carry `application/json` and are capped at 256 KB; a
   command line is at most 64 KB.
+- **Sign-up and password reset**: a honeypot field and a minimum time on
+  the form are checked server-side (`src/lib/auth.ts#humanCheck`, headers
+  `x-form-started` / `x-form-website`); Cloudflare Turnstile is added when
+  `NEXT_PUBLIC_TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY` are set. "Forgot
+  your password" mails a one-hour link through `SMTP_URL` (`src/lib/mail.ts`;
+  without SMTP the link is printed to the server log); a reset signs out
+  every other session.
 - **Data rights**: `GET /api/v1/me/export` (everything about the user as
   JSON) and `DELETE /api/v1/me` (account, databases, keys, sessions) from
   Settings → Your data. Command history is pruned after 30 days, the audit
@@ -141,7 +148,9 @@ See [`.env.example`](.env.example). Required: `DATABASE_URL`,
 `NEXT_PUBLIC_APP_URL`. Plan limits: `PLAN_MAX_DATABASES`,
 `PLAN_DB_MAX_BYTES`, `PLAN_DB_MAX_KEYS`, `PLAN_DB_OPS_PER_DAY`,
 `PLAN_API_RATE_PER_MINUTE`. Administrators: `PLATFORM_ADMINS` (comma-separated
-emails). Legal pages: `LEGAL_ENTITY`, `LEGAL_CONTACT_EMAIL`, `LEGAL_ADDRESS`.
+emails). Legal pages: `LEGAL_ENTITY`, `LEGAL_CONTACT_EMAIL`, `LEGAL_ADDRESS`. Mail:
+`SMTP_URL`, `MAIL_FROM`. Bot check: `NEXT_PUBLIC_TURNSTILE_SITE_KEY`,
+`TURNSTILE_SECRET_KEY` (optional).
 
 ## Layout
 
@@ -150,7 +159,7 @@ src/app
   page.tsx                 landing (ruled frame with beams: components/landing/frame.tsx, .lf-* in globals.css)
   (legal)/privacy, terms, security, cookies   policy pages
   sitemap.ts, robots.ts, opengraph-image.tsx  SEO
-  (auth)/login, register   better-auth email/password (+ GitHub when configured)
+  (auth)/login, register, forgot-password, reset-password   better-auth email/password (+ GitHub when configured)
   (app)/                   signed-in shell: sidebar + header
     dashboard, databases, databases/[id]/{console,tables,keys,history,connect,access,settings}, usage, settings
     admin/{users,databases,accounts,activity}   system administration (PLATFORM_ADMINS)

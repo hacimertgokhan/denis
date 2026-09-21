@@ -2,17 +2,19 @@ import path from "node:path";
 import type { NextConfig } from "next";
 
 const dev = process.env.NODE_ENV === "development";
+const turnstile = Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY);
 
 // One policy for every route. Scripts stay 'self' (plus inline for Next's
 // hydration data, and 'unsafe-eval' for the dev overlay only); nothing is
 // loaded from third parties except GitHub avatars.
 const csp = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${dev ? " 'unsafe-eval'" : ""}`,
+  `script-src 'self' 'unsafe-inline'${dev ? " 'unsafe-eval'" : ""}${turnstile ? " https://challenges.cloudflare.com" : ""}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://avatars.githubusercontent.com",
   "font-src 'self' data:",
   "connect-src 'self'",
+  `frame-src ${turnstile ? "https://challenges.cloudflare.com" : "'none'"}`,
   "worker-src 'self' blob:",
   "frame-ancestors 'none'",
   "base-uri 'self'",

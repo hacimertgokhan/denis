@@ -89,26 +89,29 @@ export function ArchitectureDiagram() {
         </g>
       ))}
 
-      <Arrow d="M 190 58 C 250 58, 250 100, 300 100" label="session" lx={245} ly={68} />
+      <Arrow d="M 190 58 C 250 58, 250 100, 300 100" label="session" lx={232} ly={50} />
       <Arrow d="M 190 168 L 300 168" label="REST /api/v1/exec" lx={245} ly={160} />
-      <Arrow d="M 190 278 C 250 278, 250 236, 300 236" label="/api/mcp" lx={245} ly={288} />
+      <Arrow d="M 190 278 C 250 278, 250 236, 300 236" label="/api/mcp" lx={232} ly={296} />
 
       {/* engine */}
       <Box x={620} y={40} w={260} h={56} title="Denis engine" subtitle="one process, main token held by the platform" strong />
-      <Arrow d="M 520 170 C 570 170, 570 68, 620 68" label="project token" lx={572} ly={112} />
+      <Arrow d="M 520 170 C 570 170, 570 68, 620 68" label="project token" lx={548} ly={190} />
 
+      {/* one spine down the left of the projects, a stub into each: nothing crosses a box */}
+      <path d="M 640 96 L 640 298" fill="none" stroke={stroke} strokeWidth={1.25} />
       {[
         { y: 130, name: "project A", detail: "keys · tables · quota" },
         { y: 200, name: "project B", detail: "keys · tables · quota" },
         { y: 270, name: "project C", detail: "keys · tables · quota" },
       ].map((p) => (
         <g key={p.name}>
-          <path d={`M 750 96 L 750 ${p.y + 28} L 660 ${p.y + 28}`} fill="none" stroke={stroke} strokeWidth={1.25} />
-          <Box x={640} y={p.y} w={220} h={56} title={p.name} subtitle={p.detail} />
+          <path d={`M 640 ${p.y + 28} L 664 ${p.y + 28}`} fill="none" stroke={stroke} strokeWidth={1.25} />
+          <circle cx={640} cy={p.y + 28} r={2.5} fill={muted} />
+          <Box x={664} y={p.y} w={216} h={56} title={p.name} subtitle={p.detail} />
         </g>
       ))}
-      <text x={750} y={334} textAnchor="middle" fontSize={11} fill={muted}>
-        every project is its own namespace — nobody else can reach it
+      <text x={772} y={334} textAnchor="middle" fontSize={11} fill={muted}>
+        every project is its own namespace; nobody else can reach it
       </text>
     </svg>
   );

@@ -37,7 +37,7 @@ export const metadata: Metadata = {
     "Redis alternative",
     "hosted database",
   ],
-  authors: [{ name: "Hacı Mert Gökhan", url: "https://github.com/hacimertgokhan" }],
+  authors: [{ name: "Hacı Mert Gökhan", url: "https://hacimertgokhan.com" }],
   creator: "Hacı Mert Gökhan",
   category: "technology",
   alternates: { canonical: "/", languages: { en: "/" } },

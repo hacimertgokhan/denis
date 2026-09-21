@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/sidebar";
 import { authClient } from "@/lib/auth-client";
 import { CreateDatabaseDialog } from "@/components/app/create-database-dialog";
+import { DenisMark } from "@/components/landing/nav";
 
 export type SidebarDatabase = { id: string; name: string; region: string };
 
@@ -76,9 +77,7 @@ export function AppSidebar({
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link href="/dashboard">
-                <div className="bg-primary text-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                  <DatabaseIcon className="size-4" />
-                </div>
+                <DenisMark className="size-8" />
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">Denis Cloud</span>
                   <span className="text-muted-foreground truncate text-xs">free plan</span>

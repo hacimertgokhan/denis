@@ -111,6 +111,7 @@ export default async function Landing() {
         softwareVersion: ENGINE_VERSION,
         license: `${REPO}/blob/master/LICENSE`,
         sameAs: [REPO],
+        author: { "@type": "Person", name: "Hacı Mert Gökhan", url: "https://hacimertgokhan.com", email: "hacimertgokhan@gmail.com" },
       },
       {
         "@type": "FAQPage",

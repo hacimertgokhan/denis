@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { GitHubIcon } from "@/components/app/brand-icons";
+import { DenisMark } from "@/components/landing/nav";
 import { ServiceStatus } from "@/components/landing/status";
 
 const REPO = "https://github.com/hacimertgokhan/denis";
@@ -52,7 +53,9 @@ export function LandingFooter({ version }: { version: string }) {
       <div className="mx-auto max-w-[1560px] border-x border-[var(--l-line)]">
         <div className="grid divide-y divide-[var(--l-line)] lg:grid-cols-[1.6fr_repeat(4,1fr)] lg:divide-x lg:divide-y-0">
           <div className="px-6 py-10 lg:px-10 lg:py-12">
-            <p className="text-[1.6rem] leading-none font-medium tracking-[-0.02em]">Denis</p>
+            <p className="inline-flex items-center gap-3 text-[1.6rem] leading-none font-medium tracking-[-0.02em]">
+              <DenisMark className="size-8" /> Denis
+            </p>
             <p className="mt-4 max-w-[34ch] text-[14px] leading-relaxed text-[var(--l-ash)]">
               An open-source engine for keys and small tables: in memory, journaled to disk, spoken to one line at a time. Hosted here for free.
             </p>
@@ -88,7 +91,13 @@ export function LandingFooter({ version }: { version: string }) {
           ))}
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--l-line)] px-6 py-4 text-[12.5px] text-[var(--l-ash)] lg:px-10">
-          <span>© {new Date().getFullYear()} Denis Database · MIT licensed · No cookies beyond the session, no trackers.</span>
+          <span>
+            © {new Date().getFullYear()}{" "}
+            <a href="https://hacimertgokhan.com" target="_blank" rel="noreferrer" className="transition-colors hover:text-[var(--l-ink)]">
+              Hacı Mert Gökhan
+            </a>{" "}
+            · MIT licensed · No cookies beyond the session, no trackers.
+          </span>
           <ServiceStatus />
         </div>
       </div>

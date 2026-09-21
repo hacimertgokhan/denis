@@ -8,13 +8,19 @@ import type { Reply } from "@/components/app/reply-view";
 
 type Entry = { id: number; command: string; reply: Reply; latencyMs: number };
 
-const EXAMPLES: { group: string; items: { label: string; command: string }[] }[] = [
+const EXAMPLES: {
+  group: string;
+  items: { label: string; command: string }[];
+}[] = [
   {
     group: "Keys",
     items: [
       { label: "Set a key", command: "SET greeting hello world -&save" },
       { label: "Get a key", command: "GET greeting" },
-      { label: "Store JSON", command: 'SET user:1 {"name":"Ada","role":"admin"} -&save' },
+      {
+        label: "Store JSON",
+        command: 'SET user:1 {"name":"Ada","role":"admin"} -&save',
+      },
       { label: "List keys", command: "KEYS *" },
       { label: "Several keys", command: "MGET greeting user:1" },
     ],
@@ -22,9 +28,18 @@ const EXAMPLES: { group: string; items: { label: string; command: string }[] }[]
   {
     group: "Tables",
     items: [
-      { label: "Create table", command: "CREATE TABLE products (id INT, name TEXT, price REAL)" },
-      { label: "Insert rows", command: "INSERT INTO products (id, name, price) VALUES (1, 'Pen', 2.5), (2, 'Book', 12)" },
-      { label: "Query", command: "SELECT * FROM products WHERE price > 5 ORDER BY price DESC LIMIT 20" },
+      {
+        label: "Create table",
+        command: "CREATE TABLE products (id INT, name TEXT, price REAL)",
+      },
+      {
+        label: "Insert rows",
+        command: "INSERT INTO products (id, name, price) VALUES (1, 'Pen', 2.5), (2, 'Book', 12)",
+      },
+      {
+        label: "Query",
+        command: "SELECT * FROM products WHERE price > 5 ORDER BY price DESC LIMIT 20",
+      },
       { label: "Count", command: "SELECT COUNT(*) FROM products" },
       { label: "Tables", command: "SHOW TABLES" },
     ],
@@ -89,7 +104,10 @@ function TerminalReply({ reply }: { reply: Reply }) {
       <div>
         {reply.tables.map((t) => (
           <div key={t.name}>
-            {t.name} <span className="wb-dim">({t.rows} rows) · {t.columns.map((c) => `${c.name} ${c.type}`).join(", ")}</span>
+            {t.name}{" "}
+            <span className="wb-dim">
+              ({t.rows} rows) · {t.columns.map((c) => `${c.name} ${c.type}`).join(", ")}
+            </span>
           </div>
         ))}
       </div>
@@ -134,7 +152,7 @@ function TerminalReply({ reply }: { reply: Reply }) {
   return <pre className="whitespace-pre-wrap">{JSON.stringify(rest, null, 2)}</pre>;
 }
 
-export function Console({ databaseId, databaseName }: { databaseId: string; databaseName: string }) {
+export function Console({ databaseId, databaseName, readOnly = false }: { databaseId: string; databaseName: string; readOnly?: boolean }) {
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [entries, setEntries] = useState<Entry[]>([]);
@@ -153,7 +171,10 @@ export function Console({ databaseId, databaseName }: { databaseId: string; data
   const storageKey = `denis:console:${databaseId}`;
 
   useEffect(() => {
-    scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: "smooth" });
+    scroller.current?.scrollTo({
+      top: scroller.current.scrollHeight,
+      behavior: "smooth",
+    });
   }, [entries]);
 
   // the input grows with its content, up to a few lines
@@ -172,7 +193,9 @@ export function Console({ databaseId, databaseName }: { databaseId: string; data
     if (lines.length === 0 || busy) return;
     setBusy(true);
     try {
-      const data = await apiFetch<{ results: { command: string; reply: Reply; latencyMs: number }[] }>(`/api/v1/databases/${databaseId}/exec`, {
+      const data = await apiFetch<{
+        results: { command: string; reply: Reply; latencyMs: number }[];
+      }>(`/api/v1/databases/${databaseId}/exec`, {
         method: "POST",
         body: JSON.stringify({ commands: lines }),
       });
@@ -223,12 +246,12 @@ export function Console({ databaseId, databaseName }: { databaseId: string; data
       <div className="wb-terminal flex h-[calc(100vh-13.5rem)] min-h-[28rem] flex-col overflow-hidden rounded-lg font-mono text-[13px] leading-[1.65]">
         <div className="flex items-center justify-between border-b border-white/10 px-4 py-2 text-[12px]">
           <span>
-            <span className="wb-dim">database</span> {databaseName} <span className="wb-dim">· MODE json</span>
+            <span className="wb-dim">database</span> {databaseName} <span className="wb-dim">· MODE json{readOnly ? " · read only" : ""}</span>
           </span>
           <span className="wb-dim">
             {last ? `${last.latencyMs} ms` : ""}
             {entries.length > 0 && (
-              <button type="button" onClick={() => setEntries([])} className="ml-4 hover:text-[#eceae4]">
+              <button type="button" onClick={() => setEntries([])} className="ml-4 hover:text-white">
                 clear
               </button>
             )}
@@ -237,9 +260,7 @@ export function Console({ databaseId, databaseName }: { databaseId: string; data
 
         <div ref={scroller} className="flex-1 overflow-y-auto px-4 py-3" onClick={() => textarea.current?.focus()}>
           {entries.length === 0 && (
-            <div className="wb-dim">
-              Type a command and press Enter. Shift+Enter adds a line (each line runs in order), ↑ recalls history, Ctrl+L clears.
-            </div>
+            <div className="wb-dim">Type a command and press Enter. Shift+Enter adds a line (each line runs in order), ↑ recalls history, Ctrl+L clears.</div>
           )}
           {entries.map((e) => (
             <div key={e.id} className="mb-3 last:mb-0">
@@ -271,7 +292,7 @@ export function Console({ databaseId, databaseName }: { databaseId: string; data
             type="button"
             onClick={() => void run()}
             disabled={busy || !input.trim()}
-            className="wb-dim rounded px-2 py-0.5 text-[12px] hover:text-[#eceae4] disabled:opacity-40"
+            className="wb-dim rounded px-2 py-0.5 text-[12px] hover:text-white disabled:opacity-40"
           >
             run ⏎
           </button>
@@ -280,11 +301,11 @@ export function Console({ databaseId, databaseName }: { databaseId: string; data
 
       <aside className="hidden @4xl/main:block">
         <p className="text-[13px] font-medium">Examples</p>
-        <p className="mt-0.5 text-[12.5px] text-muted-foreground">Click to load into the prompt.</p>
+        <p className="text-muted-foreground mt-0.5 text-[12.5px]">Click to load into the prompt.</p>
         <div className="mt-4 grid gap-5">
           {EXAMPLES.map((g) => (
             <div key={g.group}>
-              <p className="mb-1.5 text-[12px] text-muted-foreground">{g.group}</p>
+              <p className="text-muted-foreground mb-1.5 text-[12px]">{g.group}</p>
               <div className="grid">
                 {g.items.map((ex) => (
                   <button
@@ -294,7 +315,7 @@ export function Console({ databaseId, databaseName }: { databaseId: string; data
                       setInput(ex.command);
                       textarea.current?.focus();
                     }}
-                    className="-mx-2 rounded-md px-2 py-1.5 text-left text-[13.5px] transition-colors hover:bg-muted"
+                    className="hover:bg-muted -mx-2 rounded-md px-2 py-1.5 text-left text-[13.5px] transition-colors"
                     title={ex.command}
                   >
                     {ex.label}

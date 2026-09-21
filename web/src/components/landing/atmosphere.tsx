@@ -16,7 +16,7 @@ function useMounted() {
 
 /**
  * A breathing light field behind the landing hero, in the page palette:
- * fog and a warm honey light by day, graphite with the same light by night.
+ * paper with a soft ash shadow by day, black with a grey light by night.
  * Rendered only on the client (WebGL) and never on top of content.
  */
 export function HeroAtmosphere() {
@@ -28,9 +28,9 @@ export function HeroAtmosphere() {
     <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden>
       <GrainGradient
         className="absolute inset-0 h-full w-full"
-        colorDark={dark ? "#1b1e24" : "#e6e8ec"}
-        colorMid={dark ? "#262a32" : "#f2f3f5"}
-        colorLight={dark ? "#4a4030" : "#f7efdd"}
+        colorDark={dark ? "#000000" : "#c9c7c7"}
+        colorMid={dark ? "#272727" : "#f1f0f0"}
+        colorLight={dark ? "#5c5959" : "#ffffff"}
         angle={-18}
         position={0.35}
         curve={0.25}
@@ -45,16 +45,24 @@ export function HeroAtmosphere() {
   );
 }
 
-/** The auth panel: satin-dark aurora ribbons in ink and honey. */
-export function AuthAtmosphere({ children }: { children: React.ReactNode }) {
+/** The auth panel: satin-black aurora ribbons in the ash greys. */
+export function AuthAtmosphere({
+  children,
+  intensity = 0.85,
+  className = "h-full min-h-screen rounded-none",
+}: {
+  children?: React.ReactNode;
+  intensity?: number;
+  className?: string;
+}) {
   return (
     <SilkAurora
-      className="h-full min-h-screen rounded-none"
-      baseColor="#111318"
-      midColor="#1b1e24"
-      sheenColor="#ecd9b0"
-      accentColor="#d9931f"
-      intensity={0.85}
+      className={className}
+      baseColor="#000000"
+      midColor="#272727"
+      sheenColor="#c9c7c7"
+      accentColor="#5c5959"
+      intensity={intensity}
       grain={0.5}
       vignette={0.9}
       speed={0.7}

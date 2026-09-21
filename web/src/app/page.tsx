@@ -19,10 +19,26 @@ export default async function Landing() {
   const base = env().NEXT_PUBLIC_APP_URL;
 
   const capabilities: { name: string; what: string; how: string }[] = [
-    { name: "Keys", what: "Strings, or JSON when you need structure. In memory, journaled to disk when you ask.", how: "GET · SET · DEL · MGET · KEYS · EXISTS" },
-    { name: "Tables", what: "A small SQL: one table per statement, an index on every column, rows kept in memory.", how: "CREATE TABLE · INSERT · SELECT with WHERE, ORDER BY, LIMIT · UPDATE · DELETE" },
-    { name: "Assistants", what: "A hosted MCP endpoint per database. Read-only keys expose only the read tools.", how: "denis_describe · denis_query · denis_execute · denis_get · denis_set" },
-    { name: "Console", what: "Run commands, browse tables and keys, watch storage and daily commands on charts.", how: "Web console · REST API · JWT for apps" },
+    {
+      name: "Keys",
+      what: "Strings, or JSON when you need structure. In memory, journaled to disk when you ask.",
+      how: "GET · SET · DEL · MGET · KEYS · EXISTS",
+    },
+    {
+      name: "Tables",
+      what: "A small SQL: one table per statement, an index on every column, rows kept in memory.",
+      how: "CREATE TABLE · INSERT · SELECT with WHERE, ORDER BY, LIMIT · UPDATE · DELETE",
+    },
+    {
+      name: "Assistants",
+      what: "A hosted MCP endpoint per database. Read-only keys expose only the read tools.",
+      how: "denis_describe · denis_query · denis_execute · denis_get · denis_set",
+    },
+    {
+      name: "Console",
+      what: "Run commands, browse tables and keys, watch storage and daily commands on charts.",
+      how: "Web console · REST API · JWT for apps",
+    },
   ];
 
   return (
@@ -33,42 +49,42 @@ export default async function Landing() {
         {/* hero: a sentence and the thing itself */}
         <section className="relative">
           <HeroAtmosphere />
-          <div className="mx-auto grid max-w-[1560px] gap-12 px-6 lg:px-10 pt-32 pb-20 lg:grid-cols-[minmax(0,26rem)_1fr] lg:items-center lg:gap-16 lg:pt-40">
-          <div>
-            <h1 className="text-[2.5rem] leading-[1.05] font-medium tracking-[-0.02em] text-balance sm:text-[3.25rem]">
-              A database you talk to one line at a time.
-            </h1>
-            <p className="mt-6 max-w-[38ch] text-[17px] leading-[1.55] text-[var(--l-ash)]">
-              Denis keeps keys and small tables in memory and writes every change to a journal. Your app speaks to it over a line protocol; your AI
-              assistant speaks to it over MCP.
-            </p>
-            <div className="mt-8 flex flex-wrap items-center gap-4">
-              <Link
-                href={user ? "/dashboard" : "/register"}
-                className="rounded-md bg-[var(--l-ink)] px-5 py-2.5 text-[15px] font-medium text-[var(--l-bg)] transition-opacity hover:opacity-90"
-              >
-                Create a database
-              </Link>
-              <a
-                href="https://github.com/hacimertgokhan/denis/blob/master/docs/PROTOCOL.md"
-                target="_blank"
-                rel="noreferrer"
-                className="text-[15px] text-[var(--l-ash)] underline decoration-[var(--l-line)] underline-offset-4 transition-colors duration-300 hover:text-[var(--l-ink)] hover:decoration-[var(--l-ink)]"
-              >
-                Read the protocol
-              </a>
+          <div className="mx-auto grid max-w-[1560px] gap-12 px-6 pt-32 pb-20 lg:grid-cols-[minmax(0,26rem)_1fr] lg:items-center lg:gap-16 lg:px-10 lg:pt-40">
+            <div>
+              <h1 className="text-[2.5rem] leading-[1.05] font-medium tracking-[-0.02em] text-balance sm:text-[3.25rem]">
+                A database you talk to one line at a time.
+              </h1>
+              <p className="mt-6 max-w-[38ch] text-[17px] leading-[1.55] text-[var(--l-ash)]">
+                Denis keeps keys and small tables in memory and writes every change to a journal. Your app speaks to it over a line protocol; your AI assistant
+                speaks to it over MCP.
+              </p>
+              <div className="mt-8 flex flex-wrap items-center gap-4">
+                <Link
+                  href={user ? "/dashboard" : "/register"}
+                  className="rounded-md bg-[var(--l-ink)] px-5 py-2.5 text-[15px] font-medium text-[var(--l-bg)] transition-opacity hover:opacity-90"
+                >
+                  Create a database
+                </Link>
+                <a
+                  href="https://github.com/hacimertgokhan/denis/blob/master/docs/PROTOCOL.md"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-[15px] text-[var(--l-ash)] underline decoration-[var(--l-line)] underline-offset-4 transition-colors duration-300 hover:text-[var(--l-ink)] hover:decoration-[var(--l-ink)]"
+                >
+                  Read the protocol
+                </a>
+              </div>
+              <p className="mt-10 text-[13.5px] leading-relaxed text-[var(--l-ash)]">
+                Free: {limits.maxDatabases} databases per account, {formatBytes(limits.dbMaxBytes)} and {formatNumber(limits.dbMaxKeys)} keys each,{" "}
+                {formatNumber(limits.dbOpsPerDay)} commands a day.
+              </p>
             </div>
-            <p className="mt-10 text-[13.5px] leading-relaxed text-[var(--l-ash)]">
-              Free: {limits.maxDatabases} databases per account, {formatBytes(limits.dbMaxBytes)} and {formatNumber(limits.dbMaxKeys)} keys each,{" "}
-              {formatNumber(limits.dbOpsPerDay)} commands a day.
-            </p>
-          </div>
-          <ConsoleDemo />
+            <ConsoleDemo />
           </div>
         </section>
 
         {/* what you get: a table, not cards */}
-        <section className="mx-auto max-w-[1560px] px-6 lg:px-10 py-16">
+        <section className="mx-auto max-w-[1560px] px-6 py-16 lg:px-10">
           <h2 className="text-[13px] font-medium text-[var(--l-ash)]">What a database gives you</h2>
           <dl className="mt-4 divide-y divide-[var(--l-line)] border-y border-[var(--l-line)]">
             {capabilities.map((c) => (
@@ -82,14 +98,14 @@ export default async function Landing() {
         </section>
 
         {/* architecture */}
-        <section className="mx-auto max-w-[1560px] px-6 lg:px-10 py-16">
+        <section className="mx-auto max-w-[1560px] px-6 py-16 lg:px-10">
           <div className="grid gap-8 lg:grid-cols-[minmax(0,22rem)_1fr] lg:gap-16">
             <div>
               <h2 className="text-[1.5rem] leading-tight font-medium tracking-[-0.01em]">Your data has one door.</h2>
               <p className="mt-4 max-w-[38ch] text-[15px] leading-[1.55] text-[var(--l-ash)]">
-                The console, the REST API and the MCP endpoint all pass through the same gateway. It checks who owns the database, whether the key may
-                write, and how much of today&apos;s budget is left, then hands the command to the engine. Each database is a separate project inside
-                the engine; nothing else can reach it.
+                The console, the REST API and the MCP endpoint all pass through the same gateway. It checks who owns the database, whether the key may write,
+                and how much of today&apos;s budget is left, then hands the command to the engine. Each database is a separate project inside the engine;
+                nothing else can reach it.
               </p>
             </div>
             <div className="rounded-xl border border-[var(--l-line)] bg-[var(--card)] p-4">
@@ -99,13 +115,13 @@ export default async function Landing() {
         </section>
 
         {/* assistants */}
-        <section className="mx-auto max-w-[1560px] px-6 lg:px-10 py-16">
+        <section className="mx-auto max-w-[1560px] px-6 py-16 lg:px-10">
           <div className="grid gap-8 lg:grid-cols-[minmax(0,22rem)_1fr] lg:gap-16">
             <div>
               <h2 className="text-[1.5rem] leading-tight font-medium tracking-[-0.01em]">Let an assistant look at it.</h2>
               <p className="mt-4 max-w-[38ch] text-[15px] leading-[1.55] text-[var(--l-ash)]">
-                Add the endpoint to Claude Desktop, Claude Code or Cursor with an API key. The assistant reads the schema first, then writes and runs
-                the query. Give it a read-only key and it can only read.
+                Add the endpoint to Claude Desktop, Claude Code or Cursor with an API key. The assistant reads the schema first, then writes and runs the query.
+                Give it a read-only key and it can only read.
               </p>
             </div>
             <div className="grid gap-4">
@@ -128,13 +144,13 @@ export default async function Landing() {
         </section>
 
         {/* durability */}
-        <section className="mx-auto max-w-[1560px] px-6 lg:px-10 py-16 pb-24">
+        <section className="mx-auto max-w-[1560px] px-6 py-16 pb-24 lg:px-10">
           <div className="grid gap-8 lg:grid-cols-[minmax(0,22rem)_1fr] lg:gap-16">
             <div>
               <h2 className="text-[1.5rem] leading-tight font-medium tracking-[-0.01em]">Fast because it is in memory. Safe because it is written down.</h2>
               <p className="mt-4 max-w-[38ch] text-[15px] leading-[1.55] text-[var(--l-ash)]">
-                A persisted write is acknowledged from memory and appended to a journal in the same moment. A snapshot replaces the journal every
-                thirty seconds. If the process is killed, nothing is lost; if the power goes, at most one second is.
+                A persisted write is acknowledged from memory and appended to a journal in the same moment. A snapshot replaces the journal every thirty
+                seconds. If the process is killed, nothing is lost; if the power goes, at most one second is.
               </p>
             </div>
             <div className="rounded-xl border border-[var(--l-line)] bg-[var(--card)] p-4">

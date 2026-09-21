@@ -20,7 +20,11 @@ export const POST = handler(async (request: Request) => {
     const results = [];
     for (const line of lines) {
       try {
-        const r = await runCommand(principal.database, line, { readOnly, source: "api" });
+        const r = await runCommand(principal.database, line, {
+          readOnly,
+          source: "api",
+          actor: { type: "apikey", id: principal.keyId, label: principal.keyName },
+        });
         results.push({ command: line, reply: r.reply, latencyMs: Math.round(r.latencyMs * 100) / 100 });
       } catch (err) {
         if (!(err instanceof GatewayError)) throw err;
@@ -32,7 +36,7 @@ export const POST = handler(async (request: Request) => {
   }
   const line = String(body.command ?? "").trim();
   if (!line) throw new GatewayError("command is required", 400, "BAD_REQUEST");
-  const r = await runCommand(principal.database, line, { readOnly, source: "api" });
+  const r = await runCommand(principal.database, line, { readOnly, source: "api", actor: { type: "apikey", id: principal.keyId, label: principal.keyName } });
   return ok({ reply: r.reply, latencyMs: Math.round(r.latencyMs * 100) / 100 });
 });
 

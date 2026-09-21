@@ -19,7 +19,10 @@ export function DatabaseSettings({ database }: { database: { id: string; name: s
   async function rename() {
     setBusy(true);
     try {
-      await apiFetch(`/api/v1/databases/${database.id}`, { method: "PATCH", body: JSON.stringify({ name }) });
+      await apiFetch(`/api/v1/databases/${database.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ name }),
+      });
       toast.success("Name saved");
       router.refresh();
     } catch (err) {
@@ -61,7 +64,13 @@ export function DatabaseSettings({ database }: { database: { id: string; name: s
           </div>
           <div className="flex items-center justify-between gap-6 px-4 py-2.5">
             <dt className="text-muted-foreground">Created</dt>
-            <dd>{new Date(database.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}</dd>
+            <dd>
+              {new Date(database.createdAt).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+              })}
+            </dd>
           </div>
         </dl>
       </SectionRow>
@@ -74,7 +83,10 @@ export function DatabaseSettings({ database }: { database: { id: string; name: s
           confirmText={database.name}
           onConfirm={async () => {
             try {
-              await apiFetch(`/api/v1/databases/${database.id}`, { method: "PATCH", body: JSON.stringify({ action: "reset" }) });
+              await apiFetch(`/api/v1/databases/${database.id}`, {
+                method: "PATCH",
+                body: JSON.stringify({ action: "reset" }),
+              });
               toast.success("Database emptied");
               router.refresh();
             } catch (err) {
@@ -93,7 +105,9 @@ export function DatabaseSettings({ database }: { database: { id: string; name: s
           confirmText={database.name}
           onConfirm={async () => {
             try {
-              await apiFetch(`/api/v1/databases/${database.id}`, { method: "DELETE" });
+              await apiFetch(`/api/v1/databases/${database.id}`, {
+                method: "DELETE",
+              });
               toast.success("Database deleted");
               router.push("/databases");
               router.refresh();

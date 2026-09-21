@@ -17,8 +17,8 @@ function Meter({ used, max, format }: { used: number; max: number; format: (n: n
         <span>{format(used)}</span>
         <span className="text-muted-foreground">{p} %</span>
       </div>
-      <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
-        <div className={p >= 80 ? "h-full bg-destructive" : "h-full bg-[var(--chart-1)]"} style={{ width: `${Math.max(2, p)}%` }} />
+      <div className="bg-muted h-1 w-full overflow-hidden rounded-full">
+        <div className={p >= 80 ? "bg-destructive h-full" : "h-full bg-[var(--chart-1)]"} style={{ width: `${Math.max(2, p)}%` }} />
       </div>
     </div>
   );
@@ -44,11 +44,19 @@ export default async function UsagePage() {
           title="Usage"
           description={`Per database: ${formatBytes(limits.dbMaxBytes)} of storage, ${formatNumber(limits.dbMaxKeys)} keys and ${formatNumber(limits.dbOpsPerDay)} commands a day. Storage and keys are enforced by the engine, the daily budget by the gateway.`}
         />
-        <OpsChart points={total.map((h) => ({ ...h, hour: h.hour.toISOString() }))} days={30} title="Commands, 30 days" description="Every database, per hour" />
+        <OpsChart
+          points={total.map((h) => ({
+            ...h,
+            hour: h.hour.toISOString(),
+          }))}
+          days={30}
+          title="Commands, 30 days"
+          description="Every database, per hour"
+        />
         <Panel title="Per database" bodyClassName="p-0">
           <table className="w-full text-[13.5px]">
             <thead>
-              <tr className="border-b text-left text-[12.5px] text-muted-foreground">
+              <tr className="text-muted-foreground border-b text-left text-[12.5px]">
                 <th className="px-5 py-2 font-medium">Database</th>
                 <th className="px-5 py-2 font-medium">Storage</th>
                 <th className="px-5 py-2 font-medium">Keys</th>
@@ -78,7 +86,7 @@ export default async function UsagePage() {
               ))}
               {databases.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-5 py-8 text-center text-muted-foreground">
+                  <td colSpan={5} className="text-muted-foreground px-5 py-8 text-center">
                     No databases yet.
                   </td>
                 </tr>

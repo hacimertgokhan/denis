@@ -17,7 +17,15 @@ import { ConfirmDialog } from "@/components/app/confirm-dialog";
 import { apiFetch } from "@/lib/client-api";
 import { relativeTime } from "@/lib/format";
 
-export type KeyRow = { id: string; name: string; prefix: string; scope: string; lastUsedAt: string | null; revokedAt: string | null; createdAt: string };
+export type KeyRow = {
+  id: string;
+  name: string;
+  prefix: string;
+  scope: string;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+  createdAt: string;
+};
 
 export function ApiKeys({ databaseId, keys }: { databaseId: string; keys: KeyRow[] }) {
   const router = useRouter();
@@ -46,7 +54,9 @@ export function ApiKeys({ databaseId, keys }: { databaseId: string; keys: KeyRow
 
   async function revoke(id: string) {
     try {
-      await apiFetch(`/api/v1/databases/${databaseId}/keys/${id}`, { method: "DELETE" });
+      await apiFetch(`/api/v1/databases/${databaseId}/keys/${id}`, {
+        method: "DELETE",
+      });
       toast.success("Key revoked");
       router.refresh();
     } catch (err) {
@@ -95,7 +105,14 @@ export function ApiKeys({ databaseId, keys }: { databaseId: string; keys: KeyRow
                 <div className="grid gap-4">
                   <div className="grid gap-2">
                     <Label htmlFor="key-name">Name</Label>
-                    <Input id="key-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="production, claude-desktop, …" maxLength={48} autoFocus />
+                    <Input
+                      id="key-name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="production, claude-desktop, …"
+                      maxLength={48}
+                      autoFocus
+                    />
                   </div>
                   <div className="grid gap-2">
                     <Label>Scope</Label>
@@ -121,56 +138,56 @@ export function ApiKeys({ databaseId, keys }: { databaseId: string; keys: KeyRow
         </Dialog>
       }
     >
-        {keys.length === 0 ? (
-          <p className="p-5 text-[13.5px] text-muted-foreground">No keys yet. Create one to use the API or MCP.</p>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Key</TableHead>
-                <TableHead>Scope</TableHead>
-                <TableHead>Last used</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead />
+      {keys.length === 0 ? (
+        <p className="text-muted-foreground p-5 text-[13.5px]">No keys yet. Create one to use the API or MCP.</p>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Key</TableHead>
+              <TableHead>Scope</TableHead>
+              <TableHead>Last used</TableHead>
+              <TableHead>Created</TableHead>
+              <TableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {keys.map((k) => (
+              <TableRow key={k.id} className={k.revokedAt ? "opacity-50" : ""}>
+                <TableCell className="font-medium">
+                  <span className="flex items-center gap-2">
+                    <KeyIcon className="text-muted-foreground size-3.5" /> {k.name}
+                  </span>
+                </TableCell>
+                <TableCell className="font-mono text-xs">{k.prefix}…</TableCell>
+                <TableCell>
+                  <Badge variant={k.scope === "read" ? "secondary" : "outline"}>{k.scope}</Badge>
+                </TableCell>
+                <TableCell className="text-muted-foreground">{relativeTime(k.lastUsedAt)}</TableCell>
+                <TableCell className="text-muted-foreground">{relativeTime(k.createdAt)}</TableCell>
+                <TableCell className="text-right">
+                  {k.revokedAt ? (
+                    <Badge variant="destructive">revoked</Badge>
+                  ) : (
+                    <ConfirmDialog
+                      title={`Revoke "${k.name}"?`}
+                      description="Applications and assistants using this key lose access immediately."
+                      confirmLabel="Revoke"
+                      onConfirm={() => revoke(k.id)}
+                      trigger={
+                        <Button variant="ghost" size="sm">
+                          Revoke
+                        </Button>
+                      }
+                    />
+                  )}
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {keys.map((k) => (
-                <TableRow key={k.id} className={k.revokedAt ? "opacity-50" : ""}>
-                  <TableCell className="font-medium">
-                    <span className="flex items-center gap-2">
-                      <KeyIcon className="size-3.5 text-muted-foreground" /> {k.name}
-                    </span>
-                  </TableCell>
-                  <TableCell className="font-mono text-xs">{k.prefix}…</TableCell>
-                  <TableCell>
-                    <Badge variant={k.scope === "read" ? "secondary" : "outline"}>{k.scope}</Badge>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{relativeTime(k.lastUsedAt)}</TableCell>
-                  <TableCell className="text-muted-foreground">{relativeTime(k.createdAt)}</TableCell>
-                  <TableCell className="text-right">
-                    {k.revokedAt ? (
-                      <Badge variant="destructive">revoked</Badge>
-                    ) : (
-                      <ConfirmDialog
-                        title={`Revoke "${k.name}"?`}
-                        description="Applications and assistants using this key lose access immediately."
-                        confirmLabel="Revoke"
-                        onConfirm={() => revoke(k.id)}
-                        trigger={
-                          <Button variant="ghost" size="sm">
-                            Revoke
-                          </Button>
-                        }
-                      />
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
+            ))}
+          </TableBody>
+        </Table>
+      )}
     </Panel>
   );
 }

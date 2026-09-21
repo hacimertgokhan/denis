@@ -14,7 +14,7 @@ export default async function SettingsPage() {
   const limits = plan();
   const used = await countDatabases(user.id);
   const rows: [string, string][] = [
-    ["Databases", `${used} of ${limits.maxDatabases}`],
+    ["Databases", `${used} of ${user.maxDatabases}`],
     ["Storage per database", formatBytes(limits.dbMaxBytes)],
     ["Keys per database", formatNumber(limits.dbMaxKeys)],
     ["Commands per day", `${formatNumber(limits.dbOpsPerDay)} per database`],

@@ -32,7 +32,7 @@ const groups: { title: string; links: { label: string; href: string }[] }[] = [
 export function LandingFooter({ version }: { version: string }) {
   return (
     <footer className="border-t border-[var(--l-line)]">
-      <div className="mx-auto grid max-w-[1560px] gap-10 px-6 lg:px-10 py-14 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
+      <div className="mx-auto grid max-w-[1560px] gap-10 px-6 py-14 md:grid-cols-[1.4fr_1fr_1fr_1fr] lg:px-10">
         <div className="max-w-[36ch]">
           <p className="text-[15px] font-medium">Denis Cloud</p>
           <p className="mt-2 text-[14px] leading-relaxed text-[var(--l-ash)]">
@@ -59,7 +59,9 @@ export function LandingFooter({ version }: { version: string }) {
           </div>
         ))}
       </div>
-      <div className="mx-auto max-w-[1560px] px-6 lg:px-10 pb-8 text-[12.5px] text-[var(--l-ash)]">© {new Date().getFullYear()} Denis Database. Released under the MIT license.</div>
+      <div className="mx-auto max-w-[1560px] px-6 pb-8 text-[12.5px] text-[var(--l-ash)] lg:px-10">
+        © {new Date().getFullYear()} Denis Database. Released under the MIT license.
+      </div>
     </footer>
   );
 }

@@ -10,7 +10,7 @@ import { AuthAtmosphere } from "@/components/landing/atmosphere";
 import { authClient } from "@/lib/auth-client";
 
 const field =
-  "h-11 w-full rounded-md border border-[var(--l-line)] bg-[var(--card)] px-3.5 text-[15px] text-[var(--l-ink)] outline-none transition-[border-color,box-shadow] duration-200 placeholder:text-[var(--l-ash)]/70 focus:border-[var(--l-ink)] focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--l-honey)_25%,transparent)]";
+  "h-11 w-full rounded-md border border-[var(--l-line)] bg-[var(--card)] px-3.5 text-[15px] text-[var(--l-ink)] outline-none transition-[border-color,box-shadow] duration-200 placeholder:text-[var(--l-ash)]/70 focus:border-[var(--l-ink)] focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--l-ash)_25%,transparent)]";
 
 export function AuthForm({ mode, githubEnabled }: { mode: "login" | "register"; githubEnabled: boolean }) {
   const router = useRouter();
@@ -25,7 +25,11 @@ export function AuthForm({ mode, githubEnabled }: { mode: "login" | "register"; 
     const name = String(form.get("name") ?? "").trim();
     const result =
       mode === "register"
-        ? await authClient.signUp.email({ email, password, name: name || email.split("@")[0] })
+        ? await authClient.signUp.email({
+            email,
+            password,
+            name: name || email.split("@")[0],
+          })
         : await authClient.signIn.email({ email, password });
     setBusy(false);
     if (result.error) {
@@ -51,13 +55,14 @@ export function AuthForm({ mode, githubEnabled }: { mode: "login" | "register"; 
               </p>
               <ul className="mt-8 grid gap-3 text-[15px] text-white/70">
                 <li className="flex gap-3">
-                  <span className="mt-[0.55em] size-1.5 shrink-0 rounded-full bg-[#d9931f]" /> Three databases per account, each with its own API keys.
+                  <span className="mt-[0.55em] size-1.5 shrink-0 rounded-full bg-[var(--l-ash)]" /> Three databases per account, each with its own API keys.
                 </li>
                 <li className="flex gap-3">
-                  <span className="mt-[0.55em] size-1.5 shrink-0 rounded-full bg-[#d9931f]" /> A web console, a REST API and a hosted MCP endpoint.
+                  <span className="mt-[0.55em] size-1.5 shrink-0 rounded-full bg-[var(--l-ash)]" /> A web console, a REST API and a hosted MCP endpoint.
                 </li>
                 <li className="flex gap-3">
-                  <span className="mt-[0.55em] size-1.5 shrink-0 rounded-full bg-[#d9931f]" /> Every change journaled to disk the moment it is acknowledged.
+                  <span className="mt-[0.55em] size-1.5 shrink-0 rounded-full bg-[var(--l-ash)]" /> Every change journaled to disk the moment it is
+                  acknowledged.
                 </li>
               </ul>
             </div>
@@ -93,9 +98,7 @@ export function AuthForm({ mode, githubEnabled }: { mode: "login" | "register"; 
 
         <div className="mx-auto flex w-full max-w-[24rem] flex-1 flex-col justify-center py-12">
           <h1 className="text-[1.75rem] leading-tight font-medium tracking-[-0.01em]">{mode === "login" ? "Sign in" : "Create your account"}</h1>
-          <p className="mt-2 text-[15px] text-[var(--l-ash)]">
-            {mode === "login" ? "Pick up where you left off." : "Your first database is a minute away."}
-          </p>
+          <p className="mt-2 text-[15px] text-[var(--l-ash)]">{mode === "login" ? "Pick up where you left off." : "Your first database is a minute away."}</p>
 
           <form
             className="mt-8 grid gap-4"
@@ -143,7 +146,12 @@ export function AuthForm({ mode, githubEnabled }: { mode: "login" | "register"; 
                 </div>
                 <button
                   type="button"
-                  onClick={() => authClient.signIn.social({ provider: "github", callbackURL: next })}
+                  onClick={() =>
+                    authClient.signIn.social({
+                      provider: "github",
+                      callbackURL: next,
+                    })
+                  }
                   className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-[var(--l-line)] bg-[var(--card)] text-[15px] font-medium transition-colors hover:border-[var(--l-ink)]"
                 >
                   <GitHubIcon className="size-4" /> Continue with GitHub
@@ -153,9 +161,7 @@ export function AuthForm({ mode, githubEnabled }: { mode: "login" | "register"; 
           </form>
         </div>
 
-        <p className="text-[12.5px] text-[var(--l-ash)]">
-          By continuing you agree to use the service for lawful purposes. Data is stored in the EU.
-        </p>
+        <p className="text-[12.5px] text-[var(--l-ash)]">By continuing you agree to use the service for lawful purposes. Data is stored in the EU.</p>
       </div>
     </div>
   );

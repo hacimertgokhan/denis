@@ -17,7 +17,11 @@ export type Reply = {
   type?: string;
   columns?: string[];
   rows?: Record<string, unknown>[];
-  tables?: { name: string; columns: { name: string; type: string }[]; rows: number }[];
+  tables?: {
+    name: string;
+    columns: { name: string; type: string }[];
+    rows: number;
+  }[];
   affected?: number;
   token?: string;
   commands?: { name: string; usage: string; description: string }[];
@@ -34,7 +38,7 @@ function cell(v: unknown) {
 export function ReplyView({ reply }: { reply: Reply }) {
   if (!reply.ok) {
     return (
-      <div className="flex items-start gap-2 text-sm text-destructive">
+      <div className="text-destructive flex items-start gap-2 text-sm">
         <Badge variant="destructive">{reply.code ?? "error"}</Badge>
         <span>{reply.error ?? "command failed"}</span>
       </div>
@@ -45,7 +49,7 @@ export function ReplyView({ reply }: { reply: Reply }) {
     return (
       <div className="grid gap-2">
         {reply.rows.length === 0 ? (
-          <span className="text-sm text-muted-foreground">no rows</span>
+          <span className="text-muted-foreground text-sm">no rows</span>
         ) : (
           <div className="overflow-x-auto rounded-md border">
             <Table>
@@ -70,13 +74,13 @@ export function ReplyView({ reply }: { reply: Reply }) {
             </Table>
           </div>
         )}
-        <span className="text-xs text-muted-foreground">{reply.rows.length} row(s)</span>
+        <span className="text-muted-foreground text-xs">{reply.rows.length} row(s)</span>
       </div>
     );
   }
   if (Array.isArray(reply.tables)) {
     return reply.tables.length === 0 ? (
-      <span className="text-sm text-muted-foreground">no tables</span>
+      <span className="text-muted-foreground text-sm">no tables</span>
     ) : (
       <ul className="grid gap-1 text-sm">
         {reply.tables.map((t) => (
@@ -90,7 +94,7 @@ export function ReplyView({ reply }: { reply: Reply }) {
   }
   if (Array.isArray(reply.keys)) {
     return reply.keys.length === 0 ? (
-      <span className="text-sm text-muted-foreground">(empty)</span>
+      <span className="text-muted-foreground text-sm">(empty)</span>
     ) : (
       <div className="flex flex-wrap gap-1">
         {reply.keys.map((k) => (
@@ -106,7 +110,7 @@ export function ReplyView({ reply }: { reply: Reply }) {
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
         {Object.entries(reply.values).map(([k, v]) => (
           <div key={k} className="contents">
-            <dt className="font-mono text-muted-foreground">{k}</dt>
+            <dt className="text-muted-foreground font-mono">{k}</dt>
             <dd className="font-mono break-all">{v === null ? <span className="text-muted-foreground">(nil)</span> : v}</dd>
           </div>
         ))}
@@ -129,7 +133,7 @@ export function ReplyView({ reply }: { reply: Reply }) {
     return <span className="font-mono text-sm">{reply.exists ? "true" : "false"}</span>;
   }
   if ("data" in reply && "key" in reply) {
-    return <pre className="font-mono text-sm whitespace-pre-wrap break-all">{reply.data === null ? "(nil)" : String(reply.data)}</pre>;
+    return <pre className="font-mono text-sm break-all whitespace-pre-wrap">{reply.data === null ? "(nil)" : String(reply.data)}</pre>;
   }
   if (reply.type === "affected") {
     return (

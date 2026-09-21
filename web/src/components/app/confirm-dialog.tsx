@@ -22,22 +22,32 @@ export function ConfirmDialog({
   confirmLabel = "Confirm",
   confirmText,
   onConfirm,
+  open: controlledOpen,
+  onOpenChange,
 }: {
-  trigger: React.ReactNode;
+  /** Omit when the dialog is controlled through open/onOpenChange. */
+  trigger?: React.ReactNode;
   title: string;
   description: string;
   confirmLabel?: string;
   /** When set, the user must type this text to enable the button. */
   confirmText?: string;
   onConfirm: () => Promise<void> | void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = controlledOpen ?? uncontrolledOpen;
+  const setOpen = (o: boolean) => {
+    setUncontrolledOpen(o);
+    onOpenChange?.(o);
+  };
   const [typed, setTyped] = useState("");
   const [busy, setBusy] = useState(false);
   const ready = !confirmText || typed === confirmText;
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
-      <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>
+      {trigger && <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>}
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
@@ -46,7 +56,7 @@ export function ConfirmDialog({
         {confirmText && (
           <div className="grid gap-2 text-sm">
             <span className="text-muted-foreground">
-              Type <span className="font-mono font-medium text-foreground">{confirmText}</span> to confirm
+              Type <span className="text-foreground font-mono font-medium">{confirmText}</span> to confirm
             </span>
             <Input value={typed} onChange={(e) => setTyped(e.target.value)} autoFocus />
           </div>

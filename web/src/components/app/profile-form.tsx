@@ -35,7 +35,11 @@ export function ProfileForm({ user }: { user: { name: string; email: string } })
   async function savePassword() {
     setSavingPassword(true);
     try {
-      const r = await authClient.changePassword({ currentPassword: current, newPassword: next, revokeOtherSessions: true });
+      const r = await authClient.changePassword({
+        currentPassword: current,
+        newPassword: next,
+        revokeOtherSessions: true,
+      });
       if (r.error) throw new Error(r.error.message);
       setCurrent("");
       setNext("");

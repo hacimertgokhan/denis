@@ -11,31 +11,29 @@ const accent = "var(--primary)";
 const card = "var(--card)";
 const soft = "var(--muted)";
 
-function Box({
-  x,
-  y,
-  w,
-  h,
-  title,
-  subtitle,
-  strong,
-}: {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  title: string;
-  subtitle?: string;
-  strong?: boolean;
-}) {
+function Box({ x, y, w, h, title, subtitle, strong }: { x: number; y: number; w: number; h: number; title: string; subtitle?: string; strong?: boolean }) {
   return (
     <g>
       <rect x={x} y={y} width={w} height={h} rx={10} fill={strong ? accent : card} stroke={strong ? accent : stroke} strokeWidth={1.25} />
-      <text x={x + w / 2} y={y + (subtitle ? h / 2 - 4 : h / 2 + 5)} textAnchor="middle" fontSize={13} fontWeight={600} fill={strong ? "var(--primary-foreground)" : fg}>
+      <text
+        x={x + w / 2}
+        y={y + (subtitle ? h / 2 - 4 : h / 2 + 5)}
+        textAnchor="middle"
+        fontSize={13}
+        fontWeight={600}
+        fill={strong ? "var(--primary-foreground)" : fg}
+      >
         {title}
       </text>
       {subtitle && (
-        <text x={x + w / 2} y={y + h / 2 + 14} textAnchor="middle" fontSize={11} fill={strong ? "var(--primary-foreground)" : muted} opacity={strong ? 0.85 : 1}>
+        <text
+          x={x + w / 2}
+          y={y + h / 2 + 14}
+          textAnchor="middle"
+          fontSize={11}
+          fill={strong ? "var(--primary-foreground)" : muted}
+          opacity={strong ? 0.85 : 1}
+        >
           {subtitle}
         </text>
       )}

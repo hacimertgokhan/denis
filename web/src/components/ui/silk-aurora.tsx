@@ -2,10 +2,7 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import {
-  WebGLErrorBoundary,
-  WebGLFallback,
-} from "@/components/ui/webgl-error-boundary";
+import { WebGLErrorBoundary, WebGLFallback } from "@/components/ui/webgl-error-boundary";
 
 const VERTEX_SHADER = `
 attribute vec2 position;
@@ -151,8 +148,7 @@ export interface SilkAuroraProps extends React.HTMLAttributes<HTMLDivElement> {
   children?: React.ReactNode;
 }
 
-const HEADLINE_CLASS =
-  "max-w-[820px] text-[13cqi] font-semibold leading-[0.86] tracking-normal text-white md:text-[8cqi] lg:text-[6.4cqi]";
+const HEADLINE_CLASS = "max-w-[820px] text-[13cqi] font-semibold leading-[0.86] tracking-normal text-white md:text-[8cqi] lg:text-[6.4cqi]";
 
 export function SilkAurora({
   title,
@@ -192,18 +188,7 @@ export function SilkAurora({
       mouseInfluence,
       interactive,
     }),
-    [
-      baseColor,
-      midColor,
-      sheenColor,
-      accentColor,
-      speed,
-      intensity,
-      grain,
-      vignette,
-      mouseInfluence,
-      interactive,
-    ],
+    [baseColor, midColor, sheenColor, accentColor, speed, intensity, grain, vignette, mouseInfluence, interactive],
   );
 
   React.useEffect(() => {
@@ -217,9 +202,7 @@ export function SilkAurora({
       return;
     }
 
-    const reducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     const handlePointerMove = (event: PointerEvent) => {
       if (!settings.interactive) {
@@ -243,7 +226,7 @@ export function SilkAurora({
     try {
       const gl = canvas.getContext("webgl", { antialias: false, alpha: false });
       if (!gl) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- vendored component (componentry.dev)
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- vendored component (componentry.dev)
         setHasWebGLError(true);
         return () => {
           container.removeEventListener("pointermove", handlePointerMove);
@@ -298,11 +281,7 @@ export function SilkAurora({
       const position = gl.getAttribLocation(program, "position");
       const buffer = gl.createBuffer();
       gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-      gl.bufferData(
-        gl.ARRAY_BUFFER,
-        new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]),
-        gl.STATIC_DRAW,
-      );
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
       gl.enableVertexAttribArray(position);
       gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
 
@@ -313,29 +292,13 @@ export function SilkAurora({
       const uIntensity = gl.getUniformLocation(program, "u_intensity");
       const uGrain = gl.getUniformLocation(program, "u_grain");
       const uVignette = gl.getUniformLocation(program, "u_vignette");
-      const uMouseInfluence = gl.getUniformLocation(
-        program,
-        "u_mouseInfluence",
-      );
+      const uMouseInfluence = gl.getUniformLocation(program, "u_mouseInfluence");
       const uBase = gl.getUniformLocation(program, "u_base");
       const uMid = gl.getUniformLocation(program, "u_mid");
       const uSheen = gl.getUniformLocation(program, "u_sheen");
       const uAccent = gl.getUniformLocation(program, "u_accent");
 
-      if (
-        !uRes ||
-        !uMouse ||
-        !uTime ||
-        !uSpeed ||
-        !uIntensity ||
-        !uGrain ||
-        !uVignette ||
-        !uMouseInfluence ||
-        !uBase ||
-        !uMid ||
-        !uSheen ||
-        !uAccent
-      ) {
+      if (!uRes || !uMouse || !uTime || !uSpeed || !uIntensity || !uGrain || !uVignette || !uMouseInfluence || !uBase || !uMid || !uSheen || !uAccent) {
         gl.deleteBuffer(buffer);
         gl.deleteProgram(program);
         gl.deleteShader(vertexShader);
@@ -371,10 +334,8 @@ export function SilkAurora({
       const start = performance.now();
 
       const render = (now: number) => {
-        mouseRef.current.x +=
-          (targetMouseRef.current.x - mouseRef.current.x) * 0.045;
-        mouseRef.current.y +=
-          (targetMouseRef.current.y - mouseRef.current.y) * 0.045;
+        mouseRef.current.x += (targetMouseRef.current.x - mouseRef.current.x) * 0.045;
+        mouseRef.current.y += (targetMouseRef.current.y - mouseRef.current.y) * 0.045;
 
         const elapsed = reducedMotion ? 8 : (now - start) / 1000;
 
@@ -384,10 +345,7 @@ export function SilkAurora({
         gl.uniform1f(uIntensity, settings.intensity);
         gl.uniform1f(uGrain, settings.grain);
         gl.uniform1f(uVignette, settings.vignette);
-        gl.uniform1f(
-          uMouseInfluence,
-          settings.interactive && !reducedMotion ? settings.mouseInfluence : 0,
-        );
+        gl.uniform1f(uMouseInfluence, settings.interactive && !reducedMotion ? settings.mouseInfluence : 0);
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
         rafId = requestAnimationFrame(render);
@@ -416,10 +374,7 @@ export function SilkAurora({
 
   const fallbackContent = (
     <div
-      className={cn(
-        "relative flex min-h-screen w-full items-center overflow-hidden bg-[#050507] text-white",
-        className,
-      )}
+      className={cn("relative flex min-h-screen w-full items-center overflow-hidden bg-[#050507] text-white", className)}
       style={{ containerType: "size", ...style }}
       {...props}
     >
@@ -427,17 +382,9 @@ export function SilkAurora({
       {(title || subtitle || description || children) && (
         <div className="relative z-10 mx-auto w-full max-w-[1240px] px-6 py-20 md:px-10 md:py-28">
           <div className="max-w-[760px]">
-            {subtitle && (
-              <p className="mb-5 text-xs font-medium uppercase tracking-[0.24em] text-white/50">
-                {subtitle}
-              </p>
-            )}
+            {subtitle && <p className="mb-5 text-xs font-medium tracking-[0.24em] text-white/50 uppercase">{subtitle}</p>}
             {title && <h1 className={HEADLINE_CLASS}>{title}</h1>}
-            {description && (
-              <p className="mt-7 max-w-[620px] text-base leading-relaxed text-white/68 md:text-xl">
-                {description}
-              </p>
-            )}
+            {description && <p className="mt-7 max-w-[620px] text-base leading-relaxed text-white/68 md:text-xl">{description}</p>}
             {children && <div className="mt-10">{children}</div>}
           </div>
         </div>
@@ -453,10 +400,7 @@ export function SilkAurora({
     <WebGLErrorBoundary fallback={fallbackContent}>
       <div
         ref={containerRef}
-        className={cn(
-          "relative flex min-h-screen w-full items-center overflow-hidden bg-[#050507] text-white",
-          className,
-        )}
+        className={cn("relative flex min-h-screen w-full items-center overflow-hidden bg-[#050507] text-white", className)}
         style={{ containerType: "size", ...style }}
         {...props}
       >
@@ -473,17 +417,9 @@ export function SilkAurora({
         {(title || subtitle || description || children) && (
           <div className="relative z-10 mx-auto w-full max-w-[1240px] px-6 py-20 md:px-10 md:py-28">
             <div className="max-w-[760px]">
-              {subtitle && (
-                <p className="mb-5 text-xs font-medium uppercase tracking-[0.24em] text-white/50">
-                  {subtitle}
-                </p>
-              )}
+              {subtitle && <p className="mb-5 text-xs font-medium tracking-[0.24em] text-white/50 uppercase">{subtitle}</p>}
               {title && <h1 className={HEADLINE_CLASS}>{title}</h1>}
-              {description && (
-                <p className="mt-7 max-w-[620px] text-base leading-relaxed text-white/68 md:text-xl">
-                  {description}
-                </p>
-              )}
+              {description && <p className="mt-7 max-w-[620px] text-base leading-relaxed text-white/68 md:text-xl">{description}</p>}
               {children && <div className="mt-10">{children}</div>}
             </div>
           </div>

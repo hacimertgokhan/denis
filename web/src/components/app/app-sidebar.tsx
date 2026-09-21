@@ -11,6 +11,7 @@ import {
   LogOutIcon,
   PlusIcon,
   SettingsIcon,
+  ShieldCheckIcon,
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -50,10 +51,12 @@ const nav = [
 export function AppSidebar({
   user,
   databases,
+  shared = [],
   maxDatabases,
 }: {
-  user: { name: string; email: string };
+  user: { name: string; email: string; role?: string };
   databases: SidebarDatabase[];
+  shared?: (SidebarDatabase & { role: string })[];
   maxDatabases: number;
 }) {
   const pathname = usePathname();
@@ -73,12 +76,12 @@ export function AppSidebar({
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link href="/dashboard">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                <div className="bg-primary text-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
                   <DatabaseIcon className="size-4" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">Denis Cloud</span>
-                  <span className="truncate text-xs text-muted-foreground">free plan</span>
+                  <span className="text-muted-foreground truncate text-xs">free plan</span>
                 </div>
               </Link>
             </SidebarMenuButton>
@@ -131,12 +134,51 @@ export function AppSidebar({
               ))}
               {databases.length === 0 && (
                 <SidebarMenuItem>
-                  <span className="px-2 text-xs text-muted-foreground">No databases yet</span>
+                  <span className="text-muted-foreground px-2 text-xs">No databases yet</span>
                 </SidebarMenuItem>
               )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {shared.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Shared with you</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {shared.map((d) => (
+                  <SidebarMenuItem key={d.id}>
+                    <SidebarMenuButton asChild isActive={pathname.startsWith(`/databases/${d.id}`)} tooltip={`${d.name} (${d.role})`}>
+                      <Link href={`/databases/${d.id}`}>
+                        <DatabaseIcon />
+                        <span className="flex-1 truncate">{d.name}</span>
+                        <span className="text-muted-foreground text-[11px]">{d.role}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {user.role === "admin" && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Administration</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={pathname.startsWith("/admin")} tooltip="Administration">
+                    <Link href="/admin">
+                      <ShieldCheckIcon />
+                      <span>Platform</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         <SidebarGroup className="mt-auto">
           <SidebarGroupContent>
@@ -165,7 +207,7 @@ export function AppSidebar({
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-medium">{user.name}</span>
-                    <span className="truncate text-xs text-muted-foreground">{user.email}</span>
+                    <span className="text-muted-foreground truncate text-xs">{user.email}</span>
                   </div>
                   <ChevronsUpDownIcon className="ml-auto size-4" />
                 </SidebarMenuButton>

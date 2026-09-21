@@ -67,11 +67,11 @@
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
-  --chart-1: #d9931f;
-  --chart-2: #4b5563;
-  --chart-3: #8a6d3b;
-  --chart-4: #9aa0aa;
-  --chart-5: #c2410c;
+  --chart-1: #272727;
+  --chart-2: #969393;
+  --chart-3: #5c5959;
+  --chart-4: #c9c7c7;
+  --chart-5: #000000;
   --radius: 0.625rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
@@ -102,14 +102,14 @@
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
-  --chart-1: #e0a23a;
-  --chart-2: #b8bec8;
-  --chart-3: #c9a86a;
-  --chart-4: #6b7280;
-  --chart-5: #f97316;
+  --chart-1: #c9c7c7;
+  --chart-2: #5c5959;
+  --chart-3: #969393;
+  --chart-4: #272727;
+  --chart-5: #ffffff;
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary: oklch(0.922 0 0);
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.269 0 0);
   --sidebar-accent-foreground: oklch(0.985 0 0);
@@ -126,7 +126,9 @@
   }
   html {
     @apply font-sans;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings:
+      "rlig" 1,
+      "calt" 1;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -141,53 +143,63 @@
     width: 0;
     height: 0;
   }
-  code, pre, kbd {
+  code,
+  pre,
+  kbd {
     @apply font-mono;
   }
 }
 /* ------------------------------------------------------------------ landing
- * The marketing page has its own quiet palette: a fog-white page, ink for
- * text and the one dark object (the console), honey for the prompt. The
- * shadcn variables are re-pointed inside .landing so shared pieces (buttons,
- * diagrams) pick it up without their own styling.
+ * The marketing and auth pages use one monochrome ash scale
+ * (#000000 · #272727 · #5c5959 · #969393 · #c9c7c7) and nothing else: white
+ * paper, black ink, greys for hierarchy. The shadcn variables are re-pointed
+ * inside .landing so shared pieces (buttons, diagrams) pick it up.
  */
 .landing {
-  --l-bg: #f2f3f5;
-  --l-ink: #1b1e24;
-  --l-ash: #6b7280;
-  --l-line: #d9dce1;
-  --l-honey: #d9931f;
-  --l-console: #1b1e24;
-  --l-console-text: #eceae4;
-  --l-console-dim: #8b919c;
+  --ash-0: #000000;
+  --ash-1: #272727;
+  --ash-2: #5c5959;
+  --ash-3: #969393;
+  --ash-4: #c9c7c7;
+
+  --l-bg: #ffffff;
+  --l-ink: var(--ash-0);
+  --l-ash: var(--ash-2);
+  --l-line: var(--ash-4);
+  --l-honey: var(--ash-1); /* the single "current" accent: prompt, cursor, focus */
+  --l-console: var(--ash-0);
+  --l-console-text: var(--ash-4);
+  --l-console-dim: var(--ash-3);
 
   --background: var(--l-bg);
   --foreground: var(--l-ink);
-  --muted: #e6e8ec;
+  --muted: #f1f0f0;
   --muted-foreground: var(--l-ash);
   --border: var(--l-line);
   --card: #ffffff;
   --primary: var(--l-ink);
-  --primary-foreground: #f2f3f5;
-  --accent: #e6e8ec;
-  --ring: var(--l-honey);
+  --primary-foreground: #ffffff;
+  --accent: #f1f0f0;
+  --ring: var(--ash-3);
   background: var(--l-bg);
   color: var(--l-ink);
 }
 .dark .landing {
-  --l-bg: #1b1e24;
-  --l-ink: #eceae4;
-  --l-ash: #9aa0aa;
-  --l-line: #30343c;
-  --l-console: #111318;
-  --l-console-text: #eceae4;
-  --l-console-dim: #7d8390;
+  --l-bg: var(--ash-0);
+  --l-ink: var(--ash-4);
+  --l-ash: var(--ash-3);
+  --l-line: var(--ash-1);
+  --l-honey: var(--ash-4);
+  --l-console: var(--ash-0);
+  --l-console-text: var(--ash-4);
+  --l-console-dim: var(--ash-2);
 
-  --muted: #262a32;
-  --card: #22252c;
+  --muted: var(--ash-1);
+  --card: #141414;
   --primary: var(--l-ink);
-  --primary-foreground: #1b1e24;
-  --accent: #262a32;
+  --primary-foreground: var(--ash-0);
+  --accent: var(--ash-1);
+  --ring: var(--ash-2);
 }
 .landing a:focus-visible,
 .landing button:focus-visible {
@@ -209,14 +221,15 @@
   border-color: var(--border);
 }
 .wb-terminal {
-  background: #1b1e24;
-  color: #eceae4;
+  background: #000000;
+  color: #c9c7c7;
 }
 .dark .wb-terminal {
-  background: #111318;
+  background: #000000;
+  border-color: #272727;
 }
 .wb-terminal .wb-dim {
-  color: #8b919c;
+  color: #969393;
 }
 .wb-terminal .wb-prompt {
   color: #e0a23a;

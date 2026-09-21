@@ -5,7 +5,7 @@ import { NextResponse, type NextRequest } from "next/server";
  * /login for app pages, signed-in users skip the auth pages. Real
  * authorization happens in the server components and route handlers.
  */
-const PROTECTED = ["/dashboard", "/databases", "/usage", "/settings"];
+const PROTECTED = ["/dashboard", "/databases", "/usage", "/settings", "/admin"];
 const AUTH_PAGES = ["/login", "/register"];
 
 export function proxy(request: NextRequest) {
@@ -23,5 +23,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/databases/:path*", "/usage/:path*", "/settings/:path*", "/login", "/register"],
+  matcher: ["/dashboard/:path*", "/databases/:path*", "/usage/:path*", "/settings/:path*", "/admin/:path*", "/login", "/register"],
 };

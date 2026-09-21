@@ -46,7 +46,10 @@ export function LandingNav({ signedIn }: { signedIn: boolean }) {
             <ThemeToggle />
           </span>
           {signedIn ? (
-            <Link href="/dashboard" className="ml-2 rounded-md bg-[var(--l-ink)] px-3.5 py-1.5 text-[14px] font-medium text-[var(--l-bg)] transition-opacity hover:opacity-90">
+            <Link
+              href="/dashboard"
+              className="ml-2 rounded-md bg-[var(--l-ink)] px-3.5 py-1.5 text-[14px] font-medium text-[var(--l-bg)] transition-opacity hover:opacity-90"
+            >
               Open dashboard
             </Link>
           ) : (
@@ -54,7 +57,10 @@ export function LandingNav({ signedIn }: { signedIn: boolean }) {
               <Link href="/login" className={link}>
                 Sign in
               </Link>
-              <Link href="/register" className="ml-1 rounded-md bg-[var(--l-ink)] px-3.5 py-1.5 text-[14px] font-medium text-[var(--l-bg)] transition-opacity hover:opacity-90">
+              <Link
+                href="/register"
+                className="ml-1 rounded-md bg-[var(--l-ink)] px-3.5 py-1.5 text-[14px] font-medium text-[var(--l-bg)] transition-opacity hover:opacity-90"
+              >
                 Create a database
               </Link>
             </>

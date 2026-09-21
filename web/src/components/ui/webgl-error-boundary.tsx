@@ -13,10 +13,7 @@ interface WebGLErrorBoundaryState {
   hasError: boolean;
 }
 
-export class WebGLErrorBoundary extends React.Component<
-  WebGLErrorBoundaryProps,
-  WebGLErrorBoundaryState
-> {
+export class WebGLErrorBoundary extends React.Component<WebGLErrorBoundaryProps, WebGLErrorBoundaryState> {
   public state: WebGLErrorBoundaryState = { hasError: false };
 
   static getDerivedStateFromError(): WebGLErrorBoundaryState {
@@ -40,10 +37,7 @@ interface WebGLFallbackProps {
   message?: string;
 }
 
-export function WebGLFallback({
-  className,
-  message = "Interactive WebGL content is unavailable on this device/browser.",
-}: WebGLFallbackProps) {
+export function WebGLFallback({ className, message = "Interactive WebGL content is unavailable on this device/browser." }: WebGLFallbackProps) {
   return (
     <div
       className={cn(

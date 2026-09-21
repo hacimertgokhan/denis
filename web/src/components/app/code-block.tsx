@@ -16,8 +16,8 @@ export function CodeBlock({ code, title, language, className }: { code: string; 
     }
   };
   return (
-    <div className={`overflow-hidden rounded-lg border bg-muted/40 ${className ?? ""}`}>
-      <div className="flex items-center justify-between border-b px-3 py-1.5 text-xs text-muted-foreground">
+    <div className={`bg-muted/40 overflow-hidden rounded-lg border ${className ?? ""}`}>
+      <div className="text-muted-foreground flex items-center justify-between border-b px-3 py-1.5 text-xs">
         <span>{title ?? language ?? "code"}</span>
         <Button variant="ghost" size="icon" className="size-7" onClick={copy} aria-label="Copy">
           {copied ? <CheckIcon className="size-3.5" /> : <CopyIcon className="size-3.5" />}

@@ -18,7 +18,7 @@ export function StatCard({
 }) {
   const warn = progress !== undefined && progress >= 80;
   return (
-    <Card className="@container/card bg-gradient-to-t from-primary/5 to-card shadow-xs dark:bg-card">
+    <Card className="from-primary/5 to-card dark:bg-card @container/card bg-gradient-to-t shadow-xs">
       <CardHeader>
         <CardDescription>{label}</CardDescription>
         <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">{value}</CardTitle>

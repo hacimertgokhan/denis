@@ -14,8 +14,14 @@ const SESSION: Step[] = [
   { input: "SET greeting hello world -&save", reply: '{"ok":true,"message":"Ok (Cache, Protobuf)"}' },
   { input: "GET greeting", reply: '{"ok":true,"key":"greeting","data":"hello world"}' },
   { input: "CREATE TABLE products (id INT, name TEXT, price REAL)", reply: '{"ok":true,"type":"affected","affected":0,"message":"table created"}' },
-  { input: "INSERT INTO products (id, name, price) VALUES (1, 'Pen', 2.5), (2, 'Book', 12), (3, 'Bag', 40)", reply: '{"ok":true,"type":"affected","affected":3,"message":"3 rows inserted"}' },
-  { input: "SELECT name, price FROM products WHERE price > 10 ORDER BY price DESC", reply: '{"ok":true,"type":"rows","columns":["name","price"],"rows":[{"name":"Bag","price":40},{"name":"Book","price":12}],"count":2}' },
+  {
+    input: "INSERT INTO products (id, name, price) VALUES (1, 'Pen', 2.5), (2, 'Book', 12), (3, 'Bag', 40)",
+    reply: '{"ok":true,"type":"affected","affected":3,"message":"3 rows inserted"}',
+  },
+  {
+    input: "SELECT name, price FROM products WHERE price > 10 ORDER BY price DESC",
+    reply: '{"ok":true,"type":"rows","columns":["name","price"],"rows":[{"name":"Bag","price":40},{"name":"Book","price":12}],"count":2}',
+  },
   { input: 'denis_query  sql: "SELECT COUNT(*) FROM products"', reply: '{"type":"rows","rows":[{"count":3}],"count":1}', via: "mcp" },
 ];
 
@@ -100,14 +106,16 @@ export function ConsoleDemo({ autoplay = true }: { autoplay?: boolean }) {
           const showReply = done || (current ? progress.replied : true);
           return (
             <div key={i} className="mb-3 last:mb-0">
-              <div className="flex gap-2 whitespace-pre-wrap break-all">
+              <div className="flex gap-2 break-all whitespace-pre-wrap">
                 <span className="shrink-0 text-[var(--l-honey)]">{step.via === "mcp" ? "mcp" : ">"}</span>
                 <span>
                   {typed}
-                  {current && !progress.replied && <span className="ml-0.5 inline-block h-[1.1em] w-[0.55ch] translate-y-[0.2em] bg-[var(--l-honey)]" aria-hidden />}
+                  {current && !progress.replied && (
+                    <span className="ml-0.5 inline-block h-[1.1em] w-[0.55ch] translate-y-[0.2em] bg-[var(--l-honey)]" aria-hidden />
+                  )}
                 </span>
               </div>
-              {showReply && <div className="whitespace-pre-wrap break-all text-[var(--l-console-dim)]">{step.reply}</div>}
+              {showReply && <div className="break-all whitespace-pre-wrap text-[var(--l-console-dim)]">{step.reply}</div>}
             </div>
           );
         })}

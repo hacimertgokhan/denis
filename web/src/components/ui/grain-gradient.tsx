@@ -79,23 +79,17 @@ void main() {
 }`;
 
 function hex(value: string, fallback: string) {
-  let clean = /^#([\da-f]{3}|[\da-f]{6})$/i.test(value)
-    ? value.slice(1)
-    : fallback.slice(1);
+  let clean = /^#([\da-f]{3}|[\da-f]{6})$/i.test(value) ? value.slice(1) : fallback.slice(1);
   if (clean.length === 3)
     clean = clean
       .split("")
       .map((part) => part + part)
       .join("");
-  return [0, 2, 4].map(
-    (offset) => parseInt(clean.slice(offset, offset + 2), 16) / 255,
-  );
+  return [0, 2, 4].map((offset) => parseInt(clean.slice(offset, offset + 2), 16) / 255);
 }
 
 function bounded(value: number, min: number, max: number, fallback: number) {
-  return Number.isFinite(value)
-    ? Math.min(max, Math.max(min, value))
-    : fallback;
+  return Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : fallback;
 }
 
 /** Decorative WebGL background. Give the container an explicit height. */
@@ -148,20 +142,7 @@ export function GrainGradient({
       speed,
     };
     updateRef.current?.();
-  }, [
-    colorLight,
-    colorMid,
-    colorDark,
-    angle,
-    position,
-    curve,
-    softness,
-    scale,
-    grain,
-    grainSize,
-    seed,
-    speed,
-  ]);
+  }, [colorLight, colorMid, colorDark, angle, position, curve, softness, scale, grain, grainSize, seed, speed]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -205,38 +186,13 @@ export function GrainGradient({
       }
       gl.useProgram(program);
       gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-      gl.bufferData(
-        gl.ARRAY_BUFFER,
-        new Float32Array([-1, -1, 3, -1, -1, 3]),
-        gl.STATIC_DRAW,
-      );
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
       const attribute = gl.getAttribLocation(program, "a_position");
       gl.enableVertexAttribArray(attribute);
       gl.vertexAttribPointer(attribute, 2, gl.FLOAT, false, 0, 0);
-      const names = [
-        "resolution",
-        "ratio",
-        "angle",
-        "position",
-        "curve",
-        "softness",
-        "scale",
-        "grain",
-        "grainSize",
-        "seed",
-        "time",
-        "light",
-        "mid",
-        "dark",
-      ];
-      const uniforms = Object.fromEntries(
-        names.map((name) => [
-          name,
-          gl.getUniformLocation(program, `u_${name}`),
-        ]),
-      );
-      const scalar = (name: string, value: number) =>
-        gl.uniform1f(uniforms[name] ?? null, value);
+      const names = ["resolution", "ratio", "angle", "position", "curve", "softness", "scale", "grain", "grainSize", "seed", "time", "light", "mid", "dark"];
+      const uniforms = Object.fromEntries(names.map((name) => [name, gl.getUniformLocation(program, `u_${name}`)]));
+      const scalar = (name: string, value: number) => gl.uniform1f(uniforms[name] ?? null, value);
       const motion = matchMedia("(prefers-reduced-motion: reduce)");
       let visible = true;
       let frame = 0;
@@ -247,8 +203,7 @@ export function GrainGradient({
         frame = 0;
         const config = settings.current;
         const rate = bounded(config.speed, 0, 2, 1);
-        if (previous && !motion.matches)
-          elapsed += Math.min((now - previous) / 1000, 0.05) * rate;
+        if (previous && !motion.matches) elapsed += Math.min((now - previous) / 1000, 0.05) * rate;
         previous = now;
         gl.uniform2f(uniforms.resolution ?? null, canvas.width, canvas.height);
         scalar("ratio", ratio);
@@ -261,16 +216,12 @@ export function GrainGradient({
         scalar("grain", bounded(config.grain, 0, 1, 0.32));
         scalar("grainSize", bounded(config.grainSize, 0.5, 4, 1));
         scalar("seed", bounded(config.seed, 0, 100000, 1));
-        gl.uniform3fv(
-          uniforms.light ?? null,
-          hex(config.colorLight, "#dce5df"),
-        );
+        gl.uniform3fv(uniforms.light ?? null, hex(config.colorLight, "#dce5df"));
         gl.uniform3fv(uniforms.mid ?? null, hex(config.colorMid, "#83b9ad"));
         gl.uniform3fv(uniforms.dark ?? null, hex(config.colorDark, "#031419"));
         gl.drawArrays(gl.TRIANGLES, 0, 3);
         canvas.style.opacity = "1";
-        if (rate > 0 && !motion.matches && visible && !document.hidden)
-          frame = requestAnimationFrame(draw);
+        if (rate > 0 && !motion.matches && visible && !document.hidden) frame = requestAnimationFrame(draw);
       };
       const refresh = () => {
         cancelAnimationFrame(frame);
@@ -324,20 +275,13 @@ export function GrainGradient({
   return (
     <div
       aria-hidden="true"
-      className={cn(
-        "pointer-events-none relative h-full w-full overflow-hidden",
-        className,
-      )}
+      className={cn("pointer-events-none relative h-full w-full overflow-hidden", className)}
       style={{
         background: `linear-gradient(${120 + angle}deg, ${colorMid} 0%, ${colorLight} 35%, ${colorDark} 75%)`,
         ...style,
       }}
     >
-      <canvas
-        ref={canvasRef}
-        className="absolute inset-0 block size-full"
-        style={{ opacity: 0 }}
-      />
+      <canvas ref={canvasRef} className="absolute inset-0 block size-full" style={{ opacity: 0 }} />
     </div>
   );
 }

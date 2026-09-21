@@ -93,14 +93,181 @@ console.log("LIN through the gateway refused:", replies[6].error);
 step("isolation: another user cannot see it");
 const other = cookie;
 cookie = "";
-r = await call("/api/auth/sign-up/email", { method: "POST", body: { email: `other-${Date.now()}@example.com`, password: "smoke-pass-123", name: "Other" } });
+const otherUserEmail = `other-${Date.now()}@example.com`;
+r = await call("/api/auth/sign-up/email", { method: "POST", body: { email: otherUserEmail, password: "smoke-pass-123", name: "Other" } });
 assert.equal(r.status, 200);
+const otherCookie = cookie;
 r = await call(`/api/v1/databases/${dbId}`);
 assert.equal(r.status, 404);
 r = await call(`/api/v1/databases/${dbId}/exec`, { method: "POST", body: { command: "GET greeting" } });
 assert.equal(r.status, 404);
 console.log("other user gets 404 on the database and its console");
 cookie = other;
+
+step("roles: share with the other user as viewer, then editor");
+const otherEmail = otherUserEmail;
+r = await call(`/api/v1/databases/${dbId}/members`, { method: "POST", body: { email: otherEmail, role: "viewer" } });
+assert.equal(r.status, 201, JSON.stringify(r.json));
+const memberId = r.json.members[0].id;
+cookie = otherCookie;
+r = await call(`/api/v1/databases/${dbId}`);
+assert.equal(r.status, 200);
+assert.equal(r.json.role, "viewer");
+r = await call(`/api/v1/databases/${dbId}/exec`, { method: "POST", body: { command: "GET greeting" } });
+assert.equal(r.json.results[0].reply.data, "hello world");
+r = await call(`/api/v1/databases/${dbId}/exec`, { method: "POST", body: { command: "SET viewer-write nope" } });
+assert.equal(r.json.results[0].reply.code, "READ_ONLY");
+console.log("viewer can read, write refused:", r.json.results[0].reply.error);
+r = await call(`/api/v1/databases/${dbId}/members`);
+assert.equal(r.status, 403);
+r = await call(`/api/v1/databases/${dbId}`, { method: "DELETE" });
+assert.equal(r.status, 403);
+console.log("viewer cannot manage members or delete the database");
+cookie = other;
+r = await call(`/api/v1/databases/${dbId}/members/${memberId}`, { method: "PATCH", body: { role: "editor" } });
+assert.equal(r.status, 200, JSON.stringify(r.json));
+cookie = otherCookie;
+r = await call(`/api/v1/databases/${dbId}/exec`, { method: "POST", body: { command: "SET editor-write yes" } });
+assert.equal(r.status, 200);
+assert.equal(r.json.results[0].reply.ok, true);
+r = await call("/api/v1/databases");
+assert.ok(
+  r.json.shared.some((d) => d.id === dbId && d.role === "editor"),
+  "shared list contains the database",
+);
+console.log("editor can write; database appears under shared");
+cookie = other;
+
+step("database accounts: independent login");
+r = await call(`/api/v1/databases/${dbId}/accounts`, { method: "POST", body: { username: "ops", password: "ops-pass-123", role: "admin" } });
+assert.equal(r.status, 201, JSON.stringify(r.json));
+const accountId = r.json.account.id;
+r = await call(`/api/v1/databases/${dbId}/accounts`, { method: "POST", body: { username: "ops", password: "another-pass", role: "admin" } });
+assert.equal(r.status, 409);
+const platformCookie = cookie;
+cookie = "";
+r = await call(`/api/v1/databases/${dbId}`);
+assert.equal(r.status, 401);
+r = await call(`/api/db/${dbId}/login`, { method: "POST", body: { username: "ops", password: "wrong" } });
+assert.equal(r.status, 401);
+r = await call(`/api/db/${dbId}/login`, { method: "POST", body: { username: "ops", password: "ops-pass-123" } });
+assert.equal(r.status, 200, JSON.stringify(r.json));
+assert.ok(cookie.includes(`denis_db_`), "db cookie set");
+r = await call(`/api/v1/databases/${dbId}`);
+assert.equal(r.status, 200);
+assert.equal(r.json.role, "admin");
+r = await call(`/api/v1/databases/${dbId}/exec`, { method: "POST", body: { command: "SET from-account 1" } });
+assert.equal(r.json.results[0].reply.ok, true);
+r = await call(`/api/v1/databases/${ids[1]}`);
+assert.equal(r.status, 401, "db session is scoped to one database");
+r = await call(`/api/v1/databases/${dbId}`, { method: "DELETE" });
+assert.equal(r.status, 403);
+console.log("account signed in, scoped to its database, cannot delete it");
+r = await call(`/api/db/${dbId}/logout`, { method: "POST" });
+assert.equal(r.status, 200);
+cookie = platformCookie;
+r = await call(`/api/v1/databases/${dbId}/accounts/${accountId}`, { method: "PATCH", body: { disabled: true } });
+assert.equal(r.status, 200);
+cookie = "";
+r = await call(`/api/db/${dbId}/login`, { method: "POST", body: { username: "ops", password: "ops-pass-123" } });
+assert.equal(r.status, 401);
+console.log("disabled account cannot sign in");
+cookie = platformCookie;
+
+step("command history");
+r = await call(`/api/v1/databases/${dbId}/history?limit=50`);
+assert.equal(r.status, 200, JSON.stringify(r.json));
+const entries = r.json.entries;
+assert.equal(r.json.page, 1);
+assert.ok(r.json.total >= entries.length);
+r = await call(`/api/v1/databases/${dbId}/history?limit=2&page=2`);
+assert.equal(r.json.entries.length, 2);
+assert.ok(r.json.pages >= 2);
+r = await call(`/api/v1/databases/${dbId}/history?limit=50`);
+assert.ok(
+  entries.some((e) => e.command === "SET from-account 1" && e.actorType === "account" && e.actorLabel === "ops"),
+  "account command logged",
+);
+assert.ok(
+  entries.some((e) => e.command === "SET editor-write yes" && e.actorType === "user"),
+  "member command logged",
+);
+assert.ok(!entries.some((e) => e.command.startsWith("LIN ") && e.command.length > 4), "LIN redacted");
+r = await call(`/api/v1/databases/${dbId}/history?failed=1`);
+assert.ok(r.json.entries.every((e) => e.ok === false));
+r = await call(`/api/v1/databases/${dbId}/history?q=from-account`);
+assert.equal(r.json.entries.length, 1);
+console.log("history entries:", entries.length, "summary:", JSON.stringify(r.json.summary));
+
+step("platform administration");
+// an ordinary user is refused by the server, whatever the UI shows
+r = await call("/api/admin/users");
+assert.equal(r.status, 403);
+r = await call("/api/admin/stats");
+assert.equal(r.status, 403);
+console.log("ordinary user gets 403 on the admin API");
+// the smoke administrator is listed in PLATFORM_ADMINS (see .env); sign up once, sign in afterwards
+const userCookie = cookie;
+cookie = "";
+const ADMIN_EMAIL = "smoke-admin@example.com";
+r = await call("/api/auth/sign-up/email", { method: "POST", body: { email: ADMIN_EMAIL, password: "smoke-admin-123", name: "Smoke Admin" } });
+if (r.status !== 200) {
+  r = await call("/api/auth/sign-in/email", { method: "POST", body: { email: ADMIN_EMAIL, password: "smoke-admin-123" } });
+  assert.equal(r.status, 200, "admin sign-in: " + JSON.stringify(r.json));
+}
+r = await call("/api/v1/me");
+assert.equal(r.json.user.role, "admin", "PLATFORM_ADMINS must contain " + ADMIN_EMAIL);
+r = await call("/api/admin/stats");
+assert.equal(r.status, 200, JSON.stringify(r.json));
+assert.ok(r.json.stats.users >= 2);
+console.log("admin stats:", JSON.stringify(r.json.stats));
+r = await call(`/api/admin/users?q=${encodeURIComponent(email)}`);
+assert.equal(r.status, 200);
+const smokeUser = r.json.users.find((u) => u.email === email);
+assert.ok(smokeUser, "smoke user listed");
+assert.equal(smokeUser.databases, 3);
+// raise the smoke user's allowance and let them create a 4th database
+r = await call(`/api/admin/users/${smokeUser.id}`, { method: "PATCH", body: { maxDatabases: 4 } });
+assert.equal(r.status, 200, JSON.stringify(r.json));
+cookie = userCookie;
+r = await call("/api/v1/databases", { method: "POST", body: { name: "fourth" } });
+assert.equal(r.status, 201, "4th database allowed after the override: " + JSON.stringify(r.json));
+ids.push(r.json.database.id);
+cookie = "";
+r = await call("/api/auth/sign-in/email", { method: "POST", body: { email: ADMIN_EMAIL, password: "smoke-admin-123" } });
+assert.equal(r.status, 200);
+const adminCookie = cookie;
+// database limits are pushed to the engine
+r = await call(`/api/admin/databases?q=${encodeURIComponent(email)}`);
+assert.equal(r.status, 200);
+assert.ok(r.json.databases.some((d) => d.id === dbId));
+r = await call(`/api/admin/databases/${dbId}`, { method: "PATCH", body: { maxKeys: 123 } });
+assert.equal(r.status, 200, JSON.stringify(r.json));
+cookie = userCookie;
+r = await call(`/api/v1/databases/${dbId}`);
+assert.equal(r.json.database.limits.maxKeys, 123);
+cookie = adminCookie;
+// suspend the other user: their session dies, sign-in is refused
+const otherUser = (await call(`/api/admin/users?q=${encodeURIComponent(otherUserEmail)}`)).json.users[0];
+r = await call(`/api/admin/users/${otherUser.id}`, { method: "PATCH", body: { disabled: true } });
+assert.equal(r.status, 200);
+cookie = otherCookie;
+r = await call("/api/v1/me");
+assert.equal(r.status, 401, "suspended user is signed out");
+cookie = adminCookie;
+r = await call(`/api/admin/users/${otherUser.id}`, { method: "PATCH", body: { disabled: false } });
+assert.equal(r.status, 200);
+// guard rails
+const me = (await call("/api/v1/me")).json.user;
+r = await call(`/api/admin/users/${me.id}`, { method: "PATCH", body: { disabled: true } });
+assert.equal(r.status, 400);
+r = await call(`/api/admin/users/${me.id}`, { method: "PATCH", body: { role: "user" } });
+assert.equal(r.status, 400);
+r = await call("/api/admin/activity?limit=20");
+assert.equal(r.status, 200);
+assert.ok(r.json.audit.some((a) => a.action === "admin.user.suspend"));
+console.log("admin can raise limits, change database limits, suspend and restore; cannot lock themselves out");
+cookie = userCookie;
 
 step("usage + audit");
 r = await call(`/api/v1/databases/${dbId}/usage`);

@@ -1,38 +1,33 @@
-import { currentUser } from "@/lib/session";
 import { handler, ok, publicDatabase, readJson } from "@/lib/api";
+import { requestAccess } from "@/lib/access";
+import { deleteDatabase, renameDatabase, resetDatabase, sampleUsage } from "@/lib/databases";
 import { GatewayError } from "@/lib/denis/client";
-import { deleteDatabase, getOwnedDatabase, renameDatabase, resetDatabase, sampleUsage } from "@/lib/databases";
 
 type Ctx = { params: Promise<{ id: string }> };
 
 export const GET = handler(async (_request: Request, { params }: Ctx) => {
-  const user = await currentUser();
-  if (!user) throw new GatewayError("Not signed in", 401, "UNAUTHORIZED");
   const { id } = await params;
-  const row = await getOwnedDatabase(user.id, id);
-  if (!row) throw new GatewayError("Database not found", 404, "NOT_FOUND");
-  return ok({ database: publicDatabase(await sampleUsage(row)) });
+  const { database, actor } = await requestAccess(id, "read");
+  return ok({ database: publicDatabase(await sampleUsage(database)), role: actor.role });
 });
 
 export const PATCH = handler(async (request: Request, { params }: Ctx) => {
-  const user = await currentUser();
-  if (!user) throw new GatewayError("Not signed in", 401, "UNAUTHORIZED");
   const { id } = await params;
+  const { database, actor } = await requestAccess(id, "manage_database");
   const body = await readJson<{ name?: string; action?: "reset" }>(request);
   if (body.action === "reset") {
-    await resetDatabase(user.id, id);
+    await resetDatabase(database.userId, id);
   } else if (body.name !== undefined) {
-    await renameDatabase(user.id, id, String(body.name));
+    await renameDatabase(database.userId, id, String(body.name));
   }
-  const row = await getOwnedDatabase(user.id, id);
-  if (!row) throw new GatewayError("Database not found", 404, "NOT_FOUND");
-  return ok({ database: publicDatabase(row) });
+  const fresh = await requestAccess(id, "read");
+  return ok({ database: publicDatabase(fresh.database), role: actor.role });
 });
 
 export const DELETE = handler(async (_request: Request, { params }: Ctx) => {
-  const user = await currentUser();
-  if (!user) throw new GatewayError("Not signed in", 401, "UNAUTHORIZED");
   const { id } = await params;
-  await deleteDatabase(user.id, id);
+  const { database, actor } = await requestAccess(id, "manage_database");
+  if (actor.role !== "owner") throw new GatewayError("Only the owner can delete a database", 403, "FORBIDDEN");
+  await deleteDatabase(database.userId, id);
   return ok({ deleted: true });
 });

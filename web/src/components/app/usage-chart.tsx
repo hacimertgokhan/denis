@@ -39,12 +39,24 @@ function fill(points: UsagePoint[], days: number): UsagePoint[] {
     const iso = new Date(t).toISOString();
     const p = byHour.get(iso);
     if (p?.persistedBytes) lastBytes = p.persistedBytes;
-    out.push({ hour: iso, ops: p?.ops ?? 0, reads: p?.reads ?? 0, writes: p?.writes ?? 0, errors: p?.errors ?? 0, persistedBytes: p?.persistedBytes ?? lastBytes });
+    out.push({
+      hour: iso,
+      ops: p?.ops ?? 0,
+      reads: p?.reads ?? 0,
+      writes: p?.writes ?? 0,
+      errors: p?.errors ?? 0,
+      persistedBytes: p?.persistedBytes ?? lastBytes,
+    });
   }
   return out;
 }
 
-const tickFormatter = (value: string) => new Date(value).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit" });
+const tickFormatter = (value: string) =>
+  new Date(value).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+  });
 
 export function OpsChart({ points, days = 7, title = "Commands", description }: { points: UsagePoint[]; days?: number; title?: string; description?: string }) {
   const data = fill(points, days);
@@ -86,7 +98,10 @@ export function StorageChart({ points, days = 7, maxBytes }: { points: UsagePoin
     <Card className={PANEL}>
       <CardHeader>
         <CardTitle className="text-[15px] font-medium">Storage</CardTitle>
-        <CardDescription className="text-[13px]">Persisted data over time{maxBytes ? ` (limit ${formatBytes(maxBytes)})` : ""}</CardDescription>
+        <CardDescription className="text-[13px]">
+          Persisted data over time
+          {maxBytes ? ` (limit ${formatBytes(maxBytes)})` : ""}
+        </CardDescription>
       </CardHeader>
       <CardContent className="px-2 sm:px-6">
         <ChartContainer config={storageConfig} className="aspect-auto h-56 w-full">
@@ -102,7 +117,9 @@ export function StorageChart({ points, days = 7, maxBytes }: { points: UsagePoin
             <YAxis tickLine={false} axisLine={false} width={56} tickFormatter={(v: number) => formatBytes(v)} domain={[0, maxBytes ?? "auto"]} />
             <ChartTooltip
               cursor={false}
-              content={<ChartTooltipContent labelFormatter={(v) => tickFormatter(String(v))} formatter={(value) => formatBytes(Number(value))} indicator="line" />}
+              content={
+                <ChartTooltipContent labelFormatter={(v) => tickFormatter(String(v))} formatter={(value) => formatBytes(Number(value))} indicator="line" />
+              }
             />
             <Area dataKey="persistedBytes" type="step" stroke="var(--color-persistedBytes)" fill="url(#fill-storage)" />
           </AreaChart>

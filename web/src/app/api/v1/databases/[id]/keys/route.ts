@@ -1,29 +1,22 @@
-import { currentUser } from "@/lib/session";
 import { handler, ok, publicKey, readJson } from "@/lib/api";
-import { GatewayError } from "@/lib/denis/client";
-import { getOwnedDatabase } from "@/lib/databases";
+import { requestAccess } from "@/lib/access";
 import { createApiKey, listApiKeys } from "@/lib/api-keys";
 
 type Ctx = { params: Promise<{ id: string }> };
 
 export const GET = handler(async (_request: Request, { params }: Ctx) => {
-  const user = await currentUser();
-  if (!user) throw new GatewayError("Not signed in", 401, "UNAUTHORIZED");
   const { id } = await params;
-  const database = await getOwnedDatabase(user.id, id);
-  if (!database) throw new GatewayError("Database not found", 404, "NOT_FOUND");
+  const { database } = await requestAccess(id, "manage_keys");
   return ok({ keys: (await listApiKeys(database.id)).map(publicKey) });
 });
 
 export const POST = handler(async (request: Request, { params }: Ctx) => {
-  const user = await currentUser();
-  if (!user) throw new GatewayError("Not signed in", 401, "UNAUTHORIZED");
   const { id } = await params;
-  const database = await getOwnedDatabase(user.id, id);
-  if (!database) throw new GatewayError("Database not found", 404, "NOT_FOUND");
+  const { database, actor } = await requestAccess(id, "manage_keys");
   const body = await readJson<{ name?: string; scope?: "read" | "write" }>(request);
   const scope = body.scope === "read" ? "read" : "write";
-  const { row, secret } = await createApiKey(user.id, database, String(body.name ?? "default"), scope);
-  // the secret is returned exactly once
+  // keys created by a database-local admin are attributed to the owner
+  const userId = actor.type === "user" ? actor.id : database.userId;
+  const { row, secret } = await createApiKey(userId, database, String(body.name ?? "default"), scope);
   return ok({ key: publicKey(row), secret }, { status: 201 });
 });

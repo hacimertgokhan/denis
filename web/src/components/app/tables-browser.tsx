@@ -11,7 +11,11 @@ import { apiFetch } from "@/lib/client-api";
 import { cn } from "@/lib/utils";
 import type { Reply } from "@/components/app/reply-view";
 
-type TableInfo = { name: string; columns: { name: string; type: string }[]; rows: number };
+type TableInfo = {
+  name: string;
+  columns: { name: string; type: string }[];
+  rows: number;
+};
 const PAGE = 50;
 
 async function exec(databaseId: string, command: string): Promise<Reply> {
@@ -22,7 +26,7 @@ async function exec(databaseId: string, command: string): Promise<Reply> {
   return data.results[0].reply;
 }
 
-export function TablesBrowser({ databaseId }: { databaseId: string }) {
+export function TablesBrowser({ databaseId, readOnly = false }: { databaseId: string; readOnly?: boolean }) {
   const [tables, setTables] = useState<TableInfo[] | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
@@ -102,7 +106,7 @@ export function TablesBrowser({ databaseId }: { databaseId: string }) {
   }
 
   return (
-    <div className="grid min-h-[28rem] overflow-hidden rounded-lg border bg-card @3xl/main:grid-cols-[15rem_1fr]">
+    <div className="bg-card grid min-h-[28rem] overflow-hidden rounded-lg border @3xl/main:grid-cols-[15rem_1fr]">
       {/* table list */}
       <div className="border-b @3xl/main:border-r @3xl/main:border-b-0">
         <div className="flex items-center justify-between border-b px-4 py-2.5">
@@ -121,17 +125,17 @@ export function TablesBrowser({ databaseId }: { databaseId: string }) {
                   setOffset(0);
                 }}
                 className={cn(
-                  "flex w-full items-center justify-between gap-2 px-4 py-2 text-left text-[13.5px] transition-colors hover:bg-muted/60",
+                  "hover:bg-muted/60 flex w-full items-center justify-between gap-2 px-4 py-2 text-left text-[13.5px] transition-colors",
                   selected === t.name && "bg-muted font-medium",
                 )}
               >
                 <span className="truncate font-mono">{t.name}</span>
-                <span className="text-[12px] text-muted-foreground tabular-nums">{t.rows}</span>
+                <span className="text-muted-foreground text-[12px] tabular-nums">{t.rows}</span>
               </button>
             </li>
           ))}
           {!tables && (
-            <li className="px-4 py-2 text-[13px] text-muted-foreground">
+            <li className="text-muted-foreground px-4 py-2 text-[13px]">
               <Loader2Icon className="size-4 animate-spin" />
             </li>
           )}
@@ -145,24 +149,26 @@ export function TablesBrowser({ databaseId }: { databaseId: string }) {
             <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-2.5">
               <div className="min-w-0">
                 <span className="font-mono text-[13.5px] font-medium">{current.name}</span>
-                <span className="ml-3 font-mono text-[12px] text-muted-foreground">{current.columns.map((c) => `${c.name} ${c.type}`).join(" · ")}</span>
+                <span className="text-muted-foreground ml-3 font-mono text-[12px]">{current.columns.map((c) => `${c.name} ${c.type}`).join(" · ")}</span>
               </div>
-              <ConfirmDialog
-                title={`Drop ${current.name}?`}
-                description="Every row is deleted. This cannot be undone."
-                confirmLabel="Drop table"
-                onConfirm={() => drop(current.name)}
-                trigger={
-                  <Button variant="ghost" size="sm" className="text-muted-foreground">
-                    Drop table
-                  </Button>
-                }
-              />
+              {!readOnly && (
+                <ConfirmDialog
+                  title={`Drop ${current.name}?`}
+                  description="Every row is deleted. This cannot be undone."
+                  confirmLabel="Drop table"
+                  onConfirm={() => drop(current.name)}
+                  trigger={
+                    <Button variant="ghost" size="sm" className="text-muted-foreground">
+                      Drop table
+                    </Button>
+                  }
+                />
+              )}
             </div>
             <div className="flex-1 overflow-x-auto">
               <table className="w-full text-[13.5px]">
                 <thead>
-                  <tr className="border-b text-left text-[12.5px] text-muted-foreground">
+                  <tr className="text-muted-foreground border-b text-left text-[12.5px]">
                     {current.columns.map((c) => (
                       <th key={c.name} className="px-4 py-2 font-medium">
                         {c.name}
@@ -172,7 +178,7 @@ export function TablesBrowser({ databaseId }: { databaseId: string }) {
                 </thead>
                 <tbody>
                   {rows.map((r, i) => (
-                    <tr key={i} className="border-b last:border-b-0 hover:bg-muted/40">
+                    <tr key={i} className="hover:bg-muted/40 border-b last:border-b-0">
                       {current.columns.map((c) => (
                         <td key={c.name} className="px-4 py-2 font-mono text-[13px] tabular-nums">
                           {r[c.name] === null || r[c.name] === undefined ? <span className="text-muted-foreground">NULL</span> : String(r[c.name])}
@@ -182,7 +188,7 @@ export function TablesBrowser({ databaseId }: { databaseId: string }) {
                   ))}
                   {rows.length === 0 && (
                     <tr>
-                      <td colSpan={current.columns.length} className="px-4 py-8 text-center text-[13.5px] text-muted-foreground">
+                      <td colSpan={current.columns.length} className="text-muted-foreground px-4 py-8 text-center text-[13.5px]">
                         {busy ? <Loader2Icon className="mx-auto size-4 animate-spin" /> : "No rows"}
                       </td>
                     </tr>
@@ -190,20 +196,34 @@ export function TablesBrowser({ databaseId }: { databaseId: string }) {
                 </tbody>
               </table>
             </div>
-            <div className="flex items-center justify-between border-t px-4 py-2 text-[12.5px] text-muted-foreground">
+            <div className="text-muted-foreground flex items-center justify-between border-t px-4 py-2 text-[12.5px]">
               <span>{rows.length ? `Rows ${offset + 1}–${offset + rows.length} of ${current.rows}` : `0 of ${current.rows}`}</span>
               <div className="flex gap-1">
-                <Button variant="ghost" size="icon" className="size-7" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - PAGE))} aria-label="Previous page">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-7"
+                  disabled={offset === 0}
+                  onClick={() => setOffset(Math.max(0, offset - PAGE))}
+                  aria-label="Previous page"
+                >
                   <ChevronLeftIcon />
                 </Button>
-                <Button variant="ghost" size="icon" className="size-7" disabled={offset + PAGE >= current.rows} onClick={() => setOffset(offset + PAGE)} aria-label="Next page">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-7"
+                  disabled={offset + PAGE >= current.rows}
+                  onClick={() => setOffset(offset + PAGE)}
+                  aria-label="Next page"
+                >
                   <ChevronRightIcon />
                 </Button>
               </div>
             </div>
           </>
         ) : (
-          <div className="flex flex-1 items-center justify-center text-[13.5px] text-muted-foreground">Select a table</div>
+          <div className="text-muted-foreground flex flex-1 items-center justify-center text-[13.5px]">Select a table</div>
         )}
       </div>
     </div>

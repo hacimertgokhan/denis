@@ -13,8 +13,8 @@ export const metadata = { title: "Databases" };
 
 function Bar({ value }: { value: number }) {
   return (
-    <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
-      <div className={value >= 80 ? "h-full bg-destructive" : "h-full bg-[var(--chart-1)]"} style={{ width: `${Math.max(2, value)}%` }} />
+    <div className="bg-muted h-1 w-full overflow-hidden rounded-full">
+      <div className={value >= 80 ? "bg-destructive h-full" : "h-full bg-[var(--chart-1)]"} style={{ width: `${Math.max(2, value)}%` }} />
     </div>
   );
 }
@@ -25,14 +25,14 @@ export default async function DatabasesPage() {
   const rows = await listDatabases(user.id);
   const databases = await Promise.all(rows.map((d) => sampleUsage(d).catch(() => d)));
   const ops = await Promise.all(databases.map((d) => opsToday(d.id)));
-  const canCreate = databases.length < limits.maxDatabases;
+  const canCreate = databases.length < user.maxDatabases;
   return (
     <>
       <SiteHeader crumbs={[{ label: "Databases" }]} />
       <div className="w-full flex-1 px-5 py-5 lg:px-8 lg:py-8">
         <PageHeader
           title="Databases"
-          description={`${databases.length} of ${limits.maxDatabases} on the free plan. Each one has ${formatBytes(limits.dbMaxBytes)}, ${formatNumber(limits.dbMaxKeys)} keys and ${formatNumber(limits.dbOpsPerDay)} commands a day.`}
+          description={`${databases.length} of ${user.maxDatabases} on the free plan. Each one has ${formatBytes(limits.dbMaxBytes)}, ${formatNumber(limits.dbMaxKeys)} keys and ${formatNumber(limits.dbOpsPerDay)} commands a day.`}
           actions={
             canCreate ? (
               <CreateDatabaseDialog
@@ -48,7 +48,13 @@ export default async function DatabasesPage() {
         <div className="mt-6">
           {databases.length === 0 ? (
             <EmptyState title="No databases yet">
-              <CreateDatabaseDialog trigger={<Button size="sm" className="mt-3">Create your first database</Button>} />
+              <CreateDatabaseDialog
+                trigger={
+                  <Button size="sm" className="mt-3">
+                    Create your first database
+                  </Button>
+                }
+              />
             </EmptyState>
           ) : (
             <ul className="divide-y border-y">
@@ -58,7 +64,7 @@ export default async function DatabasesPage() {
                     <Link href={`/databases/${d.id}`} className="text-[16px] font-medium hover:underline">
                       {d.name}
                     </Link>
-                    <p className="mt-0.5 text-[12.5px] text-muted-foreground">
+                    <p className="text-muted-foreground mt-0.5 text-[12.5px]">
                       {d.region} · created {formatDate(d.createdAt)}
                     </p>
                   </div>

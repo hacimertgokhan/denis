@@ -1,4 +1,5 @@
 #!/usr/bin/env sh
-VERSION=$(awk -F= '/^sem_ver=/{print $2}' denis.conf)
-echo "Denis Database Integrated CLI (jcli-lnx-0.0.2alpha)"
-java -Dfile.encoding=UTF-8 -jar "denis-$VERSION-alpha.jar" cli "$@"
+# Run the Denis management CLI from an extracted release bundle.
+set -eu
+DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+exec "$DIR/bin/denis" cli "$@"

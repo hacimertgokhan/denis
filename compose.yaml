@@ -1,8 +1,12 @@
 services:
   denis:
-    build: .
+    build:
+      context: .
+      args:
+        VERSION: "${DENIS_VERSION:-dev}"
     image: denis:local
     container_name: denis
+    init: true
     ports:
       - "${DDB_PORT:-5142}:5142"
     environment:
@@ -12,10 +16,16 @@ services:
       # A login group created on first start so clients can LIN immediately.
       DENIS_BOOTSTRAP_GROUP: "${DENIS_BOOTSTRAP_GROUP:-denis}"
       DENIS_BOOTSTRAP_GROUP_PASSWORD: "${DENIS_BOOTSTRAP_GROUP_PASSWORD:-change-me}"
+      DENIS_MAX_CONNECTIONS: "${DENIS_MAX_CONNECTIONS:-256}"
       DENIS_MAX_CONNECTIONS_PER_IP: "${DENIS_MAX_CONNECTIONS_PER_IP:-64}"
+      DENIS_CLIENT_IDLE_TIMEOUT_MS: "${DENIS_CLIENT_IDLE_TIMEOUT_MS:-0}"
+      DENIS_PERSIST_FLUSH_INTERVAL_MS: "${DENIS_PERSIST_FLUSH_INTERVAL_MS:-1000}"
       DENIS_LANGUAGE: "${DENIS_LANGUAGE:-en}"
+      DENIS_LOG_LEVEL: "${DENIS_LOG_LEVEL:-info}"
     volumes:
       - denis-data:/data
+    # Give the shutdown hook time to flush database.bin.
+    stop_grace_period: 15s
     restart: unless-stopped
 
 volumes:

@@ -1,21 +1,49 @@
-name-template: 'v$NEXT_PATCH_VERSION'
-tag-template: 'v$NEXT_PATCH_VERSION'
-categories:
-  - title: 🚀 New Features
+# Drafts the next release from merged PR labels (Semantic Versioning):
+#   breaking / major  -> next major, feature / enhancement / minor -> next minor,
+#   everything else   -> next patch.
+name-template: 'v$RESOLVED_VERSION'
+tag-template: 'v$RESOLVED_VERSION'
+version-resolver:
+  major:
+    labels:
+      - breaking
+      - major
+  minor:
     labels:
       - feature
       - enhancement
-  - title: 🐛 Bug Fixes
+      - minor
+  patch:
     labels:
       - bug
-  - title: 🛠️ Maintenance
+      - fix
+      - chore
+      - refactor
+      - documentation
+      - dependencies
+  default: patch
+categories:
+  - title: Breaking changes
+    labels:
+      - breaking
+  - title: Features
+    labels:
+      - feature
+      - enhancement
+  - title: Bug fixes
+    labels:
+      - bug
+      - fix
+  - title: Maintenance
     labels:
       - chore
       - refactor
-  - title: 📚 Documentation
+      - dependencies
+  - title: Documentation
     labels:
       - documentation
 change-template: '- $TITLE (#$NUMBER) by @$AUTHOR'
 template: |
-  ## 🚀 Yeni Sürüm: $RELEASE_TITLE
   $CHANGES
+
+  Full changelog: https://github.com/$OWNER/$REPOSITORY/blob/master/CHANGELOG.md

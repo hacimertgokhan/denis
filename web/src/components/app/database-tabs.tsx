@@ -13,6 +13,7 @@ const tabs: { label: string; path: string; roles?: Role[] }[] = [
   { label: "Keys", path: "/keys" },
   { label: "History", path: "/history" },
   { label: "Connect", path: "/connect", roles: ["owner", "admin"] },
+  { label: "Examples", path: "/examples" },
   { label: "Access", path: "/access", roles: ["owner", "admin"] },
   { label: "Settings", path: "/settings", roles: ["owner", "admin"] },
 ];

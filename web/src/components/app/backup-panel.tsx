@@ -5,9 +5,9 @@ import { DownloadIcon, Loader2Icon, UploadIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/app/confirm-dialog";
 import { SectionRow } from "@/components/app/page-primitives";
+import { cn } from "@/lib/utils";
 
 type Report = {
   keys: { restored: number; skipped: string[] };
@@ -63,39 +63,45 @@ export function BackupPanel({ databaseId, canRestore }: { databaseId: string; ca
         </div>
 
         {canRestore && (
-          <div className="grid gap-3 rounded-lg border p-4">
-            <div className="text-[13.5px] font-medium">Restore from a backup</div>
-            <div className="grid gap-3 sm:grid-cols-[1fr_11rem]">
-              <div className="grid gap-1.5">
-                <Label htmlFor="bk-file" className="text-[12px]">
-                  Backup file
-                </Label>
-                <input
-                  id="bk-file"
-                  ref={input}
-                  type="file"
-                  accept=".zip,application/zip"
-                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                  className="file:bg-muted file:text-foreground text-[13px] file:mr-3 file:rounded-md file:border-0 file:px-3 file:py-1.5 file:text-[13px]"
-                />
-              </div>
-              <div className="grid gap-1.5">
-                <Label className="text-[12px]">Mode</Label>
-                <Select value={mode} onValueChange={(v) => setMode(v as typeof mode)}>
-                  <SelectTrigger className="h-8">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="merge">Merge into existing data</SelectItem>
-                    <SelectItem value="replace">Replace everything</SelectItem>
-                  </SelectContent>
-                </Select>
+          <div className="grid gap-4 rounded-lg border p-4">
+            <div>
+              <div className="text-[13.5px] font-medium">Restore from a backup</div>
+              <p className="text-muted-foreground mt-1 text-[12.5px] leading-relaxed">
+                Merge writes the backup on top of what is there (same keys are overwritten, tables are created when missing). Replace empties the database
+                first. Quotas apply.
+              </p>
+            </div>
+            <div className="grid gap-1.5">
+              <Label className="text-[12px]">Backup file</Label>
+              <label className="bg-background hover:bg-muted/40 flex cursor-pointer items-center gap-3 rounded-md border px-3 py-2.5 text-[13.5px] transition-colors">
+                <UploadIcon className="text-muted-foreground size-4 shrink-0" />
+                <span className={file ? "truncate" : "text-muted-foreground truncate"}>
+                  {file ? `${file.name} · ${(file.size / 1024).toFixed(0)} KB` : "Choose a .zip backup"}
+                </span>
+                <input ref={input} type="file" accept=".zip,application/zip" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="sr-only" />
+              </label>
+            </div>
+            <div className="grid gap-1.5">
+              <Label className="text-[12px]">Mode</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {(["merge", "replace"] as const).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setMode(m)}
+                    className={cn(
+                      "rounded-md border px-3 py-2 text-left text-[13px] transition-colors",
+                      mode === m ? "border-foreground bg-foreground text-background" : "hover:bg-muted/40",
+                    )}
+                  >
+                    <span className="block font-medium capitalize">{m}</span>
+                    <span className={cn("block text-[12px]", mode === m ? "text-background/70" : "text-muted-foreground")}>
+                      {m === "merge" ? "keep what is there" : "empty the database first"}
+                    </span>
+                  </button>
+                ))}
               </div>
             </div>
-            <p className="text-muted-foreground text-[12.5px] leading-relaxed">
-              Merge writes the keys and rows of the backup on top of what is there (same keys are overwritten, tables are created when missing). Replace empties
-              the database first. Quotas apply: a backup larger than the plan stops at the limit.
-            </p>
             <div>
               <ConfirmDialog
                 title={mode === "replace" ? "Replace everything with this backup?" : "Merge this backup?"}
@@ -118,7 +124,7 @@ export function BackupPanel({ databaseId, canRestore }: { databaseId: string; ca
               <div className="text-muted-foreground grid gap-1 border-t pt-3 text-[12.5px]">
                 <div>
                   Keys: {report.keys.restored} restored
-                  {report.keys.skipped.length ? `, ${report.keys.skipped.length} skipped (line breaks or flags in the value)` : ""}
+                  {report.keys.skipped.length ? `, ${report.keys.skipped.length} skipped (line breaks, flags or size)` : ""}
                 </div>
                 {report.tables.map((t) => (
                   <div key={t.name}>

@@ -22,6 +22,21 @@ async function exec(databaseId: string, command: string): Promise<Reply> {
   return data.results[0].reply;
 }
 
+const MAX_KEY = 512;
+const MAX_VALUE = 60 * 1024;
+
+/** What the wire can carry: a one-word key, a single-line value with no flag words, both bounded. */
+export function validateEntry(key: string, value: string): string | null {
+  if (!key) return "A key is required";
+  if (key.length > MAX_KEY) return `A key is at most ${MAX_KEY} characters`;
+  if (/\s/.test(key)) return "A key is one word without whitespace";
+  if (/[\u0000-\u001f\u007f]/.test(key)) return "A key cannot contain control characters";
+  if (value.length > MAX_VALUE) return `A value is at most ${Math.round(MAX_VALUE / 1024)} KB`;
+  if (/[\r\n]/.test(value)) return "A value cannot contain line breaks";
+  if (/(^|\s)-&/.test(value)) return "No word of a value may start with -& (that marks a flag)";
+  return null;
+}
+
 export function KeysBrowser({ databaseId, readOnly = false }: { databaseId: string; readOnly?: boolean }) {
   const [pattern, setPattern] = useState("*");
   const [keys, setKeys] = useState<string[] | null>(null);
@@ -40,7 +55,9 @@ export function KeysBrowser({ databaseId, readOnly = false }: { databaseId: stri
     await Promise.resolve();
     setBusy(true);
     try {
-      const reply = await exec(databaseId, `KEYS ${pattern.trim() || "*"}`);
+      const p = pattern.trim() || "*";
+      if (/\s/.test(p) || p.length > 256) throw new Error("A pattern is one word of at most 256 characters");
+      const reply = await exec(databaseId, `KEYS ${p}`);
       if (!reply.ok) throw new Error(reply.error);
       setKeys(reply.keys ?? []);
       setPage(0);
@@ -72,12 +89,9 @@ export function KeysBrowser({ databaseId, readOnly = false }: { databaseId: stri
 
   async function save() {
     const key = editKey.trim();
-    if (!key || /\s/.test(key)) {
-      toast.error("A key is one word without whitespace");
-      return;
-    }
-    if (/[\r\n]/.test(editValue) || /(^|\s)-&/.test(editValue)) {
-      toast.error("A value cannot contain line breaks or a word starting with -&");
+    const problem = validateEntry(key, editValue);
+    if (problem) {
+      toast.error(problem);
       return;
     }
     const reply = await exec(databaseId, `SET ${key} ${editValue}${persist ? " -&cache -&save" : ""}`);

@@ -19,6 +19,14 @@ const MGET_BATCH = 100;
 const PAGE = 1000;
 const INSERT_BATCH = 50;
 const MAX_ARCHIVE = 64 * 1024 * 1024;
+// a zip bomb is a small archive with a huge declared size: refuse before inflating
+const MAX_ENTRY = 32 * 1024 * 1024;
+const MAX_TOTAL = 128 * 1024 * 1024;
+const MAX_ENTRIES = 500;
+const MAX_KEY = 512;
+const MAX_VALUE = 60 * 1024;
+const IDENT = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
+const TYPES = new Set(["INT", "INTEGER", "REAL", "FLOAT", "DOUBLE", "TEXT", "STRING", "BOOL", "BOOLEAN"]);
 
 type TableInfo = { name: string; columns: { name: string; type: string }[]; rows: number };
 type Row = Record<string, unknown>;
@@ -89,9 +97,21 @@ export type RestoreReport = {
 export async function restoreDatabase(database: DatabaseRow, archive: Uint8Array, mode: "merge" | "replace", actorId: string | null): Promise<RestoreReport> {
   if (archive.length > MAX_ARCHIVE) throw new GatewayError("The archive is larger than 64 MB", 413, "PAYLOAD_TOO_LARGE");
   let files: Record<string, Uint8Array>;
+  let total = 0;
+  let entries = 0;
   try {
-    files = unzipSync(archive);
-  } catch {
+    files = unzipSync(archive, {
+      filter: (f) => {
+        entries++;
+        total += f.originalSize;
+        if (entries > MAX_ENTRIES || f.originalSize > MAX_ENTRY || total > MAX_TOTAL)
+          throw new GatewayError("The archive is too large to restore", 413, "PAYLOAD_TOO_LARGE");
+        // only the files a backup contains; anything else is ignored unread
+        return f.name === "manifest.json" || f.name === "keys.json" || /^tables\/[A-Za-z_][A-Za-z0-9_]{0,63}\.json$/.test(f.name);
+      },
+    });
+  } catch (err) {
+    if (err instanceof GatewayError) throw err;
     throw new GatewayError("Not a zip archive", 400, "BAD_ARCHIVE");
   }
   if (!files["manifest.json"]) throw new GatewayError("manifest.json is missing; this is not a Denis backup", 400, "BAD_ARCHIVE");
@@ -101,9 +121,13 @@ export async function restoreDatabase(database: DatabaseRow, archive: Uint8Array
   if (mode === "replace") await denis.admin().flush(database.denisToken);
 
   const report: RestoreReport = { keys: { restored: 0, skipped: [] }, tables: [] };
-  const values = files["keys.json"] ? (JSON.parse(strFromU8(files["keys.json"])) as Record<string, string>) : {};
-  for (const [key, value] of Object.entries(values)) {
-    if (/\s/.test(key) || /[\r\n]/.test(value) || /(^|\s)-&/.test(value)) {
+  const parsed: unknown = files["keys.json"] ? JSON.parse(strFromU8(files["keys.json"])) : {};
+  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) throw new GatewayError("keys.json must be an object", 400, "BAD_ARCHIVE");
+  const values = parsed as Record<string, unknown>;
+  for (const [key, raw] of Object.entries(values)) {
+    // keys are one word on the wire; values are single lines without flag words — anything else cannot be sent safely
+    const value = typeof raw === "string" ? raw : JSON.stringify(raw);
+    if (!key || key.length > MAX_KEY || /\s/.test(key) || value.length > MAX_VALUE || /[\r\n]/.test(value) || /(^|\s)-&/.test(value)) {
       report.keys.skipped.push(key);
       continue;
     }
@@ -119,10 +143,25 @@ export async function restoreDatabase(database: DatabaseRow, archive: Uint8Array
     const entry: RestoreReport["tables"][number] = { name, rows: 0, skipped: 0 };
     report.tables.push(entry);
     try {
-      await run(database, `CREATE TABLE IF NOT EXISTS ${name} (${table.columns.map((c) => `${c.name} ${c.type}`).join(", ")})`);
+      // column names and types come from the file: only identifiers and known types reach the engine
+      if (!Array.isArray(table.columns) || table.columns.length === 0 || table.columns.length > 64)
+        throw new GatewayError("columns must be a list of 1-64 entries", 400, "BAD_ARCHIVE");
+      for (const c of table.columns) {
+        if (!IDENT.test(String(c.name))) throw new GatewayError(`invalid column name ${JSON.stringify(c.name)}`, 400, "BAD_ARCHIVE");
+        if (!TYPES.has(String(c.type).toUpperCase())) throw new GatewayError(`unsupported column type ${JSON.stringify(c.type)}`, 400, "BAD_ARCHIVE");
+      }
+      if (!Array.isArray(table.rows)) throw new GatewayError("rows must be a list", 400, "BAD_ARCHIVE");
+      await run(database, `CREATE TABLE IF NOT EXISTS ${name} (${table.columns.map((c) => `${c.name} ${String(c.type).toUpperCase()}`).join(", ")})`);
       const cols = table.columns.map((c) => c.name);
       for (let i = 0; i < table.rows.length; i += INSERT_BATCH) {
-        const batch = table.rows.slice(i, i + INSERT_BATCH).filter((r) => !cols.some((c) => typeof r[c] === "string" && /[\r\n]/.test(r[c] as string)));
+        const batch = table.rows
+          .slice(i, i + INSERT_BATCH)
+          .filter(
+            (r) =>
+              r &&
+              typeof r === "object" &&
+              !cols.some((c) => typeof r[c] === "string" && (/[\r\n]/.test(r[c] as string) || (r[c] as string).length > MAX_VALUE)),
+          );
         entry.skipped += Math.min(INSERT_BATCH, table.rows.length - i) - batch.length;
         if (batch.length === 0) continue;
         const tuples = batch.map((r) => `(${cols.map((c) => sqlLiteral(r[c])).join(", ")})`).join(", ");

@@ -8,6 +8,10 @@ before 1.0.0 a minor bump may contain breaking changes, which are listed).
 ## [Unreleased]
 
 ### Added
+- Platform: an Examples tab per database — connecting from Node, Python, curl and Go, keys, tables, QUERY, the users/sessions/counter/cache patterns, MCP, backups and errors, every snippet with the database's own URL.
+
+### Security
+- Platform: backup restore refuses zip bombs (declared-size caps, at most 500 entries), validates column names and types against an allowlist and bounds key and value sizes; the keys browser validates keys, values and patterns before anything reaches the wire.
 - `examples/inventory`: Stockroom, a stock-keeping app with accounts,
   sessions, products and movements all kept in Denis through `denis-client`
   (TCP or Denis Cloud), with an end-to-end test.

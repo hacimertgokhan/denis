@@ -1,22 +1,23 @@
 {
   "name": "denis-client",
-  "version": "0.1.0",
-  "description": "Node.js client for Denis Database (TCP, promise based, pooled connections)",
+  "version": "1.0.0",
+  "description": "Node.js client for Denis Database: pipelined, pooled TCP connections with reconnect, SQL with parameters, dump/import",
   "main": "index.js",
   "types": "index.d.ts",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/hacimertgokhan/denis.git",
     "directory": "clients/node"
   },
-  "keywords": ["denis", "cache", "key-value", "database", "client"],
+  "keywords": ["denis", "cache", "key-value", "database", "sql", "client", "pipelining"],
   "engines": {
     "node": ">=18"
   },
   "files": ["index.js", "index.d.ts", "README.md"],
   "scripts": {
-    "test": "node --test test/",
-    "test:integration": "DENIS_INTEGRATION=1 node --test test/"
+    "test": "node --test test/unit.test.js",
+    "test:integration": "node --test test/integration.test.js",
+    "bench": "node bench.js"
   }
 }

@@ -1,0 +1,29 @@
+# Benchmark stack: the three systems with identical CPU and memory limits.
+#   docker compose -f compose.bench.yaml up -d --wait
+#   node run.js
+services:
+  bench-denis:
+    image: denis:local
+    build: ..
+    container_name: bench-denis
+    ports: ["5150:5142"]
+    environment:
+      DENIS_BOOTSTRAP_GROUP: bench
+      DENIS_BOOTSTRAP_GROUP_PASSWORD: bench
+      DENIS_MAX_CONNECTIONS_PER_IP: "256"
+      DENIS_SEND_CLIENT_ACTIONS: "false"
+    deploy: { resources: { limits: { cpus: "2", memory: 1g } } }
+  bench-redis:
+    image: redis:7-alpine
+    container_name: bench-redis
+    command: redis-server --appendonly yes --appendfsync everysec
+    ports: ["6390:6379"]
+    deploy: { resources: { limits: { cpus: "2", memory: 1g } } }
+  bench-postgres:
+    image: postgres:16-alpine
+    container_name: bench-postgres
+    environment:
+      POSTGRES_PASSWORD: bench
+      POSTGRES_DB: bench
+    ports: ["5440:5432"]
+    deploy: { resources: { limits: { cpus: "2", memory: 1g } } }

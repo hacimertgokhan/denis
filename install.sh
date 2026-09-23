@@ -5,7 +5,7 @@
 #   sh install.sh                       (from an extracted release bundle: installs that bundle)
 #
 # Options (environment variables):
-#   DENIS_VERSION=0.1.0     release to download (default: latest)
+#   DENIS_VERSION=0.7.0     release to download (default: latest)
 #   DENIS_INSTALL=~/.denis  installation directory (config and data live here too)
 #   DENIS_BIN_DIR=~/.local/bin
 #   DENIS_PROFILE=small     tuning preset for small devices (default|small|server)

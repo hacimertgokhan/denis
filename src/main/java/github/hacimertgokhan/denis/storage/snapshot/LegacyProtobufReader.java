@@ -29,6 +29,60 @@ public final class LegacyProtobufReader {
         this.data = data;
     }
 
+    /**
+     * The persisted data of Denis 0.0.x-0.5: {@code database.bin} plus, from 0.3 on, the
+     * append-only {@code database.journal} (and {@code .journal.old} left by an interrupted
+     * snapshot) with one JSON array per change: {@code ["S",token,key,value]},
+     * {@code ["D",token,key]}, {@code ["T",token]}. A torn last journal line is ignored.
+     *
+     * @return project token mapped to its durable keys (SQL tables still as {@code __sql:} keys)
+     */
+    public static Map<String, Map<String, String>> readWithJournal(Path bin) throws IOException {
+        Map<String, Map<String, String>> data = Files.exists(bin) ? read(bin) : new LinkedHashMap<>();
+        for (Path journal : journals(bin)) {
+            if (!Files.exists(journal)) {
+                continue;
+            }
+            for (String line : Files.readAllLines(journal, StandardCharsets.UTF_8)) {
+                if (line.isBlank()) {
+                    continue;
+                }
+                org.json.JSONArray entry;
+                try {
+                    entry = new org.json.JSONArray(line);
+                } catch (org.json.JSONException e) {
+                    continue;
+                }
+                String token = normalise(entry.optString(1, ""));
+                switch (entry.optString(0, "")) {
+                    case "S" -> data.computeIfAbsent(token, k -> new LinkedHashMap<>()).put(entry.optString(2), entry.optString(3));
+                    case "D" -> {
+                        Map<String, String> keys = data.get(token);
+                        if (keys != null) {
+                            keys.remove(entry.optString(2));
+                        }
+                    }
+                    case "T" -> data.remove(token);
+                    default -> {
+                        // unknown entry: skip
+                    }
+                }
+            }
+        }
+        return data;
+    }
+
+    /** The journal files of a 0.3-0.5 {@code database.bin}, oldest first. */
+    public static java.util.List<Path> journals(Path bin) {
+        Path dir = bin.toAbsolutePath().getParent();
+        String name = bin.getFileName().toString();
+        return java.util.List.of(dir.resolve(name + ".journal.old"), dir.resolve(name + ".journal"));
+    }
+
+    private static String normalise(String token) {
+        return token.endsWith(":") ? token.substring(0, token.length() - 1) : token;
+    }
+
     /** @return project token (without the trailing ':') mapped to its keys (without the prefix) */
     public static Map<String, Map<String, String>> read(Path file) throws IOException {
         byte[] bytes = Files.readAllBytes(file);

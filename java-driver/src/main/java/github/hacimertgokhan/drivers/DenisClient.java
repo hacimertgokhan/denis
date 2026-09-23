@@ -265,8 +265,13 @@ public class DenisClient implements AutoCloseable {
         return await(sync().whoami());
     }
 
-    /** {@code INFO}: nested maps {@code server}, {@code clients}, {@code stats}, {@code memory}, {@code persistence}, {@code keyspace}, {@code project}. */
-    public Map<String, Object> info() {
+    /**
+     * {@code INFO}: server statistics. The summary fields (version, uptime, connections, key counts,
+     * memory, the selected project's usage and quota) have typed accessors; the detailed sections
+     * ({@code server}, {@code clients}, {@code stats}, {@code memory}, {@code persistence},
+     * {@code keyspace}, {@code project}) are in {@link ServerInfo#details()}.
+     */
+    public ServerInfo info() {
         return await(sync().info());
     }
 
@@ -419,9 +424,13 @@ public class DenisClient implements AutoCloseable {
         return await(sync().dbsize());
     }
 
-    /** {@code HEAVEN}: drop every cache value of the current project; durable values stay. */
-    public void clear() {
-        await(sync().clear());
+    /**
+     * {@code HEAVEN}: drop every cache value of the current project; durable values stay.
+     *
+     * @return the number of cache values dropped, or {@code -1} when the server does not report it
+     */
+    public long clear() {
+        return await(sync().clear());
     }
 
     // =================================================================== SQL
@@ -442,13 +451,83 @@ public class DenisClient implements AutoCloseable {
     }
 
     /**
-     * Run one statement and return the Denis 0.0.x text result, e.g.
-     * {@code "OK: 1 row inserted"} or a JSON array of rows.
+     * Run one statement without parameters and return its structured result:
+     * {@link QueryResult#type()} is {@code "rows"} (columns and rows),
+     * {@code "affected"} (count, message) or {@code "tables"}
+     * ({@link QueryResult#tables()}). Same as {@code query(statement)}; the
+     * reply object itself is {@link QueryResult#asMap()}.
      *
      * @throws github.hacimertgokhan.drivers.exceptions.DenisSqlException code {@code SQL} when the statement fails
      */
-    public String sql(String statement) {
+    public QueryResult sql(String statement) {
         return await(sync().sql(statement));
+    }
+
+    /**
+     * Run one statement and return its text form, e.g.
+     * {@code "OK: 1 row inserted"} or a JSON array of rows (what
+     * {@code sql(String)} returned in 2.0).
+     *
+     * @throws github.hacimertgokhan.drivers.exceptions.DenisSqlException code {@code SQL} when the statement fails
+     */
+    public String sqlText(String statement) {
+        return await(sync().sqlText(statement));
+    }
+
+    /**
+     * Run a statement that changes data ({@code INSERT}, {@code UPDATE},
+     * {@code DELETE}, DDL), with {@code ?} parameters bound by the server,
+     * and return the affected row count.
+     *
+     * @throws github.hacimertgokhan.drivers.exceptions.DenisSqlException code {@code SQL} when the statement fails
+     * @throws DenisException when the statement returned rows (use {@link #query} for those)
+     */
+    public int execute(String sql, Object... params) {
+        return await(sync().execute(sql, params));
+    }
+
+    /** {@link #execute(String, Object...)} with a parameter list. */
+    public int execute(String sql, List<?> params) {
+        return await(sync().execute(sql, params));
+    }
+
+    /** {@code SHOW TABLES}: every table of the project with its columns and row count. */
+    public List<TableInfo> tables() {
+        return await(sync().tables());
+    }
+
+    /**
+     * {@code DESCRIBE table}: its columns and row count.
+     *
+     * @throws github.hacimertgokhan.drivers.exceptions.DenisSqlException code {@code SQL} when there is no such table
+     */
+    public TableInfo describe(String table) {
+        return await(sync().describe(table));
+    }
+
+    /**
+     * {@code QUERY { ... }}: resolve a GraphQL-shaped document of reads on
+     * the server in one round trip.
+     *
+     * <pre>{@code
+     * GraphResult r = client.queryGraph(
+     *     "{ user: get(\"user:1\") { name } orders: table(\"orders\", where: \"user_id = 1\", limit: 5) { id total } }");
+     * Map<String, Object> user = (Map<String, Object>) r.get("user");
+     * }</pre>
+     *
+     * Fields that fail are {@code null} in {@link GraphResult#data()} and
+     * listed in {@link GraphResult#errors()}. Line breaks between tokens are
+     * sent as spaces.
+     *
+     * @throws DenisException for a syntax error ({@link DenisException#reply()} has the {@code offset})
+     */
+    public GraphResult queryGraph(String document) {
+        return await(sync().queryGraph(document));
+    }
+
+    /** Same as {@link #queryGraph(String)} (the name the Node.js driver of the master line uses). */
+    public GraphResult graph(String document) {
+        return queryGraph(document);
     }
 
     // =================================================================== dump / import
@@ -483,6 +562,31 @@ public class DenisClient implements AutoCloseable {
     /** {@code BACKUPS}: list the server's backup archives. Admin groups only. */
     public List<BackupInfo> backups() {
         return await(sync().backups());
+    }
+
+    /**
+     * Project administration with the server's main token
+     * ({@code ADMIN <main-token> ...}): list projects with usage, create or
+     * import projects, set quotas, empty or drop projects. It needs no login,
+     * so a client built without credentials can use it.
+     *
+     * <pre>{@code
+     * DenisAdmin admin = client.admin(System.getenv("DENIS_MAIN_TOKEN"));
+     * String token = admin.create(10_000, 64L << 20);   // at most 10 000 keys and 64 MiB per store
+     * admin.usage(token).cachedKeys();
+     * }</pre>
+     *
+     * @param mainToken the server's {@code ddb-main-token}; checked by the server on every call
+     *                  (a wrong one fails with {@code AUTH})
+     */
+    public DenisAdmin admin(String mainToken) {
+        Protocol.secretWord("main token", mainToken);
+        return new DenisAdmin(this, mainToken);
+    }
+
+    /** Send one command and wait for its result (for helpers such as {@link DenisAdmin}). */
+    <T> T call(Command<T> command) {
+        return await(sync().run(command));
     }
 
     // =================================================================== raw

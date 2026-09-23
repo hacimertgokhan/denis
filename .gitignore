@@ -1,8 +1,10 @@
 # Build output
-target/
-out/
-builds/
-lib/
+/target/
+web/target/
+java-driver/target/
+/out/
+/builds/
+/lib/
 dependency-reduced-pom.xml
 !.mvn/wrapper/maven-wrapper.jar
 
@@ -38,11 +40,21 @@ clients/node/*.tgz
 .DS_Store
 Thumbs.db
 
-# Denis 0.1 runtime state and tool output
+# Runtime state and tool output
 /backups/
 /before-restore-*/
-database.bin.migrated
+*.migrated
 benchmarks/target/
 studio/node_modules/
 studio/dist/
-java-driver/target/
+
+# MCP server, examples
+clients/mcp/node_modules/
+clients/mcp/*.tgz
+examples/*/node_modules/
+
+# Compose environment
+/.env
+
+# Cloud stack secrets
+/.env.cloud

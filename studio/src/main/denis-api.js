@@ -33,10 +33,14 @@ function normalizeError(err) {
   if (err instanceof StudioError) return err;
   if (!err || typeof err !== "object") return new StudioError(String(err), "ERROR");
   const reply = err.reply && typeof err.reply === "object" ? err.reply : undefined;
-  let code = (reply && typeof reply.code === "string" && reply.code) || (typeof err.code === "string" && err.code) || "ERROR";
-  // older client codes
+  // denis-client 1.1 (like 0.5) reports server errors as ESERVER / EAUTH with the server's code in
+  // `serverCode` (= reply.code); the studio shows the server's code. A dropped connection stays a
+  // connection error even when the server said why (LIMIT) before closing.
+  const clientCode = typeof err.code === "string" ? err.code : "";
+  const serverCode = (typeof err.serverCode === "string" && err.serverCode) || (reply && typeof reply.code === "string" && reply.code) || "";
+  let code = CONNECTION_CODES.has(clientCode) ? clientCode : serverCode || clientCode || "ERROR";
   if (code === "EAUTH") code = "AUTH";
-  if (code === "ESERVER") code = (reply && reply.code) || "ERROR";
+  if (code === "ESERVER") code = "ERROR";
   const message = (reply && typeof reply.error === "string" && reply.error) || err.message || String(err);
   return new StudioError(message, code, reply);
 }
@@ -139,6 +143,52 @@ function chunkDump(dump, { replace = false, maxBytes = 1024 * 1024 } = {}) {
     if (part.length > 0 || first) emit();
   }
   return chunks;
+}
+
+const DESCRIBE_STATEMENT = /^\s*(DESCRIBE|DESC)\s/i;
+
+/**
+ * A SQL result as the grid wants it: `columns` plus `rows` as arrays in that
+ * order, or `affected`/`lastRowId`/`message` for a change.
+ *
+ * denis-client 1.1 (and the server) answer `{type:"rows", columns, rows:[{col: value}]}`,
+ * `{type:"affected", affected, message, lastRowId}` or, for SHOW TABLES and DESCRIBE,
+ * `{type:"tables", tables:[{name, columns:[{name, type, ...}], rows, indexes, bytes}]}`.
+ * Replies without `type` (0.1 servers) carry rows as arrays already.
+ */
+function normalizeSqlResult(statement, r) {
+  const out = {};
+  if (r.type === "tables") {
+    const tables = Array.isArray(r.tables) ? r.tables : [];
+    if (DESCRIBE_STATEMENT.test(statement) && tables.length === 1) {
+      out.columns = ["column", "type", "not_null", "primary_key", "unique", "default"];
+      out.rows = (tables[0].columns || []).map((c) => [c.name, c.type ?? null, c.notNull === true, c.primaryKey === true, c.unique === true, c.default ?? null]);
+    } else {
+      out.columns = ["table", "rows", "columns", "indexes", "bytes"];
+      out.rows = tables.map((t) => [
+        t.name,
+        t.rows ?? null,
+        Array.isArray(t.columns) ? t.columns.length : null,
+        Array.isArray(t.indexes) ? t.indexes.length : null,
+        t.bytes ?? null,
+      ]);
+    }
+    out.count = out.rows.length;
+    return out;
+  }
+  const isResultSet = r.type === "rows" || (r.type === undefined && Array.isArray(r.columns) && r.columns.length > 0);
+  if (isResultSet) {
+    out.columns = (Array.isArray(r.columns) ? r.columns : []).map(String);
+    const rows = Array.isArray(r.rows) ? r.rows : [];
+    // row objects -> arrays in column order (the order the server listed the columns in)
+    out.rows = rows.map((row) => (Array.isArray(row) ? row : out.columns.map((c) => (row && row[c] !== undefined ? row[c] : null))));
+    out.count = r.count !== undefined && r.count !== null ? Number(r.count) : out.rows.length;
+  }
+  if (!isResultSet && r.affected !== undefined && r.affected !== null) out.affected = Number(r.affected);
+  if (r.lastRowId !== undefined && r.lastRowId !== null) out.lastRowId = Number(r.lastRowId);
+  if (typeof r.message === "string" && r.message) out.message = r.message;
+  if (!isResultSet && out.message === undefined && typeof r.data === "string") out.message = r.data;
+  return out;
 }
 
 function sumImported(total, part) {
@@ -393,29 +443,18 @@ function createApi(client) {
     },
 
     /**
-     * Run one SQL statement with optional bound parameters.
+     * Run one SQL statement with bound parameters (always sent as QUERY {"sql","params"},
+     * so the statement may span lines). The result is shaped for the grid: rows are
+     * arrays in the order of `columns`.
      * @returns {Promise<{columns?: string[], rows?: any[][], count?: number, affected?: number, lastRowId?: number, message?: string}>}
      */
     async query(sql, params = []) {
       const { value } = await via(
-        "query",
-        () => client.query(sql, params),
+        "sql",
+        () => client.sql(sql, params),
         () => expectOk(`QUERY ${JSON.stringify({ sql, params })}`),
       );
-      const r = stripOk(value) || {};
-      const out = {};
-      // result sets have columns; the client reports changes with columns: [] and rows: []
-      const isResultSet = Array.isArray(r.columns) && r.columns.length > 0;
-      if (isResultSet) {
-        out.columns = r.columns.map(String);
-        out.rows = Array.isArray(r.rows) ? r.rows : [];
-      }
-      if (isResultSet && r.count !== undefined && r.count !== null) out.count = Number(r.count);
-      if (!isResultSet && r.affected !== undefined && r.affected !== null) out.affected = Number(r.affected);
-      if (r.lastRowId !== undefined && r.lastRowId !== null) out.lastRowId = Number(r.lastRowId);
-      if (typeof r.message === "string" && r.message) out.message = r.message;
-      if (!isResultSet && out.message === undefined && typeof r.data === "string") out.message = r.data;
-      return out;
+      return normalizeSqlResult(sql, stripOk(value) || {});
     },
 
     async dump() {
@@ -460,9 +499,9 @@ function createApi(client) {
       return total;
     },
 
+    /** SAVE -> {message, bytes, records, millis}; the raw reply, since the client's save() resolves to true. */
     async save() {
-      const { value } = await via("save", () => client.save(), () => expectOk("SAVE"));
-      return stripOk(value);
+      return stripOk(await expectOk("SAVE"));
     },
 
     async backup() {
@@ -489,4 +528,4 @@ function normalizeProgress(p) {
   return { done: Number.isFinite(done) ? done : 0, total: total === null ? null : Number(total) };
 }
 
-module.exports = { createApi, StudioError, normalizeError, isConnectionError, chunkDump, assertWireValue, CONNECTION_CODES };
+module.exports = { createApi, StudioError, normalizeError, normalizeSqlResult, isConnectionError, chunkDump, assertWireValue, CONNECTION_CODES };

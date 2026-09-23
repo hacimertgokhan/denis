@@ -22,6 +22,12 @@ public final class Keyspace {
     final Set<String> ttlKeys = ConcurrentHashMap.newKeySet();
     final LongAdder cacheKeys = new LongAdder();
     final LongAdder persistentKeys = new LongAdder();
+    /** Key + value characters per layer, the unit quotas are expressed in (as since 0.4). */
+    final LongAdder cacheBytes = new LongAdder();
+    final LongAdder persistentBytes = new LongAdder();
+    /** Per-project limits (0 = unlimited), applied to the cache and the durable layer separately. */
+    volatile long maxKeys;
+    volatile long maxBytes;
     /** Set once a DefineKeyspace record is in the log; before that nothing durable references the id. */
     volatile boolean defined;
     /** Set when the project is deleted; sessions still holding it must stop using it. */
@@ -49,6 +55,41 @@ public final class Keyspace {
 
     public long persistentKeyCount() {
         return persistentKeys.sum();
+    }
+
+    public void setQuota(long maxKeys, long maxBytes) {
+        this.maxKeys = Math.max(0, maxKeys);
+        this.maxBytes = Math.max(0, maxBytes);
+    }
+
+    public long maxKeys() {
+        return maxKeys;
+    }
+
+    public long maxBytes() {
+        return maxBytes;
+    }
+
+    public long cacheBytes() {
+        return cacheBytes.sum();
+    }
+
+    /** Durable keys plus table rows. */
+    public long persistedKeys() {
+        long rows = 0;
+        for (Table t : tables.values()) {
+            rows += t.rowCount();
+        }
+        return persistentKeys.sum() + rows;
+    }
+
+    /** Durable key-value bytes plus the estimated size of the tables. */
+    public long persistedBytes() {
+        long bytes = 0;
+        for (Table t : tables.values()) {
+            bytes += t.estimatedBytes();
+        }
+        return persistentBytes.sum() + bytes;
     }
 
     public boolean dropped() {

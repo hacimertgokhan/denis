@@ -82,10 +82,17 @@ test("modern client methods are used and their results normalised", async () => 
       calls.push(["keys", p, o]);
       return ["a"];
     },
-    async query(sql, params) {
-      calls.push(["query", sql, params]);
-      if (/^INSERT/.test(sql)) return { columns: [], rows: [], count: 0, affected: 1, lastRowId: 3, message: "1 row inserted" };
-      return { columns: ["x"], rows: [[1]], count: 1 };
+    async query() {
+      throw new Error("the adapter uses sql(): query() resolves to row objects only");
+    },
+    // denis-client 1.1: the structured result of the server
+    async sql(sql, params) {
+      calls.push(["sql", sql, params]);
+      if (/^INSERT/.test(sql)) return { type: "affected", affected: 1, lastRowId: 3, message: "1 row inserted", data: "OK: 1 row inserted" };
+      if (/^SHOW/.test(sql)) return { type: "tables", tables: [{ name: "t", columns: [{ name: "id", type: "INTEGER", primaryKey: true }, { name: "n", type: "TEXT" }], rows: 4, indexes: [], bytes: 99 }], count: 1 };
+      if (/^DESCRIBE/.test(sql)) return { type: "tables", tables: [{ name: "t", columns: [{ name: "id", type: "INTEGER", primaryKey: true, notNull: true }, { name: "n", type: "TEXT", default: "x" }], rows: 4 }], count: 1 };
+      // object keys in another order than the columns: the grid follows "columns"
+      return { type: "rows", columns: ["x", "y"], rows: [{ y: "b", x: 1 }], count: 1, data: "[]" };
     },
     async dump() {
       return { ok: true, format: 1, cache: {} };
@@ -116,6 +123,15 @@ test("modern client methods are used and their results normalised", async () => 
   assert.deepEqual(calls.find((c) => c[0] === "command" && c[1].startsWith("KEYS")), ["command", "KEYS * -&limit=1"]);
   const change = await api.query("INSERT INTO t VALUES (1)");
   assert.equal(change.columns, undefined, "a change is not shown as an empty result set");
+  assert.deepEqual(change, { affected: 1, lastRowId: 3, message: "1 row inserted" });
+  assert.deepEqual(await api.query("SELECT x, y FROM t", [1]), { columns: ["x", "y"], rows: [[1, "b"]], count: 1 });
+  assert.deepEqual(calls.find((c) => c[0] === "sql"), ["sql", "INSERT INTO t VALUES (1)", []], "params always sent: bound QUERY");
+  assert.deepEqual(await api.query("SHOW TABLES"), { columns: ["table", "rows", "columns", "indexes", "bytes"], rows: [["t", 4, 2, 0, 99]], count: 1 });
+  assert.deepEqual(await api.query("DESCRIBE t"), {
+    columns: ["column", "type", "not_null", "primary_key", "unique", "default"],
+    rows: [["id", "INTEGER", true, true, false, null], ["n", "TEXT", false, false, false, "x"]],
+    count: 2,
+  });
   assert.equal(await api.get("zz"), null, "NOTFOUND from a modern client means null");
   assert.deepEqual(await api.dump(), { format: 1, cache: {} });
   const progress = [];

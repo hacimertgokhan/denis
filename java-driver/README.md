@@ -1,13 +1,17 @@
 # Denis Java Driver
 
-Java client for [Denis Database](https://github.com/hacimertgokhan/denis), for wire protocol 2 (Denis 0.1.0 and later).
+Java client for [Denis Database](https://github.com/hacimertgokhan/denis), for Denis 0.7 (wire protocol 2) and, with the 0.3-0.6 subset of commands, earlier servers. `admin`, quotas and
+`queryGraph` need a server with `ADMIN` and `QUERY` documents.
 
 - **No runtime dependencies.** A small built-in JSON codec replaces org.json.
 - **Java 11+** (compiled with `--release 11`).
 - **Thread-safe with pipelining.** One `DenisClient` serves your whole application. It uses a small pool of pipelined connections, so many threads share a few sockets without waiting on each other's round trips.
 - **Three calling styles:** blocking, `CompletableFuture` (`client.async()`) and explicit batches (`client.pipeline()`).
 - **Recovers from dropped connections.** It reconnects with backoff and replays the login and project selection. It never silently re-sends a command that may already have run.
-- **Typed results and errors:** `QueryResult`, `DbSize`, `Project`, `BackupInfo`..., plus `DenisException` with machine-readable codes.
+- **Typed results and errors:** `QueryResult`, `TableInfo`, `ServerInfo`, `ProjectUsage`, `DbSize`..., plus `DenisException` with machine-readable codes (`DenisQuotaException` when a project is full).
+- **Everything the 1.2 driver had** (`sql`, `query`, `execute`, `tables`, `exists`, `keys`, `mget`, `info`, `save`), plus
+  project administration with the main token (`client.admin(mainToken)`), quotas and `QUERY` documents
+  (`queryGraph`). See [Migrating](#migrating) for the few renamed methods.
 
 ## Installation
 
@@ -17,14 +21,14 @@ Maven:
 <dependency>
     <groupId>github.hacimertgokhan.java-driver</groupId>
     <artifactId>denis-driver</artifactId>
-    <version>2.0.0</version>
+    <version>2.1.0</version>
 </dependency>
 ```
 
 Gradle:
 
 ```kotlin
-implementation("github.hacimertgokhan.java-driver:denis-driver:2.0.0")
+implementation("github.hacimertgokhan.java-driver:denis-driver:2.1.0")
 ```
 
 The artifact is published to GitHub Packages
@@ -32,7 +36,7 @@ The artifact is published to GitHub Packages
 local build instead:
 
 ```sh
-cd java-driver && mvn install        # installs denis-driver-2.0.0.jar into ~/.m2
+cd java-driver && mvn install        # installs denis-driver-2.1.0.jar into ~/.m2
 ```
 
 The jar declares the automatic module name `github.hacimertgokhan.drivers`.
@@ -98,7 +102,7 @@ client.close();
 ## API
 
 All methods below block until the reply arrives. The same methods, returning `CompletableFuture`s, are
-on `client.async()`, and on `Pipeline` (except the session commands and `importDump`).
+on `client.async()`, and on `Pipeline` (except the session commands, `importDump` and `admin`).
 
 ### Session and projects
 
@@ -114,7 +118,7 @@ on `client.async()`, and on `Pipeline` (except the session commands and `importD
 | `whoami()` | `WHOAMI` | `Map`: `group`, `admin`, `project` |
 | `ping()` | `PING` | `true` |
 | `hello()` | `HELLO` | `ServerHello`: `version()`, `protocol()`, `features()`, `hasFeature(...)` |
-| `info()` | `INFO` | nested `Map`: `server`, `clients`, `stats`, `memory`, `persistence`, `keyspace`, `project` |
+| `info()` | `INFO` | `ServerInfo`: `version()`, `uptimeSeconds()`, `openConnections()`, `commandsTotal()`, `cacheKeys()`, `persistedKeys()`, `projects()`, `memoryUsedMb()`, `project()` (usage and quota); `details()` / `section("persistence")` for the detailed sections `server`, `clients`, `stats`, `memory`, `persistence`, `keyspace`, `project`; `asMap()` for the whole reply |
 | `help()` | `HELP` | the server's command list |
 
 ### Keys
@@ -142,7 +146,7 @@ restarts). Reads prefer the cache value.
 | `ttl(key)` / `pttl(key)` | `TTL` | seconds (rounded up) / milliseconds; `-1` no TTL, `-2` no cache value |
 | `persist(key)` | `PERSIST` | removes the TTL |
 | `dbsize()` | `DBSIZE` | `DbSize`: `keys()`, `cache()`, `persistent()`, `tables()` |
-| `clear()` | `HEAVEN` | drops every cache value of the project (durable values stay) |
+| `clear()` | `HEAVEN` | drops every cache value of the project (durable values stay); returns how many (`-1` if the server does not say) |
 
 **Keys** are one word: no whitespace or control characters, and they must not start with `-&`.
 **Values** may be empty and may contain spaces, quotes and any Unicode. They cannot contain line breaks or
@@ -170,14 +174,58 @@ change.affected();           // 1
 change.lastRowId();          // for inserts, else null
 change.message();            // the server message, e.g. "1 row inserted"
 
-String text = client.sql("SELECT * FROM users");   // the 0.0.x text/JSON result ("data")
+int n = client.execute("DELETE FROM users WHERE age < ?", 18);   // affected rows; a SELECT here throws
+
+QueryResult any = client.sql("SHOW TABLES");       // structured result of any statement, no parameters
+any.type();                  // "rows", "affected" or "tables"
+any.asMap();                 // the reply object: {"type":"tables","tables":[...],"count":1}
+
+List<TableInfo> tables = client.tables();          // SHOW TABLES
+TableInfo users = client.describe("users");         // DESCRIBE users
+users.columnNames();         // ["id", "name", "age"]
+users.column("age").type();  // "INTEGER"
+users.rows();                // row count
+
+String text = client.sqlText("SELECT * FROM users");   // the text form: "OK: ..." or a JSON array of rows
 ```
+
+| method | returns |
+| --- | --- |
+| `query(sql, params...)`, `query(sql, List)` | `QueryResult` of any statement, parameters bound by the server |
+| `sql(statement)` | the same without parameters (1.2 name) |
+| `execute(sql, params...)`, `execute(sql, List)` | `int` affected rows; fails if the statement returns rows |
+| `tables()` / `describe(table)` | `List<TableInfo>` / `TableInfo`: `name()`, `columns()` (`name()`, `type()`, `get(attr)`), `rows()` |
+| `sqlText(statement)` | the text form (2.0's `sql`) |
+
+`QueryResult.type()` is `rows` (a query: `columns()`, `rows()`, `toMaps()`), `affected` (a change:
+`affected()`, `message()`, `lastRowId()`) or `tables` (`SHOW TABLES` / `DESCRIBE`: `tables()`, also readable
+as rows with the columns `name`, `columns`, `rows`). The server sends each row as a JSON object; `rows()` and
+`toMaps()` keep the column order of the reply's `columns` (the `SELECT` list).
 
 Parameters can be `null`, `String`, any `Number`, `Boolean`, `UUID`, enums (sent by name) or `java.time`
 values (sent as ISO text). A failed statement throws `DenisSqlException` (code `SQL`, `data()` = `"ERROR: ..."`).
-Statements may span several lines: `query` and `sql` send them as `QUERY {"sql":...,"params":[...]}`.
+Statements may span several lines: every SQL method sends them as `QUERY {"sql":...,"params":[...]}`.
 JSON does not distinguish `2.0` from `2`, so a whole `REAL` value comes back as a `Long`. Use
 `getDouble` for `REAL` columns.
+
+### QUERY documents: many reads in one round trip
+
+```java
+GraphResult r = client.queryGraph("{"
+        + " user: get(\"user:1\") { name address { city } }"
+        + " orders: table(\"orders\", where: \"user_id = 1\", order: \"total desc\", limit: 5) { id total }"
+        + " n: count(\"orders\")"
+        + "}");
+Map<String, Object> user = (Map<String, Object>) r.get("user");   // only the selected fields
+List<Object> orders = (List<Object>) r.get("orders");
+r.errors();                  // fields that failed: path() and error(); they are null in data()
+```
+
+The document is resolved on the server (`get`, `mget`, `prefix`, `keys`, `exists`, `count`, `table`, `sql`,
+`tables`, `describe`; all read-only, see `docs/PROTOCOL.md`). Objects come back as `Map`, arrays as `List`.
+`graph(document)` is the same method under the Node.js driver's name. Line breaks between tokens are sent as
+spaces; a syntax error throws `DenisException` whose `reply()` has
+the `offset`.
 
 ### Asynchronous API
 
@@ -234,6 +282,31 @@ List<BackupInfo> all = client.backups(); // BACKUPS
 
 Other groups get `DenisAuthException` with code `FORBIDDEN`.
 
+### Project administration and quotas (main token)
+
+`ADMIN <main-token> ...` manages every project with the server's `ddb-main-token` (`DDB_MAIN_TOKEN`). It
+needs no group login, so the client can be built without credentials:
+
+```java
+try (DenisClient client = DenisClient.builder().host("db.internal").build()) {
+    DenisAdmin admin = client.admin(System.getenv("DENIS_MAIN_TOKEN"));
+    String token = admin.create(10_000, 64L * 1024 * 1024);   // ADMIN CREATE: max keys, max bytes (0 = unlimited)
+    List<ProjectUsage> all = admin.list();                    // ADMIN LIST
+    ProjectUsage u = admin.usage(token);                      // ADMIN USAGE: cachedKeys(), cachedBytes(),
+                                                              //   persistedKeys(), persistedBytes(), maxKeys(), maxBytes()
+    admin.quota(token, 0, 0);                                 // ADMIN QUOTA: change or lift the limits
+    admin.importProject(knownToken);                          // ADMIN IMPORT: re-register a token (idempotent)
+    admin.flush(token);                                       // ADMIN FLUSH: delete its keys and tables
+    admin.drop(token);                                        // ADMIN DROP: delete the project
+    admin.async().list();                                     // the same as CompletableFutures
+}
+```
+
+Limits apply to the cache and the persisted store separately. A write over the limit throws
+`DenisQuotaException` (code `QUOTA`) with `resource()` (`"keys"` or `"bytes"`) and `limit()`. A multi-row
+`INSERT` may have stored the rows before the one that hit the limit. A wrong main token fails with
+`DenisAuthException` (code `AUTH`); the driver never puts the main token in its error messages.
+
 ### Raw commands
 
 ```java
@@ -253,6 +326,7 @@ server's reply object (or `null` for errors raised by the driver).
 | --- | --- | --- |
 | `AUTH`, `NOAUTH`, `NOPROJECT`, `LOCKED`, `FORBIDDEN` | `DenisAuthException` | wrong credentials, login or project missing, too many failed logins, admin required |
 | `SQL` | `DenisSqlException` | the statement failed; `data()` is the 0.0.x `ERROR: ...` text |
+| `QUOTA` | `DenisQuotaException` | the project reached its quota; `resource()`, `limit()` |
 | `CONNECTION` | `DenisConnectionException` | cannot connect, or no connection available within the command timeout |
 | `CLOSED` | `DenisConnectionException` | the connection or client closed while the command was in flight: **outcome unknown** |
 | `TIMEOUT` | `DenisTimeoutException` | no reply within the command timeout: **outcome unknown** |
@@ -262,6 +336,10 @@ server's reply object (or `null` for errors raised by the driver).
 | `OOM`, `PERSISTENCE`, `TYPE`, `RESERVED`, `USAGE`, `LIMIT`, `UNKNOWN`, `INTERNAL`, `IO` | `DenisException` | as reported by the server (see `docs/PROTOCOL.md`) |
 
 `GET` of a missing key is not an error: it returns `null`.
+
+Servers of the master line up to 0.6 send errors without a `code`. The driver then derives it from the documented
+messages (`not found`, `Please login first...` → `NOAUTH`, `Login failed`/`ADMIN refused` → `AUTH`,
+`quota exceeded` → `QUOTA`, `Unknown command` → `UNKNOWN`...) and treats other failures of SQL methods as `SQL`.
 
 ## Connections, thread safety and failure handling
 
@@ -293,7 +371,7 @@ server's reply object (or `null` for errors raised by the driver).
 
 ## Performance
 
-`PipelineBenchmark` (test scope) runs against a local server (Denis 0.1.0-alpha, Windows 11, 32 cores,
+`PipelineBenchmark` (test scope) runs against a local server (Denis 0.7.0, Windows 11, 32 cores,
 loopback, 32-byte values, pool of 4 connections):
 
 | scenario | ops/s |
@@ -314,15 +392,47 @@ DENIS_PORT=5142 DENIS_GROUP=ci DENIS_PASSWORD=ci-password \
 
 (On Windows, separate the class path with `;`.)
 
-## Migrating from 1.x
+## Migrating
 
-- Methods no longer throw `IOException`: everything is an unchecked `DenisException`. Remove the
-  `catch (IOException e)` blocks around driver calls (the compiler will point them out).
-- `delete(key)` now returns whether the key existed. `ping()` returns `true` or throws.
+2.1 merges the two driver lines: the released 1.2 (master) and 2.0. Where both had a method with the same name
+but different behaviour, 2.1 keeps the 1.2 behaviour under the released name and gives the 2.0 behaviour a new
+name.
+
+### From 1.2 (and 1.1)
+
+The method names are the same; results are typed instead of `org.json` objects:
+
+| 1.2 | 2.1 |
+| --- | --- |
+| `JSONObject sql(stmt)` | `QueryResult sql(stmt)`: `type()`, `columns()`, `rows()`, `toMaps()`, `affected()`, `tables()`; `asMap()` is the former `JSONObject` as a `Map` |
+| `JSONArray query(select)` | `QueryResult query(sql, params...)`: `toMaps()` is the former row array; a statement without rows returns its `affected()` instead of throwing |
+| `int execute(stmt)` | `int execute(sql, params...)` (unchanged, now with optional parameters) |
+| `JSONArray tables()` | `List<TableInfo> tables()`, plus `describe(table)` |
+| `JSONObject info()` | `ServerInfo info()`: typed accessors, `get("version")`, `has(...)`, `asMap()` |
+| `Map mget(List)`, `List keys(pattern)`, `boolean exists(key)` | unchanged |
+| `void save()`, `void delete(key)`, `void clear()` | return `SaveInfo`, `boolean` (existed), `long` (removed); ignoring the result still compiles |
+| `throws IOException` | unchecked `DenisException` everywhere; remove the `catch (IOException e)` blocks |
+| `new DenisException(String)` on any failure | subclasses and `code()`: `DenisAuthException`, `DenisSqlException`, `DenisQuotaException`... |
+
 - `ConnectionManager`, `AuthOperation` and `DataOperation` were removed. Use `DenisClient` (or
   `client.command(...)` for raw lines).
 - `org.json` is no longer a dependency. If your code used it through the driver, add it yourself.
 - Clients are thread-safe now; the one-client-per-thread workaround is no longer needed.
+- `new DenisClient(host, port)`, `connect()`, `login`, `authenticate`, `createProject`, `getToken`, `get`,
+  `set(key, value[, persist])`, `update` and `ping` work as before.
+
+### From 2.0
+
+| 2.0 | 2.1 |
+| --- | --- |
+| `String sql(stmt)` (text form) | `String sqlText(stmt)`; `sql(stmt)` now returns the structured `QueryResult` (1.2 semantics) |
+| `Map info()` (the detailed sections) | `info().details()`, or `info().section("stats")`; `info()` now returns `ServerInfo` (1.2 semantics: the top-level summary) |
+| `void clear()` / `CompletableFuture<Void> clear()` | returns the number of removed cache values (`long` / `CompletableFuture<Long>`) |
+| `QueryResult.isResultSet()` | unchanged; `type()` tells `rows`, `affected` and `tables` apart |
+
+Code that ignored the results of `sql` or `clear` compiles unchanged, but must be recompiled (the return types
+changed). On `Pipeline`, `execute()` without arguments still sends the batch; `execute(sql, params...)` queues a
+statement.
 
 ## Tests
 
@@ -332,5 +442,5 @@ DENIS_INTEGRATION=1 DENIS_PORT=5142 DENIS_GROUP=ci DENIS_PASSWORD=ci-password mv
 ```
 
 The integration tests need an admin group (for `SAVE`/`BACKUP`). They create and delete their own
-projects. `DENIS_HOST` defaults to `127.0.0.1`, `DENIS_PORT` to `5142`, `DENIS_GROUP` to `ci` and
+projects. Set `DENIS_MAIN_TOKEN` to the server's main token to also run the `ADMIN`/quota test. `DENIS_HOST` defaults to `127.0.0.1`, `DENIS_PORT` to `5142`, `DENIS_GROUP` to `ci` and
 `DENIS_PASSWORD` to `ci-password`.

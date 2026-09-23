@@ -3,17 +3,20 @@
 /**
  * Node.js client for Denis Database (wire protocol version 2, see docs/PROTOCOL.md).
  *
- * Denis speaks a line protocol over TCP and answers every command line with
- * exactly one reply line, in order. Every connection first switches to
- * `MODE json` (one JSON object per reply), logs in (`LIN`) and selects a
- * project (`AUTH`); the three lines are sent in one write.
+ * Two transports, one API (DenisCommands):
  *
- * Because replies arrive in order, a connection does not need to wait for a
- * reply before sending the next command: each connection keeps a FIFO of
- * pending replies and commands are written as soon as they are issued
- * (pipelining). The client keeps a small pool of such connections and sends
- * each command to the least loaded one. Commands issued in the same tick are
- * coalesced into one socket write.
+ *  - DenisClient talks TCP to a server you run. Every connection first
+ *    switches to `MODE json` (one JSON object per reply), logs in (`LIN`) and
+ *    selects a project (`AUTH`); the three lines are sent in one write.
+ *    Replies arrive in order, so a connection does not wait for a reply before
+ *    sending the next command: each connection keeps a FIFO of pending replies
+ *    and commands are written as soon as they are issued (pipelining). The
+ *    client keeps a small pool of such connections, opened on demand, and
+ *    sends each command to the least loaded one. Commands issued in the same
+ *    tick are coalesced into one socket write. Dropped connections are
+ *    re-opened with backoff and re-run the handshake.
+ *
+ *  - DenisCloud talks HTTPS to the Denis Cloud gateway with an API key.
  *
  *   const { DenisClient } = require("denis-client");
  *   const denis = new DenisClient({ host, port, group, password, token });
@@ -28,15 +31,18 @@ const { EventEmitter } = require("node:events");
 class DenisError extends Error {
   /**
    * @param {string} message
-   * @param {string} code  the server's `code` (NOTFOUND, AUTH, SQL, OOM, BUSY, ...) or a client code:
-   *                       ECONN | ETIMEOUT | ECLOSED | EINVAL | EPROTO | ESERVER (server error without a code)
-   * @param {object} [reply] the server's JSON reply, when there was one
+   * @param {string} code  ECONN | ETIMEOUT | EAUTH | EPROTO | ESERVER | ECLOSED | EINVAL | ELIMIT
+   * @param {object} [reply] the server's JSON reply, when there was one; its `code`
+   *                         (SQL, NOTFOUND, QUOTA, AUTH, ...) is copied to `serverCode`
    */
   constructor(message, code, reply) {
     super(message);
     this.name = "DenisError";
     this.code = code;
-    if (reply) this.reply = reply;
+    if (reply) {
+      this.reply = reply;
+      if (typeof reply.code === "string") this.serverCode = reply.code;
+    }
   }
 }
 
@@ -51,6 +57,8 @@ const DEFAULTS = {
   // create a project with AUTH CREATE when no token is given
   createProject: false,
   poolSize: 4,
+  // false = one command in flight per connection (the 0.5 option; same as maxPending: 1)
+  pipeline: true,
   connectTimeout: 5000,
   commandTimeout: 10000,
   reconnect: RECONNECT_DEFAULTS,
@@ -112,8 +120,15 @@ function assertPositive(n, what) {
   }
 }
 
-function replyError(reply, fallback) {
-  return new DenisError(reply.error || fallback || "command failed", reply.code || "ESERVER", reply);
+function assertCount(n, what) {
+  if (n !== undefined && n !== null && (!Number.isSafeInteger(n) || n < 0)) {
+    throw new DenisError(`${what} must be a non-negative integer`, "EINVAL");
+  }
+}
+
+/** An ok:false reply as a DenisError: ESERVER (EAUTH for LIN/AUTH), the server's code in `serverCode`. */
+function replyError(reply, fallback, code = "ESERVER") {
+  return new DenisError(reply.error || fallback || "command failed", code, reply);
 }
 
 function expectOk(reply) {
@@ -149,26 +164,37 @@ function deadlineOf(timeout) {
   return timeout > 0 && Number.isFinite(timeout) ? Date.now() + timeout : 0;
 }
 
-function sqlResult(reply) {
-  expectOk(reply);
-  const rows = reply.rows || [];
-  return {
-    columns: reply.columns || [],
-    rows,
-    count: reply.count ?? rows.length,
-    affected: reply.affected ?? 0,
-    lastRowId: reply.lastRowId ?? null,
-    message: reply.message ?? null,
-  };
+function rowObject(columns, row) {
+  const object = {};
+  for (let i = 0; i < columns.length; i++) object[columns[i]] = row[i];
+  return object;
 }
 
-function rowsToObjects(result) {
-  const { columns, rows } = result;
-  return rows.map((row) => {
-    const object = {};
-    for (let i = 0; i < columns.length; i++) object[columns[i]] = row[i];
-    return object;
-  });
+/**
+ * The structured SQL result (the reply without `ok`):
+ *   { type: "rows", columns, rows: [{col: value}], count }
+ *   { type: "affected", affected, message, lastRowId }
+ *   { type: "tables", tables: [{name, columns, rows}], count }
+ * Replies of a 0.1 server (no `type`, rows as arrays) are converted to that shape.
+ */
+function sqlResult(reply) {
+  const result = strip(reply);
+  if (!result.type) {
+    if (Array.isArray(result.columns) && (result.columns.length > 0 || Array.isArray(result.rows)) && result.affected === undefined) {
+      result.type = "rows";
+    } else {
+      result.type = "affected";
+      if (result.affected === undefined) result.affected = 0;
+    }
+  }
+  if (result.type === "rows") {
+    const columns = Array.isArray(result.columns) ? result.columns : [];
+    const rows = Array.isArray(result.rows) ? result.rows : [];
+    result.columns = columns;
+    result.rows = rows.map((row) => (Array.isArray(row) ? rowObject(columns, row) : row));
+    if (result.count === undefined || result.count === null) result.count = result.rows.length;
+  }
+  return result;
 }
 
 /** Array-backed queue with O(1) shift. */
@@ -338,7 +364,10 @@ class DenisConnection extends EventEmitter {
     });
   }
 
-  /** MODE json, LIN, AUTH — pipelined in one write; AUTH CREATE when asked to create a project. */
+  /**
+   * MODE json, LIN, AUTH — pipelined in one write; AUTH CREATE when asked to create a project.
+   * A refused MODE rejects with EPROTO, a refused LIN or AUTH with EAUTH (the server's code in `serverCode`).
+   */
   async handshake() {
     const { group, password, createProject } = this.options;
     const lines = ["MODE json"];
@@ -364,15 +393,17 @@ class DenisConnection extends EventEmitter {
       const reply = result.value;
       if (reply.ok) continue;
       if (i === 0) {
-        throw new DenisError(`server refused MODE json: ${reply.error || "old server?"}`, reply.code || "EPROTO", reply);
+        // a coded reply is a protocol-2 server refusing the connection (LIMIT, ...), not an old server
+        if (reply.code) throw replyError(reply, "connection refused");
+        throw new DenisError(`server refused MODE json: ${reply.error || "old server?"}`, "EPROTO", reply);
       }
-      throw replyError(reply, lines[i].startsWith("LIN") ? "login failed" : "AUTH failed");
+      throw replyError(reply, lines[i].startsWith("LIN") ? "login failed" : "AUTH failed", "EAUTH");
     }
     if (!this.token && createProject) {
       const created = await this.raw("AUTH CREATE");
-      if (!created.ok || !created.token) throw replyError(created, "AUTH CREATE failed");
+      if (!created.ok || !created.token) throw replyError(created, "AUTH CREATE failed", "EAUTH");
       const auth = await this.raw(`AUTH ${created.token}`);
-      if (!auth.ok) throw replyError(auth, "AUTH failed");
+      if (!auth.ok) throw replyError(auth, "AUTH failed", "EAUTH");
       this.token = created.token;
     }
     this.ready = true;
@@ -554,16 +585,15 @@ class DenisConnection extends EventEmitter {
 // ======================================================================= commands
 
 /**
- * Every key-value / SQL / admin command as a builder returning
- * `{ line, parse }` (or `{ value }` when no round trip is needed). Builders
- * validate their arguments synchronously (EINVAL) and are shared by
- * DenisClient (one promise per command) and DenisPipeline (one batch).
- * They are called with `this` = the client.
+ * Every command as a builder returning `{ line, parse }` (or `{ value }` when
+ * no round trip is needed). Builders validate their arguments synchronously
+ * (EINVAL) and are shared by every transport (one promise per command) and
+ * by DenisPipeline (one batch). They are called with `this` = the client.
  */
 const COMMANDS = {
-  /** PING -> true */
+  /** PING -> whether the server answered ok (false, not an error, on ok:false) */
   ping() {
-    return { line: "PING", parse: (r) => (expectOk(r), true) };
+    return { line: "PING", parse: (r) => r.ok === true };
   },
 
   /** HELLO -> {server, version, protocol, features, loggedIn} */
@@ -590,12 +620,12 @@ const COMMANDS = {
     };
   },
 
-  /** SET [-&save] [-&ttl=s] -> true; non-strings are JSON.stringify-ed */
+  /** SET [-&cache -&save] [-&ttl=s] -> true; non-strings are JSON.stringify-ed */
   set(key, value, opts = {}) {
     assertKey(key);
     const text = encodeValue(value);
     let flags = "";
-    if (opts.persist) flags += " -&save";
+    if (opts.persist) flags += " -&cache -&save";
     if (opts.ttl !== undefined && opts.ttl !== null) {
       assertPositive(opts.ttl, "ttl");
       flags += ` -&ttl=${opts.ttl}`;
@@ -613,7 +643,7 @@ const COMMANDS = {
     return { line, parse: okTrue };
   },
 
-  /** DEL [-&cache|-&protobuff] -> whether the key existed */
+  /** DEL [-&cache|-&protobuff] -> whether the key existed (true when the server does not say) */
   del(key, opts = {}) {
     assertKey(key);
     const flag = opts.cache && !opts.protobuf ? " -&cache" : opts.protobuf && !opts.cache ? " -&protobuff" : "";
@@ -632,11 +662,11 @@ const COMMANDS = {
       throw new DenisError("pattern must be a non-empty glob without whitespace", "EINVAL");
     }
     let line = `KEYS ${pattern}`;
-    const layer = opts.layer || "any";
+    const layer = (opts && opts.layer) || "any";
     if (layer === "cache") line += " -&cache";
     else if (layer === "persistent") line += " -&protobuff";
     else if (layer !== "any") throw new DenisError(`layer must be any, cache or persistent: ${layer}`, "EINVAL");
-    if (opts.limit !== undefined && opts.limit !== null) {
+    if (opts && opts.limit !== undefined && opts.limit !== null) {
       if (!Number.isInteger(opts.limit) || opts.limit < 1) throw new DenisError("limit must be a positive integer", "EINVAL");
       line += ` -&limit=${opts.limit}`;
     }
@@ -648,7 +678,14 @@ const COMMANDS = {
     if (!Array.isArray(keys)) throw new DenisError("mget expects an array of keys", "EINVAL");
     if (keys.length === 0) return { value: {} };
     keys.forEach(assertKey);
-    return { line: `MGET ${keys.join(" ")}`, parse: (r) => expectOk(r).data || {} };
+    return {
+      line: `MGET ${keys.join(" ")}`,
+      parse: (r) => {
+        expectOk(r);
+        const values = r.values ?? r.data;
+        return values && typeof values === "object" ? values : {};
+      },
+    };
   },
 
   /** INCR [delta] [-&save] -> the new value */
@@ -696,34 +733,99 @@ const COMMANDS = {
     return { line: "HEAVEN", parse: okTrue };
   },
 
-  /** SQL <statement> -> the 0.0.x text result (reply.data) */
-  sql(statement) {
-    if (typeof statement !== "string" || statement.trim().length === 0 || /[\r\n]/.test(statement)) {
-      throw new DenisError("statement must be a non-empty single line (use query() for multi-line SQL)", "EINVAL");
-    }
-    return { line: `SQL ${statement}`, parse: (r) => expectOk(r).data };
+  /** SAVE -> true (flush the persisted store now; use command("SAVE") for the snapshot details) */
+  save(opts = {}) {
+    return { line: "SAVE", parse: okTrue, timeout: opts && opts.timeout };
   },
 
-  /** QUERY {"sql","params"} -> {columns, rows, count, affected, lastRowId, message} */
-  query(sql, params = []) {
-    return { line: queryLine(sql, params), parse: sqlResult };
+  /** INFO -> the statistics object (the reply without `ok`) */
+  info() {
+    return { line: "INFO", parse: strip };
   },
 
-  /** QUERY -> rows as objects keyed by column name */
-  queryObjects(sql, params = []) {
-    return { line: queryLine(sql, params), parse: (r) => rowsToObjects(sqlResult(r)) };
+  /** HELP -> [{name, usage, description, needsLogin, needsProject}] */
+  help() {
+    return { line: "HELP", parse: (r) => expectOk(r).commands || [] };
+  },
+
+  /** QUERY { ... } (GraphQL-shaped reads) -> {data, errors} */
+  graph(document) {
+    if (typeof document !== "string" || !document.trim()) throw new DenisError("document is required", "EINVAL");
+    return {
+      line: "QUERY " + document.replace(/[\r\n]+/g, " ").trim(),
+      parse: (r) => {
+        const { data, errors } = expectOk(r);
+        return { data, errors: errors || [] };
+      },
+    };
+  },
+
+  /** Alias of graph(). */
+  queryGraph(document) {
+    return COMMANDS.graph(document);
+  },
+
+  /** SQL <statement> (or QUERY {"sql","params"} with params) -> the structured result */
+  sql(statement, params) {
+    return { line: sqlLine(statement, params), parse: sqlResult };
+  },
+
+  /** sql() for SELECT -> the row objects */
+  query(sql, params) {
+    return { line: sqlLine(sql, params), parse: rowsOf };
+  },
+
+  /** Alias of query() (the 1.0 name). */
+  queryObjects(sql, params) {
+    return { line: sqlLine(sql, params), parse: rowsOf };
+  },
+
+  /** sql() for INSERT/UPDATE/DELETE/DDL -> the affected row count */
+  execute(sql, params) {
+    return {
+      line: sqlLine(sql, params),
+      parse: (r) => {
+        const result = sqlResult(r);
+        if (result.type !== "affected") throw new DenisError(`expected an affected count, got ${result.type}`, "EPROTO", result);
+        return result.affected;
+      },
+    };
+  },
+
+  /** SHOW TABLES -> [{name, columns: [{name, type}], rows}] */
+  tables() {
+    return {
+      line: "SQL SHOW TABLES",
+      parse: (r) => {
+        const result = sqlResult(r);
+        if (result.type !== "tables") throw new DenisError(`expected tables, got ${result.type}`, "EPROTO", result);
+        return result.tables || [];
+      },
+    };
+  },
+
+  /** DESCRIBE <table> -> {name, columns, rows}, or null when the table does not exist */
+  describe(table) {
+    if (typeof table !== "string" || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(table)) throw new DenisError("invalid table name", "EINVAL");
+    return {
+      line: `SQL DESCRIBE ${table}`,
+      parse: (r) => {
+        if (!r.ok && /not found/i.test(r.error || "")) return null;
+        const result = sqlResult(r);
+        if (result.type !== "tables") throw new DenisError(`expected tables, got ${result.type}`, "EPROTO", result);
+        return (result.tables && result.tables[0]) || null;
+      },
+    };
   },
 
   /** DUMP -> the whole project (without "ok"), the input of import() */
   dump(opts = {}) {
-    return { line: "DUMP", parse: strip, timeout: opts.timeout };
+    return { line: "DUMP", parse: strip, timeout: opts && opts.timeout };
   },
+};
 
-  /** INFO -> reply.info */
-  info() {
-    return { line: "INFO", parse: (r) => expectOk(r).info };
-  },
-
+/** Commands that only make sense on a TCP session (AUTH, admin groups, the session's identity). */
+const SESSION_COMMANDS = {
   /** WHOAMI -> {group, admin, project} */
   whoami() {
     return {
@@ -753,20 +855,15 @@ const COMMANDS = {
       line: `AUTH DELETE ${token}`,
       parse: (r) => {
         expectOk(r);
-        if (client && token === client._token) client._projectDeleted();
+        if (client && typeof client._projectDeleted === "function" && token === client._token) client._projectDeleted();
         return true;
       },
     };
   },
 
-  /** SAVE (admin) -> {message, bytes, records, millis} */
-  save(opts = {}) {
-    return { line: "SAVE", parse: strip, timeout: opts.timeout };
-  },
-
   /** BACKUP (admin) -> {message, name, path, bytes, createdAt} */
   backup(opts = {}) {
-    return { line: "BACKUP", parse: strip, timeout: opts.timeout };
+    return { line: "BACKUP", parse: strip, timeout: opts && opts.timeout };
   },
 
   /** BACKUPS (admin) -> {backups: [{name, path, bytes, createdAt}], directory} */
@@ -777,7 +874,7 @@ const COMMANDS = {
   /** Any protocol line -> the parsed reply object (never rejects on ok:false) */
   command(line, opts = {}) {
     assertLine(line);
-    return { line, parse: null, timeout: opts.timeout };
+    return { line, parse: null, timeout: opts && opts.timeout };
   },
 };
 
@@ -792,6 +889,12 @@ function getValue(reply) {
   throw replyError(reply);
 }
 
+function rowsOf(reply) {
+  const result = sqlResult(reply);
+  if (result.type !== "rows") throw new DenisError(`expected rows, got ${result.type}`, "EPROTO", result);
+  return result.rows;
+}
+
 function counter(command, key, delta, opts) {
   assertKey(key);
   if (!Number.isSafeInteger(delta)) throw new DenisError("delta must be an integer", "EINVAL");
@@ -799,13 +902,20 @@ function counter(command, key, delta, opts) {
   return { line, parse: (r) => expectOk(r).value };
 }
 
-function queryLine(sql, params) {
-  if (typeof sql !== "string" || sql.trim().length === 0) {
+/** Without params: `SQL <statement>` (one line). With params (an array, even empty): `QUERY {"sql","params"}`. */
+function sqlLine(statement, params) {
+  if (typeof statement !== "string" || statement.trim().length === 0) {
     throw new DenisError("sql must be a non-empty string", "EINVAL");
+  }
+  if (params === undefined || params === null) {
+    if (/[\r\n]/.test(statement)) {
+      throw new DenisError("query must be a single line (pass params, e.g. [], to send multi-line SQL)", "EINVAL");
+    }
+    return `SQL ${statement}`;
   }
   if (!Array.isArray(params)) throw new DenisError("params must be an array", "EINVAL");
   // JSON.stringify escapes line breaks, so multi-line SQL is fine here
-  return `QUERY ${JSON.stringify({ sql, params }, jsonReplacer)}`;
+  return `QUERY ${JSON.stringify({ sql: statement, params }, jsonReplacer)}`;
 }
 
 /**
@@ -897,6 +1007,72 @@ function importLines(data, replace, limit) {
   return lines;
 }
 
+// ======================================================================= shared API
+
+/**
+ * The key-value / SQL API shared by every transport. A subclass implements
+ * `command(line)` -> reply; every other method is built on top of it
+ * (DenisClient overrides `_exec` to pipeline over its pool).
+ */
+class DenisCommands extends EventEmitter {
+  /** Send one protocol line and resolve with the parsed reply object. */
+  async command(line) { // eslint-disable-line no-unused-vars
+    throw new DenisError("command() is not implemented", "EINVAL");
+  }
+
+  /** Run one line and pass the reply through `parse`. */
+  async _exec(line, parse) {
+    const reply = await this.command(line);
+    return parse ? parse(reply) : reply;
+  }
+
+  _run(build, args) {
+    let cmd;
+    try {
+      cmd = build.apply(this, args);
+    } catch (err) {
+      return Promise.reject(err);
+    }
+    if (Object.prototype.hasOwnProperty.call(cmd, "value")) return Promise.resolve(cmd.value);
+    return this._exec(cmd.line, cmd.parse, cmd.timeout);
+  }
+
+  /** command() that throws a DenisError (ESERVER) on ok:false (kept from 0.5). */
+  async _expectOk(line) {
+    return this._exec(line, expectOk);
+  }
+
+  /** Default chunk size of import(). */
+  get _importChunkBytes() {
+    return (this.options && this.options.importChunkBytes) || DEFAULTS.importChunkBytes;
+  }
+
+  /**
+   * IMPORT a DUMP object (or its JSON text). Large dumps are split into
+   * several IMPORT lines, sent one after another.
+   * @returns {Promise<{persistent: number, cache: number, tables: number, rows: number}>}
+   */
+  async import(data, opts = {}) {
+    const lines = importLines(data, opts.replace, opts.chunkBytes || this._importChunkBytes);
+    const total = { persistent: 0, cache: 0, tables: 0, rows: 0 };
+    for (const json of lines) {
+      let imported;
+      try {
+        imported = await this._exec(`IMPORT ${json}`, (r) => expectOk(r).imported || {}, opts.timeout);
+      } catch (err) {
+        err.imported = total; // what made it in before the failure
+        throw err;
+      }
+      for (const field of Object.keys(total)) {
+        // an "append" line continues a table that an earlier line created: count the table once
+        if (field === "tables" && json.includes('"append":true')) continue;
+        total[field] += Number(imported[field] || 0);
+      }
+    }
+    return total;
+  }
+}
+
 // ======================================================================= pipeline
 
 /**
@@ -973,7 +1149,7 @@ class DenisPipeline {
   }
 }
 
-// ======================================================================= client
+// ======================================================================= TCP client
 
 function normalizeReconnect(value) {
   if (value === false || value === null) return null;
@@ -985,20 +1161,27 @@ function normalizeReconnect(value) {
 function isFatal(err) {
   if (!(err instanceof DenisError)) return false;
   if (err.code === "EINVAL" || err.code === "EPROTO") return true;
-  return Boolean(err.reply) && !["LIMIT", "BUSY", "LOCKED", "INTERNAL"].includes(err.code);
+  return Boolean(err.reply) && !["LIMIT", "BUSY", "LOCKED", "INTERNAL"].includes(err.serverCode);
 }
+
+/** After a failed attempt to grow the pool, wait this long before trying again. */
+const GROW_PAUSE_MS = 1000;
 
 /**
  * A pool of pipelined, authenticated connections with the key-value / SQL API.
+ * Connections are opened on demand: the first command opens one, and another
+ * is opened (up to poolSize) whenever every open connection is busy.
+ * connect() opens the whole pool at once.
  *
  * Events: "connect" (a pooled connection is ready), "reconnect" ({attempt, delay, error}
  * before each reconnect attempt), "error" (gave up reconnecting; only emitted when a
  * listener is attached), "close" (after close()).
  */
-class DenisClient extends EventEmitter {
+class DenisClient extends DenisCommands {
   constructor(options = {}) {
     super();
     const o = { ...DEFAULTS, ...options, reconnect: normalizeReconnect(options.reconnect) };
+    if (options.pipeline === false && options.maxPending === undefined) o.maxPending = 1;
     if (!Number.isInteger(o.poolSize) || o.poolSize < 1) throw new DenisError("poolSize must be an integer >= 1", "EINVAL");
     if (!Number.isInteger(o.maxPending) || o.maxPending < 1) throw new DenisError("maxPending must be an integer >= 1", "EINVAL");
     this.options = o;
@@ -1008,6 +1191,8 @@ class DenisClient extends EventEmitter {
     this._waiting = new Fifo(); // units waiting for a connection with room
     this._waitTimer = new DeadlineTimer(() => this._checkWaiting());
     this._starting = null;
+    this._growing = null;
+    this._growPausedUntil = 0;
     this._closing = false;
     this._closePromise = null;
     this._onReply = () => {
@@ -1020,16 +1205,30 @@ class DenisClient extends EventEmitter {
     return this._token;
   }
 
-  /** Open the pool eagerly (optional: commands connect on demand). Resolves to the client. */
+  /** Open the whole pool now (optional: commands connect on demand). Resolves to the client. */
   async connect() {
     if (this._closing) throw new DenisError("client is closed", "ECLOSED");
-    await this._start();
+    await this._start(true);
     return this;
   }
 
   /** A new pipeline bound to this client. */
   pipeline() {
     return new DenisPipeline(this);
+  }
+
+  /**
+   * Several raw protocol lines in one write on one connection; resolves with
+   * the reply objects in order (ok:false replies included, like command()).
+   */
+  async batch(lines, opts = {}) {
+    if (!Array.isArray(lines) || lines.length === 0) throw new DenisError("batch takes a non-empty array of commands", "EINVAL");
+    const pipeline = this.pipeline();
+    for (const line of lines) pipeline.command(line);
+    const results = await pipeline.exec(opts);
+    const failed = results.find((r) => r instanceof DenisError);
+    if (failed) throw failed;
+    return results;
   }
 
   /** Switch every pooled connection (and future ones) to another project. */
@@ -1046,28 +1245,42 @@ class DenisClient extends EventEmitter {
   }
 
   /**
-   * IMPORT a DUMP object (or its JSON text). Large dumps are split into
-   * several IMPORT lines, sent one after another.
-   * @returns {Promise<{persistent: number, cache: number, tables: number, rows: number}>}
+   * Project administration with the server's main token (ddb-main-token); no
+   * login needed. Every method resolves with the server's reply fields.
+   *
+   *   const admin = denis.admin(process.env.DENIS_MAIN_TOKEN);
+   *   const { token } = await admin.create({ maxKeys: 50000, maxBytes: 10 * 1024 * 1024 });
+   *   await admin.usage(token);   // { token, usage: {cachedKeys, cachedBytes, persistedKeys, persistedBytes}, quota }
    */
-  async import(data, opts = {}) {
-    const lines = importLines(data, opts.replace, opts.chunkBytes || this.options.importChunkBytes);
-    const total = { persistent: 0, cache: 0, tables: 0, rows: 0 };
-    for (const json of lines) {
-      let imported;
-      try {
-        imported = await this._request(`IMPORT ${json}`, (r) => expectOk(r).imported || {}, opts.timeout);
-      } catch (err) {
-        err.imported = total; // what made it in before the failure
-        throw err;
-      }
-      for (const field of Object.keys(total)) {
-        // an "append" line continues a table that an earlier line created: count the table once
-        if (field === "tables" && json.includes('"append":true')) continue;
-        total[field] += Number(imported[field] || 0);
-      }
-    }
-    return total;
+  admin(mainToken) {
+    if (typeof mainToken !== "string" || mainToken.length === 0) throw new DenisError("mainToken is required", "EINVAL");
+    if (/\s/.test(mainToken)) throw new DenisError("mainToken must not contain whitespace", "EINVAL");
+    const run = async (line) => this._request(`ADMIN ${mainToken} ${line}`, strip);
+    const quotaArgs = (quota) => {
+      const q = quota || {};
+      if (q.maxKeys === undefined && q.maxBytes === undefined) return "";
+      assertCount(q.maxKeys, "maxKeys");
+      assertCount(q.maxBytes, "maxBytes");
+      return ` ${q.maxKeys ?? 0} ${q.maxBytes ?? 0}`;
+    };
+    const withToken = (fn) => async (token, ...rest) => {
+      assertWord(token, "token");
+      return fn(token, ...rest);
+    };
+    return {
+      list: async () => (await run("LIST")).projects,
+      create: async (quota) => run(`CREATE${quotaArgs(quota)}`),
+      // adopt a token issued before the engine's registry was lost; idempotent
+      import: withToken((token, quota) => run(`IMPORT ${token}${quotaArgs(quota)}`)),
+      usage: withToken((token) => run(`USAGE ${token}`)),
+      quota: withToken((token, maxKeys, maxBytes) => {
+        assertCount(maxKeys, "maxKeys");
+        assertCount(maxBytes, "maxBytes");
+        return run(`QUOTA ${token} ${maxKeys ?? 0} ${maxBytes ?? 0}`);
+      }),
+      flush: withToken((token) => run(`FLUSH ${token}`).then(() => true)),
+      drop: withToken((token) => run(`DROP ${token}`).then(() => true)),
+    };
   }
 
   /** Close every connection gracefully (EXIT after the commands in flight). */
@@ -1098,15 +1311,8 @@ class DenisClient extends EventEmitter {
 
   // ------------------------------------------------------------------- dispatch
 
-  _run(build, args) {
-    let cmd;
-    try {
-      cmd = build.apply(this, args);
-    } catch (err) {
-      return Promise.reject(err);
-    }
-    if (Object.prototype.hasOwnProperty.call(cmd, "value")) return Promise.resolve(cmd.value);
-    return this._request(cmd.line, cmd.parse, cmd.timeout);
+  _exec(line, parse, timeout) {
+    return this._request(line, parse, timeout);
   }
 
   _request(line, parse, timeout) {
@@ -1125,13 +1331,16 @@ class DenisClient extends EventEmitter {
     if (this._waiting.length === 0) {
       const conn = this._pick();
       if (conn) {
+        const busy = conn.pending.length > 0;
         conn._enqueueUnit(unit);
+        if (busy) this._grow();
         return;
       }
     }
     this._waiting.push(unit);
     this._waitTimer.arm(unit.deadline);
     this._ensureConnecting();
+    this._grow();
   }
 
   _pick() {
@@ -1164,6 +1373,7 @@ class DenisClient extends EventEmitter {
       conn._enqueueUnit(unit);
     }
     if (this._waiting.length === 0) this._waitTimer.clear();
+    else this._grow();
   }
 
   _checkWaiting() {
@@ -1208,12 +1418,12 @@ class DenisClient extends EventEmitter {
   // ------------------------------------------------------------------- connections
 
   /**
-   * Open every idle slot: the first alone (it may create the project), the
-   * rest in parallel. Rejects when the first cannot be opened; the rest fall
-   * back to the reconnect logic.
+   * Open the first connection when none is ready (it may create the project),
+   * and with `all` every other idle slot in parallel. Rejects when the first
+   * cannot be opened; the rest fall back to the reconnect logic.
    */
-  _start() {
-    if (this._starting) return this._starting;
+  _start(all = false) {
+    if (this._starting) return all ? this._starting.then(() => this._start(true)) : this._starting;
     const starting = (async () => {
       const idle = this._slots.filter((s) => s.state === "idle" || s.state === "dead");
       if (idle.length === 0) return;
@@ -1228,6 +1438,7 @@ class DenisClient extends EventEmitter {
       } else {
         rest.unshift(first);
       }
+      if (!all) return;
       await Promise.all(rest.map((slot) => this._open(slot).catch((err) => {
         if (!this._closing) this._reconnect(slot, err);
       })));
@@ -1238,6 +1449,27 @@ class DenisClient extends EventEmitter {
     };
     starting.then(done, done);
     return starting;
+  }
+
+  /** Every open connection is busy: open one more idle slot in the background. */
+  _grow() {
+    if (this._closing || this._growing || this._starting || Date.now() < this._growPausedUntil) return;
+    if (this._readyConnections().length === 0) return; // the start / reconnect logic owns an empty pool
+    const slot = this._slots.find((s) => s.state === "idle");
+    if (!slot) return;
+    const growing = this._open(slot).then(
+      () => true,
+      () => {
+        this._growPausedUntil = Date.now() + GROW_PAUSE_MS;
+        return false;
+      },
+    );
+    this._growing = growing;
+    growing.then((opened) => {
+      if (this._growing === growing) this._growing = null;
+      // commands still queued (maxPending reached everywhere): keep growing
+      if (opened && this._waiting.length > 0) this._grow();
+    });
   }
 
   async _open(slot) {
@@ -1257,7 +1489,8 @@ class DenisClient extends EventEmitter {
       // use() may have switched projects while this connection was handshaking
       while (this._token && conn.token !== this._token && !conn.closed) {
         const token = this._token;
-        expectOk(await conn.raw(`AUTH ${token}`));
+        const reply = await conn.raw(`AUTH ${token}`);
+        if (!reply.ok) throw replyError(reply, "AUTH failed", "EAUTH");
         conn.token = token;
       }
       if (this._closing) throw new DenisError("client is closed", "ECLOSED");
@@ -1355,7 +1588,7 @@ class DenisClient extends EventEmitter {
       conn._enqueue({
         line: `AUTH ${token}`,
         parse: (r) => {
-          expectOk(r);
+          if (!r.ok) throw replyError(r, "AUTH failed", "EAUTH");
           conn.token = token;
           return true;
         },
@@ -1391,13 +1624,155 @@ class DenisClient extends EventEmitter {
   }
 }
 
+// ======================================================================= Denis Cloud
+
+/** The Denis Cloud gateway takes commands of at most 64 KB: import() stays below that. */
+const CLOUD_IMPORT_CHUNK_BYTES = 48 * 1024;
+
+/**
+ * The same API over Denis Cloud's REST gateway (https://denis.hacimertgokhan.com).
+ * No TCP, no group login: an API key from the database's Connect tab is all
+ * that is needed. Read-scoped keys can only run read commands; the gateway
+ * answers writes with a READ_ONLY error.
+ *
+ *   const { DenisCloud } = require("denis-client");
+ *   const denis = new DenisCloud({ apiKey: process.env.DENIS_API_KEY });
+ *   await denis.set("greeting", "hello world", { persist: true });
+ *   await denis.get("greeting");                              // "hello world"
+ *   await denis.query("SELECT * FROM products WHERE price > 10");
+ *   await denis.usage();                                      // { usage, limits, ... }
+ *
+ * Every command is one HTTPS request; batch() sends up to 50 in one request.
+ * With { useJwt: true } the key is exchanged for a short-lived access token
+ * (and refreshed automatically) so the key itself never travels after the
+ * first call.
+ */
+class DenisCloud extends DenisCommands {
+  constructor(options = {}) {
+    super();
+    this.url = String(options.url || "https://denis.hacimertgokhan.com").replace(/\/+$/, "");
+    this.apiKey = options.apiKey;
+    this.accessToken = options.accessToken;
+    if (!this.apiKey && !this.accessToken) throw new DenisError("apiKey or accessToken is required", "EINVAL");
+    this.timeout = options.timeout ?? 15000;
+    this.fetch = options.fetch || globalThis.fetch;
+    if (typeof this.fetch !== "function") throw new DenisError("fetch is not available; pass options.fetch", "EINVAL");
+    this.useJwt = options.useJwt === true && Boolean(this.apiKey);
+    this.refreshToken = undefined;
+    this.expiresAt = 0;
+    this.exchanging = null;
+    this.importChunkBytes = options.importChunkBytes || CLOUD_IMPORT_CHUNK_BYTES;
+  }
+
+  get _importChunkBytes() {
+    return this.importChunkBytes;
+  }
+
+  /** The Bearer credential for the next request; exchanges or refreshes the JWT pair when useJwt is on. */
+  async _bearer() {
+    if (!this.useJwt) return this.accessToken || this.apiKey;
+    if (this.accessToken && Date.now() < this.expiresAt - 30_000) return this.accessToken;
+    if (!this.exchanging) {
+      const body = this.refreshToken ? { refreshToken: this.refreshToken } : { apiKey: this.apiKey };
+      this.exchanging = this._request("POST", "/api/v1/token", body, { auth: false })
+        .catch((err) => {
+          // a dead refresh token falls back to the key once
+          if (this.refreshToken && err.code === "EAUTH") {
+            this.refreshToken = undefined;
+            return this._request("POST", "/api/v1/token", { apiKey: this.apiKey }, { auth: false });
+          }
+          throw err;
+        })
+        .then((tokens) => {
+          this.accessToken = tokens.accessToken;
+          this.refreshToken = tokens.refreshToken;
+          this.expiresAt = Date.now() + tokens.expiresIn * 1000;
+          return this.accessToken;
+        })
+        .finally(() => {
+          this.exchanging = null;
+        });
+    }
+    return this.exchanging;
+  }
+
+  async _request(method, path, body, { auth = true, retry = true } = {}) {
+    const headers = { Accept: "application/json" };
+    if (body !== undefined) headers["Content-Type"] = "application/json";
+    if (auth) headers.Authorization = `Bearer ${await this._bearer()}`;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.timeout);
+    let res;
+    try {
+      res = await this.fetch(this.url + path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), signal: controller.signal });
+    } catch (err) {
+      throw new DenisError(err.name === "AbortError" ? `request timed out after ${this.timeout} ms` : `request failed: ${err.message}`, err.name === "AbortError" ? "ETIMEOUT" : "ECONN");
+    } finally {
+      clearTimeout(timer);
+    }
+    const text = await res.text();
+    let json;
+    try {
+      json = text ? JSON.parse(text) : {};
+    } catch {
+      throw new DenisError(`unexpected response (${res.status}) from ${path}`, "EPROTO", { status: res.status, body: text });
+    }
+    if (res.ok) return json;
+    const error = json.error || {};
+    // an expired access token is exchanged once more, then given up on
+    if (res.status === 401 && auth && this.useJwt && retry) {
+      this.expiresAt = 0;
+      return this._request(method, path, body, { auth, retry: false });
+    }
+    const code = res.status === 401 ? "EAUTH" : res.status === 429 ? "ELIMIT" : "ESERVER";
+    throw new DenisError(error.message || `HTTP ${res.status}`, code, { status: res.status, code: error.code, ...json });
+  }
+
+  /** Send one protocol line through the gateway and resolve with the engine's reply. */
+  async command(line) {
+    assertLine(line);
+    const { reply } = await this._request("POST", "/api/v1/exec", { command: line });
+    return reply;
+  }
+
+  /** Up to 50 commands in one request, answered in order; a failed command does not stop the rest. */
+  async batch(lines) {
+    if (!Array.isArray(lines) || lines.length === 0 || lines.length > 50) throw new DenisError("batch takes 1-50 commands", "EINVAL");
+    lines.forEach(assertLine);
+    const { results } = await this._request("POST", "/api/v1/exec", { commands: lines });
+    return results.map((r) => r.reply);
+  }
+
+  /** The database and scope behind the credential: { database: {id, name}, scope, via }. */
+  async whoami() {
+    return this._request("GET", "/api/v1/exec");
+  }
+
+  /** Storage, key and daily-command usage against the database's limits. */
+  async usage() {
+    return this._request("GET", "/api/v1/usage");
+  }
+
+  /** Nothing to close over HTTP; kept so code can treat both clients alike. */
+  async close() {}
+}
+
+// ======================================================================= wiring
+
 for (const [name, build] of Object.entries(COMMANDS)) {
+  DenisCommands.prototype[name] = function (...args) {
+    return this._run(build, args);
+  };
+}
+for (const [name, build] of Object.entries(SESSION_COMMANDS)) {
   DenisClient.prototype[name] = function (...args) {
     return this._run(build, args);
   };
+}
+for (const [name, build] of Object.entries({ ...COMMANDS, ...SESSION_COMMANDS })) {
   DenisPipeline.prototype[name] = function (...args) {
     return this._add(build, args);
   };
 }
 
-module.exports = { DenisClient, DenisConnection, DenisError, DenisPipeline };
+module.exports = { DenisClient, DenisCloud, DenisCommands, DenisConnection, DenisError, DenisPipeline };

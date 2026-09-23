@@ -35,6 +35,9 @@ final class FakeServer implements AutoCloseable {
     final Map<String, String> data = new ConcurrentHashMap<>();
     final Map<String, Long> ttl = new ConcurrentHashMap<>();
     final AtomicInteger projects = new AtomicInteger();
+    static final String MAIN_TOKEN = "main-" + "m".repeat(123);
+    /** ADMIN state: token -> {maxKeys, maxBytes}. */
+    final Map<String, long[]> adminProjects = new ConcurrentHashMap<>();
     final CountDownLatch released = new CountDownLatch(1);
     /** Return a reply line (or "" for no reply) to intercept a command; null falls through to the default handler. */
     volatile BiFunction<Conn, String, String> override;
@@ -174,6 +177,73 @@ final class FakeServer implements AutoCloseable {
             return "";
         }
 
+        /** ADMIN <main-token> LIST|CREATE|IMPORT|USAGE|QUOTA|FLUSH|DROP, like the server (no login needed). */
+        private String admin(String[] w) {
+            if (w.length < 3) {
+                return error("USAGE", "USAGE: ADMIN <main-token> LIST|CREATE|IMPORT|USAGE|QUOTA|FLUSH|DROP ...");
+            }
+            if (!w[1].equals(MAIN_TOKEN)) {
+                return error("AUTH", "ADMIN refused: wrong main token");
+            }
+            switch (w[2].toUpperCase()) {
+                case "LIST": {
+                    StringBuilder list = new StringBuilder();
+                    for (String t : new java.util.TreeSet<>(adminProjects.keySet())) {
+                        list.append(list.length() == 0 ? "" : ",").append(project(t));
+                    }
+                    return ok("\"projects\":[" + list + "],\"count\":" + adminProjects.size());
+                }
+                case "CREATE": {
+                    String t = "adm-" + projects.incrementAndGet();
+                    adminProjects.put(t, w.length >= 5 ? new long[]{Long.parseLong(w[3]), Long.parseLong(w[4])} : new long[2]);
+                    return ok("\"message\":\"Project created\",\"token\":\"" + t + "\"");
+                }
+                case "IMPORT": {
+                    boolean added = adminProjects.putIfAbsent(w[3], w.length >= 6
+                            ? new long[]{Long.parseLong(w[4]), Long.parseLong(w[5])} : new long[2]) == null;
+                    return ok("\"message\":\"" + (added ? "Project imported" : "Project already existed") + "\",\"token\":\"" + w[3]
+                            + "\",\"added\":" + added);
+                }
+                default:
+                    break;
+            }
+            if (w.length < 4 || !adminProjects.containsKey(w[3])) {
+                return error("NOTFOUND", "Unknown project" + (w.length < 4 ? "" : ": " + w[3]));
+            }
+            switch (w[2].toUpperCase()) {
+                case "USAGE":
+                    return ok(project(w[3]).substring(1, project(w[3]).length() - 1));
+                case "QUOTA": {
+                    adminProjects.put(w[3], new long[]{Long.parseLong(w[4]), Long.parseLong(w[5])});
+                    String p = project(w[3]);
+                    return ok(p.substring(1, p.length() - 1) + ",\"message\":\"Quota updated\"");
+                }
+                case "FLUSH":
+                    return ok("\"message\":\"Project emptied: " + w[3] + "\"");
+                case "DROP":
+                    adminProjects.remove(w[3]);
+                    return ok("\"message\":\"Project deleted: " + w[3] + "\"");
+                default:
+                    return error("USAGE", "USAGE: ADMIN <main-token> LIST|CREATE|USAGE|QUOTA|FLUSH|DROP ...");
+            }
+        }
+
+        private String project(String t) {
+            long[] q = adminProjects.get(t);
+            return "{\"token\":\"" + t + "\",\"usage\":{\"cachedKeys\":3,\"cachedBytes\":30,\"persistedKeys\":1,\"persistedBytes\":10},"
+                    + "\"quota\":{\"maxKeys\":" + q[0] + ",\"maxBytes\":" + q[1] + "}}";
+        }
+
+        /** A canned GraphQL-shaped QUERY: echoes the document, fails a field named "broken". */
+        private String graph(String doc) {
+            if (!doc.startsWith("{") || !doc.endsWith("}")) {
+                return "{\"ok\":false,\"error\":\"syntax: expected '{'\",\"offset\":0}";
+            }
+            String errors = doc.contains("broken") ? ",\"errors\":[{\"path\":\"broken\",\"error\":\"Table not found: nope\"}]" : "";
+            return ok("\"data\":{\"doc\":" + Json.quote(doc) + ",\"user\":{\"name\":\"Ada\",\"address\":{\"city\":\"London\"}},\"n\":3"
+                    + (errors.isEmpty() ? "" : ",\"broken\":null") + "}" + errors);
+        }
+
         private String handle(String line) {
             String trimmed = line.stripLeading();
             String[] w = trimmed.split(" ", 3);
@@ -186,6 +256,8 @@ final class FakeServer implements AutoCloseable {
                     return ok("\"message\":\"PONG\"");
                 case "HELLO":
                     return ok("\"server\":\"denis\",\"version\":\"0.1.0\",\"protocol\":2,\"features\":[\"json\",\"sql-params\"],\"loggedIn\":" + loggedIn);
+                case "ADMIN":
+                    return admin(trimmed.split(" "));
                 case "LIN": {
                     String[] p = trimmed.split(" ", 3);
                     if (p.length == 3 && p[1].equals(GROUP) && p[2].equals(PASSWORD)) {
@@ -220,7 +292,11 @@ final class FakeServer implements AutoCloseable {
                 case "WHOAMI":
                     return ok("\"group\":\"grp\",\"admin\":true,\"project\":" + (token == null ? "null" : Json.quote(token)));
                 case "INFO":
-                    return ok("\"info\":{\"server\":{\"version\":\"0.1.0\"},\"stats\":{\"commands\":5}}");
+                    return ok("\"version\":\"0.2.0\",\"uptimeSeconds\":42,\"startedAt\":\"2026-09-23T10:00:00Z\",\"connections\":{\"open\":3,\"total\":9},"
+                            + "\"commandsTotal\":77,\"cacheKeys\":5,\"persistedKeys\":2,\"persistedDirty\":false,\"projects\":4,\"group\":\"grp\","
+                            + (token == null ? "" : "\"project\":{\"usage\":{\"cachedKeys\":1,\"cachedBytes\":10,\"persistedKeys\":0,\"persistedBytes\":0},\"quota\":{\"maxKeys\":100,\"maxBytes\":0}},")
+                            + "\"memory\":{\"usedMb\":12,\"maxMb\":512},"
+                            + "\"info\":{\"server\":{\"version\":\"0.2.0\"},\"stats\":{\"commands\":77},\"memory\":{\"usedBytes\":1024}}");
                 case "PROJECTS":
                     return ok("\"projects\":[{\"token\":\"tok-1\",\"owner\":\"grp\",\"keys\":3,\"tables\":1,\"current\":true},"
                             + "{\"token\":\"legacy\",\"owner\":null,\"keys\":0,\"tables\":0,\"current\":false}],\"count\":2");
@@ -271,7 +347,7 @@ final class FakeServer implements AutoCloseable {
                     for (String k : trimmed.substring(5).split(" ")) {
                         m.put(k, data.get(k));
                     }
-                    return ok("\"data\":" + Json.write(m));
+                    return ok("\"data\":" + Json.write(m) + ",\"values\":" + Json.write(m));
                 }
                 case "INCR":
                 case "DECR": {
@@ -294,22 +370,41 @@ final class FakeServer implements AutoCloseable {
                 }
                 case "DBSIZE":
                     return ok("\"keys\":" + data.size() + ",\"cache\":" + data.size() + ",\"persistent\":0,\"tables\":0,\"data\":\"" + data.size() + "\"");
-                case "HEAVEN":
+                case "HEAVEN": {
+                    int removed = data.size();
                     data.clear();
-                    return ok("\"message\":\"Ok.\"");
+                    return ok("\"message\":\"Ok.\",\"removed\":" + removed);
+                }
                 case "KEYS":
                     return ok("\"keys\":" + Json.write(new ArrayList<>(new java.util.TreeSet<>(data.keySet()))) + ",\"count\":" + data.size() + ",\"truncated\":false");
                 case "QUERY": {
-                    Map<String, Object> q = Json.parseObject(trimmed.substring(6));
+                    String doc = trimmed.substring(6);
+                    Map<String, Object> q;
+                    try {
+                        q = Json.parseObject(doc);
+                    } catch (RuntimeException e) {
+                        q = null;
+                    }
+                    if (q == null || !q.containsKey("sql")) {
+                        return graph(doc);
+                    }
                     String sql = (String) q.get("sql");
                     if (sql.startsWith("SELECT")) {
-                        return ok("\"columns\":[\"sql\",\"params\"],\"rows\":[[" + Json.quote(sql) + "," + Json.quote(Json.write(q.get("params")))
-                                + "]],\"count\":1,\"data\":\"[]\"");
+                        // the current shape: rows are objects keyed by column, the column order is in "columns"
+                        return ok("\"type\":\"rows\",\"columns\":[\"sql\",\"params\"],\"rows\":[{\"params\":" + Json.quote(Json.write(q.get("params")))
+                                + ",\"sql\":" + Json.quote(sql) + "}],\"count\":1,\"data\":\"[]\"");
                     }
-                    if (sql.startsWith("BAD")) {
+                    if (sql.startsWith("BAD") || sql.equals("DESCRIBE missing")) {
                         return "{\"ok\":false,\"error\":\"Table not found: t\",\"code\":\"SQL\",\"data\":\"ERROR: Table not found: t\"}";
                     }
-                    return ok("\"message\":\"1 row inserted\",\"affected\":1,\"lastRowId\":7,\"data\":\"OK: 1 row inserted\"");
+                    if (sql.equals("SHOW TABLES") || sql.startsWith("DESCRIBE ")) {
+                        String users = "{\"name\":\"users\",\"columns\":[{\"name\":\"id\",\"type\":\"INTEGER\",\"primaryKey\":true},"
+                                + "{\"name\":\"name\",\"type\":\"TEXT\"}],\"rows\":2}";
+                        String tables = sql.startsWith("DESCRIBE ") ? users
+                                : users + ",{\"name\":\"orders\",\"columns\":[{\"name\":\"id\",\"type\":\"INT\"}],\"rows\":0}";
+                        return ok("\"type\":\"tables\",\"tables\":[" + tables + "],\"count\":" + (sql.startsWith("DESCRIBE ") ? 1 : 2));
+                    }
+                    return ok("\"type\":\"affected\",\"message\":\"1 row inserted\",\"affected\":1,\"lastRowId\":7,\"data\":\"OK: 1 row inserted\"");
                 }
                 case "DUMP":
                     return ok("\"format\":1,\"cache\":" + Json.write(new java.util.TreeMap<>(data)) + ",\"persistent\":{},\"ttl\":{},\"tables\":{}");

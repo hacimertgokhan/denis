@@ -238,7 +238,7 @@ class DenisClientTest {
         assertTrue(hello.hasFeature("sql-params"));
         assertEquals("grp", client.whoami().get("group"));
         assertEquals("tok-x", client.whoami().get("project"));
-        assertEquals(Map.of("version", "0.1.0"), client.info().get("server"));
+        assertEquals(Map.of("version", "0.2.0"), client.info().details().get("server"));
         List<Project> projects = client.projects();
         assertEquals(2, projects.size());
         assertEquals("tok-1", projects.get(0).token());
@@ -273,7 +273,7 @@ class DenisClientTest {
         assertEquals(1, change.affected());
         assertEquals(7L, change.lastRowId());
         assertEquals("OK: 1 row inserted", change.data());
-        assertEquals("OK: 1 row inserted", client.sql("INSERT INTO t VALUES (1)"));
+        assertEquals("OK: 1 row inserted", client.sqlText("INSERT INTO t VALUES (1)"));
 
         DenisSqlException e = assertThrows(DenisSqlException.class, () -> client.query("BAD SQL"));
         assertEquals("SQL", e.code());
@@ -684,7 +684,19 @@ class DenisClientTest {
         assertEquals("{\"id\":1}", client.get("user:1"));
         client.update("user:1", "x");
         assertTrue(client.delete("user:1"));
-        assertEquals("OK: 1 row inserted", client.sql("INSERT INTO t VALUES (1)"));
+        assertEquals("OK: 1 row inserted", client.sqlText("INSERT INTO t VALUES (1)"));
+        // the 1.2 API (master line): the same names, typed results instead of org.json
+        client.set("user:2", "v", true);
+        assertTrue(client.exists("user:2"));
+        assertEquals(List.of("user:2"), client.keys("user:*"));
+        assertEquals("v", client.mget(List.of("user:2", "nope")).get("user:2"));
+        assertEquals("affected", client.sql("INSERT INTO t VALUES (1)").asMap().get("type"));
+        assertEquals("rows", client.sql("SELECT * FROM t").type());
+        assertEquals("SELECT * FROM t", client.query("SELECT * FROM t").toMaps().get(0).get("sql"));
+        assertEquals(1, client.execute("INSERT INTO t (id, name) VALUES (1, 'Ada')"));
+        assertEquals("users", client.tables().get(0).name());
+        assertTrue(client.info().has("version"));
+        client.save();
         client.clear();
         assertTrue(client.ping());
         client.close();

@@ -1,7 +1,7 @@
 {
   "name": "denis-client",
-  "version": "1.0.0",
-  "description": "Node.js client for Denis Database: pipelined, pooled TCP connections with reconnect, SQL with parameters, dump/import",
+  "version": "1.1.0",
+  "description": "Node.js client for Denis Database: pipelined, pooled TCP connections with reconnect, SQL with bound parameters and dump/import, or HTTPS with an API key on Denis Cloud",
   "main": "index.js",
   "types": "index.d.ts",
   "license": "Apache-2.0",
@@ -10,13 +10,13 @@
     "url": "https://github.com/hacimertgokhan/denis.git",
     "directory": "clients/node"
   },
-  "keywords": ["denis", "cache", "key-value", "database", "sql", "client", "pipelining"],
+  "keywords": ["denis", "cache", "key-value", "database", "sql", "client", "pipelining", "denis-cloud"],
   "engines": {
     "node": ">=18"
   },
   "files": ["index.js", "index.d.ts", "README.md"],
   "scripts": {
-    "test": "node --test test/unit.test.js",
+    "test": "node --test test/unit.test.js test/compat.test.js test/cloud.test.js",
     "test:integration": "node --test test/integration.test.js",
     "bench": "node bench.js"
   }

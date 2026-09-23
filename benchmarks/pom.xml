@@ -14,13 +14,13 @@
     -->
     <groupId>github.hacimertgokhan</groupId>
     <artifactId>denis-benchmarks</artifactId>
-    <version>0.1.0-alpha</version>
+    <version>0.7.0</version>
     <name>Denis Benchmarks</name>
 
     <properties>
         <java.version>17</java.version>
         <jmh.version>1.37</jmh.version>
-        <denis.version>0.1.0-alpha</denis.version>
+        <denis.version>0.7.0</denis.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 

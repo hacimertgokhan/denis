@@ -1,0 +1,17 @@
+{
+  "name": "denis-bench",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Reproducible benchmarks: Denis vs Redis (key-value) and PostgreSQL (SQL subset)",
+  "scripts": {
+    "up": "docker compose -f compose.bench.yaml up -d --wait",
+    "down": "docker compose -f compose.bench.yaml down -v",
+    "bench": "node run.js"
+  },
+  "dependencies": {
+    "denis-client": "file:../clients/node",
+    "pg": "^8.13.1",
+    "redis": "^4.7.0"
+  }
+}

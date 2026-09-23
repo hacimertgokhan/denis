@@ -20,12 +20,18 @@ final class Command<T> {
     final byte[] frame;
     private final Decoder<T> decoder;
     private final boolean nullOnNotFound;
+    /** Code for error replies without a code (master-line servers up to 0.6) whose message is not a well-known one. */
+    private final String fallbackCode;
 
     Command(String line, Decoder<T> decoder) {
         this(line, decoder, false);
     }
 
     Command(String line, Decoder<T> decoder, boolean nullOnNotFound) {
+        this(line, decoder, nullOnNotFound, DenisException.ERROR);
+    }
+
+    Command(String line, Decoder<T> decoder, boolean nullOnNotFound, String fallbackCode) {
         int space = line.indexOf(' ');
         this.name = space < 0 ? line : line.substring(0, space);
         byte[] bytes = line.getBytes(StandardCharsets.UTF_8);
@@ -34,14 +40,15 @@ final class Command<T> {
         frame[bytes.length] = '\n';
         this.decoder = decoder;
         this.nullOnNotFound = nullOnNotFound;
+        this.fallbackCode = fallbackCode;
     }
 
     T decode(Map<String, Object> reply) {
         if (!Protocol.isOk(reply)) {
-            if (nullOnNotFound && "NOTFOUND".equals(reply.get("code"))) {
+            if (nullOnNotFound && "NOTFOUND".equals(Protocol.code(reply))) {
                 return null;
             }
-            throw Protocol.error(reply);
+            throw Protocol.error(reply, fallbackCode);
         }
         return decoder.decode(reply);
     }

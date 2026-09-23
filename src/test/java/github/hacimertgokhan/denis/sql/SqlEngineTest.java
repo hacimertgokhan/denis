@@ -282,8 +282,9 @@ class SqlEngineTest {
         users();
         run("ALTER TABLE users ADD COLUMN email TEXT DEFAULT 'none'");
         assertEquals("none", scalar("SELECT email FROM users WHERE id = 1"));
-        assertEquals(List.of("table", "rows", "columns", "indexes", "bytes"), run("SHOW TABLES").columns());
-        assertEquals(5, run("DESCRIBE users").rows().size());
+        assertEquals("users", run("SHOW TABLES").tables().getJSONObject(0).getString("name"));
+        assertEquals(5, run("DESCRIBE users").tables().getJSONObject(0).getJSONArray("columns").length());
+        assertEquals(5, run("DESCRIBE users").tables().getJSONObject(0).getInt("rows"));
         assertEquals("OK: 5 row(s) deleted", run("TRUNCATE TABLE users").legacyText());
         assertEquals(0L, scalar("SELECT COUNT(*) FROM users"));
         assertEquals("OK: table already exists", run("CREATE TABLE IF NOT EXISTS users (x INT)").legacyText());

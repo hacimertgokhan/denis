@@ -52,6 +52,16 @@ sweep that looks at up to 256 keys with a TTL per keyspace every 100 ms, so
 expired data does not linger in memory. A key with a durable value keeps it
 after its cache value expires.
 
+
+### Quotas
+
+Each keyspace keeps `LongAdder` counters of the characters (key + value) held
+in the cache and in the durable layer, next to the key counts, so `ADMIN USAGE`
+and `INFO` never walk the data. A write checks the project's `maxKeys` /
+`maxBytes` (from `ddb.json`) against the counters before it is logged; table
+rows count against the durable layer. The check is a pair of volatile reads,
+so projects without a quota pay nothing.
+
 ## Disk layout
 
 ```
@@ -131,7 +141,11 @@ write volume (a 14-million-write benchmark left 16 MB on disk).
    cut back to the last intact record and the server starts. Damage anywhere
    else stops the start (`recovery=lenient` accepts losing it) — silently
    starting without data would be worse.
-4. A Denis 0.0.x `database.bin` (protobuf) is imported once and renamed.
+4. Data of earlier releases is imported once when `data/` is empty: `database.bin`
+   (protobuf, 0.0.x-0.6) plus the 0.4-0.6 JSON journal (`database.journal.old`,
+   `database.journal`; a torn last line is ignored). 0.3-0.6 SQL tables, stored as
+   `__sql:<table>:schema|seq|row:<id>` keys, become real tables with typed rows.
+   The old files are renamed `*.migrated`.
 
 There are no lock files: the data directory belongs to the process that bound
 the port; offline tools (`denis db compact`, `denis backup restore`) refuse to
@@ -180,6 +194,16 @@ queries, the write lock for changes), so statements are atomic per table.
 Multi-row INSERT/UPDATE validate every row (types, NOT NULL, UNIQUE) before
 changing anything.
 
+
+### QUERY documents
+
+`QUERY { ... }` (`query/QueryExecutor`) is parsed by a small hand-written
+parser and resolved field by field against the keyspace and `SqlEngine`: key
+resolvers read slots directly, `table(...)` builds a `SELECT` that goes
+through the normal planner, and `sql(...)` accepts only parsed read statements
+(`SELECT`, `SHOW`, `DESCRIBE`). One failing field becomes `null` plus an entry
+in `errors`. `QUERY` followed by a JSON object is bound SQL instead.
+
 ## Security
 
 - Group passwords: PBKDF2-HMAC-SHA512 (210 000 iterations by default), random
@@ -190,6 +214,9 @@ changing anything.
   `login-lockout-seconds`); unknown group names cost the same time as wrong
   passwords.
 - Projects created by a group are only accessible to it and to admin groups.
+- `ADMIN` commands authenticate with the main token (`ddb-main-token`),
+  compared in constant time; failures count towards the login lockout and the
+  token is masked in logs.
 - `bind-address` defaults to `127.0.0.1`.
 - Logs never contain passwords or values (`LIN`, `AUTH`, `SET` values,
   `IMPORT` and `QUERY` are masked when command logging is on).

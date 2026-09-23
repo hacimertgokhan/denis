@@ -23,7 +23,7 @@ import java.util.Map;
  * stored in {@code ddb.json}:
  *
  * <pre>
- *   {"tokens": ["..."], "owners": {"&lt;token&gt;": "crm"}}
+ *   {"tokens": ["..."], "owners": {"&lt;token&gt;": "crm"}, "quotas": {"&lt;token&gt;": {"maxKeys": 0, "maxBytes": 0}}}
  * </pre>
  *
  * Tokens from Denis 0.0.x (and ones created with {@code denis cli token -c})
@@ -34,11 +34,21 @@ import java.util.Map;
 public final class ProjectRegistry {
     private final Path path;
     private final Map<String, String> owners = new LinkedHashMap<>();
+    private final Map<String, Quota> quotas = new LinkedHashMap<>();
     private FileTime loadedModified;
     private long loadedSize = -1;
 
     /** A project and its owning group ("" for none). */
     public record Project(String token, String owner) {}
+
+    /** Limits of one project; {@code 0} means unlimited. Written to ddb.json as in Denis 0.4+. */
+    public record Quota(long maxKeys, long maxBytes) {
+        public static final Quota UNLIMITED = new Quota(0, 0);
+
+        public JSONObject toJson() {
+            return new JSONObject().put("maxKeys", maxKeys).put("maxBytes", maxBytes);
+        }
+    }
 
     public ProjectRegistry(Path path) {
         this.path = path;
@@ -66,8 +76,18 @@ public final class ProjectRegistry {
                 json = text.isEmpty() ? new JSONObject() : new JSONObject(new JSONTokener(text));
             }
             owners.clear();
+            quotas.clear();
             JSONArray tokens = json.optJSONArray("tokens");
             JSONObject ownerMap = json.optJSONObject("owners");
+            JSONObject quotaMap = json.optJSONObject("quotas");
+            if (quotaMap != null) {
+                for (String token : quotaMap.keySet()) {
+                    JSONObject q = quotaMap.optJSONObject(token);
+                    if (q != null) {
+                        quotas.put(token, new Quota(q.optLong("maxKeys", 0), q.optLong("maxBytes", 0)));
+                    }
+                }
+            }
             if (tokens != null) {
                 for (int i = 0; i < tokens.length(); i++) {
                     String token = tokens.optString(i, null);
@@ -123,8 +143,48 @@ public final class ProjectRegistry {
         if (owners.remove(token) == null) {
             return false;
         }
+        quotas.remove(token);
         save();
         return true;
+    }
+
+    /**
+     * Adopt a token issued elsewhere ({@code ADMIN IMPORT}), e.g. after the
+     * registry was lost while the data survived. @return false when it already existed
+     */
+    public synchronized boolean register(String token, String owner) throws IOException {
+        if (token == null || !token.matches("[A-Za-z0-9]{32,256}")) {
+            throw new IllegalArgumentException("a project token is 32-256 letters and digits");
+        }
+        refresh();
+        if (owners.containsKey(token)) {
+            return false;
+        }
+        owners.put(token, owner == null ? "" : owner);
+        save();
+        return true;
+    }
+
+    public synchronized Quota quota(String token) {
+        if (!owners.containsKey(token)) {
+            refresh();
+        }
+        return quotas.getOrDefault(token, Quota.UNLIMITED);
+    }
+
+    public synchronized void setQuota(String token, Quota quota) throws IOException {
+        refresh();
+        if (quota.maxKeys() <= 0 && quota.maxBytes() <= 0) {
+            quotas.remove(token);
+        } else {
+            quotas.put(token, quota);
+        }
+        save();
+    }
+
+    public synchronized int size() {
+        refresh();
+        return owners.size();
     }
 
     private void save() throws IOException {
@@ -136,9 +196,12 @@ public final class ProjectRegistry {
                 ownerMap.put(token, owner);
             }
         });
+        JSONObject quotaMap = new JSONObject();
+        quotas.forEach((token, quota) -> quotaMap.put(token, quota.toJson()));
         JSONObject json = new JSONObject();
         json.put("tokens", tokens);
         json.put("owners", ownerMap);
+        json.put("quotas", quotaMap);
         Path absolute = path.toAbsolutePath();
         if (absolute.getParent() != null) {
             Files.createDirectories(absolute.getParent());

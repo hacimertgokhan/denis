@@ -1,0 +1,27 @@
+# Overlay for a host that already runs Coolify's Traefik proxy (network
+# "coolify", entrypoints http/https, certresolver "letsencrypt"). The web
+# app is not published on a host port; the proxy routes the domain to it
+# and obtains the certificate.
+#
+#   docker compose -f compose.cloud.yaml -f compose.traefik.yaml --env-file .env.cloud up -d --build
+services:
+  web:
+    ports: !override []
+    networks: [internal, coolify]
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: coolify
+      traefik.http.routers.denis-http.rule: "Host(`${DOMAIN:-denis.hacimertgokhan.com}`)"
+      traefik.http.routers.denis-http.entrypoints: http
+      traefik.http.routers.denis-http.middlewares: denis-https
+      traefik.http.middlewares.denis-https.redirectscheme.scheme: https
+      traefik.http.middlewares.denis-https.redirectscheme.permanent: "true"
+      traefik.http.routers.denis.rule: "Host(`${DOMAIN:-denis.hacimertgokhan.com}`)"
+      traefik.http.routers.denis.entrypoints: https
+      traefik.http.routers.denis.tls: "true"
+      traefik.http.routers.denis.tls.certresolver: letsencrypt
+      traefik.http.services.denis.loadbalancer.server.port: "3000"
+
+networks:
+  coolify:
+    external: true

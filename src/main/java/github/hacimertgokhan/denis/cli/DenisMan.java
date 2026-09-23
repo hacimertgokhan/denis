@@ -16,6 +16,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
@@ -43,7 +44,8 @@ import java.util.concurrent.Callable;
 @Command(name = "denis", mixinStandardHelpOptions = true, versionProvider = DenisMan.VersionProvider.class,
         description = "Manage a Denis Database installation.",
         subcommands = {DenisMan.Init.class, DenisMan.GroupCommand.class, DenisMan.TokenCommand.class,
-                DenisMan.BackupCommand.class, DenisMan.DbCommand.class, DenisMan.Exec.class, CommandLine.HelpCommand.class})
+                DenisMan.BackupCommand.class, DenisMan.DbCommand.class, DenisMan.ConfigCommand.class, DenisMan.StatusCommand.class,
+                DenisMan.Exec.class, DenisMan.RemoteShell.class, CommandLine.HelpCommand.class})
 public class DenisMan implements Runnable {
 
     static final class VersionProvider implements CommandLine.IVersionProvider {
@@ -189,6 +191,10 @@ public class DenisMan implements Runnable {
                 }
             }
             boolean wroteConfig = false;
+            String existingToken = properties.getProperty("ddb-main-token", "");
+            if (existingToken.isBlank() || force) {
+                overrides.put("ddb-main-token", new github.hacimertgokhan.denis.CreateSecureToken().getToken());
+            }
             if (!Files.exists(configFile) || force) {
                 writeConfig(configFile, overrides);
                 wroteConfig = true;
@@ -615,51 +621,212 @@ public class DenisMan implements Runnable {
         }
     }
 
-    // =================================================================== remote commands
+    // =================================================================== running server
 
-    @Command(name = "exec", mixinStandardHelpOptions = true,
-            description = "Send commands to the running server, e.g. denis cli exec -g admin -p secret INFO")
-    static final class Exec implements Callable<Integer> {
-        @Option(names = {"-g", "--group"}, description = "Group (env DENIS_GROUP)")
-        String group;
-        @Option(names = {"-p", "--password"}, description = "Password (env DENIS_PASSWORD)")
-        String password;
-        @Option(names = {"-t", "--token"}, description = "Project token to AUTH with first")
-        String token;
-        @Option(names = {"-H", "--host"}, description = "Server host (default: this installation)")
+    /** Options shared by every command that talks to a running server. */
+    static class Connection {
+        @Option(names = {"-H", "--host"}, defaultValue = "${env:DENIS_HOST}", description = "Server host (env DENIS_HOST; default: this installation)")
         String host;
-        @Option(names = "--port", description = "Server port (default: this installation)")
+        @Option(names = {"-P", "--port"}, defaultValue = "${env:DENIS_PORT}", description = "Server port (env DENIS_PORT; default: this installation)")
         Integer port;
-        @Parameters(paramLabel = "<command>", description = "Commands, one per argument (quote commands with spaces)")
-        List<String> commands = new ArrayList<>();
+        @Option(names = {"-g", "--group"}, defaultValue = "${env:DENIS_GROUP}", description = "Login group (env DENIS_GROUP)")
+        String group;
+        @Option(names = {"-p", "--password"}, defaultValue = "${env:DENIS_PASSWORD}", description = "Group password (env DENIS_PASSWORD)")
+        String password;
+        @Option(names = {"-t", "--token"}, defaultValue = "${env:DENIS_TOKEN}", description = "Project token (env DENIS_TOKEN)")
+        String token;
+        @Option(names = {"--create-project"}, description = "Create a new project with AUTH CREATE instead of --token")
+        boolean createProject;
+        @Option(names = {"--timeout"}, defaultValue = "10000", description = "Socket timeout in ms (default ${DEFAULT-VALUE})")
+        int timeoutMillis;
+        @Option(names = {"--json"}, description = "Print the server's raw JSON replies")
+        boolean json;
+
+        String host() {
+            return host != null && !host.isBlank() ? host : localHost(config());
+        }
+
+        int port() {
+            return port != null ? port : config().port();
+        }
+
+        RemoteSession open(boolean needProject) throws IOException {
+            RemoteSession session = new RemoteSession(host(), port(), timeoutMillis);
+            try {
+                if (group != null) {
+                    if (password == null) {
+                        throw new IOException("--password is required with --group");
+                    }
+                    session.login(group, password);
+                }
+                if (needProject || token != null || createProject) {
+                    if (group == null) {
+                        throw new IOException("--group and --password are required to select a project");
+                    }
+                    session.auth(createProject ? null : token);
+                }
+            } catch (IOException e) {
+                session.close();
+                throw e;
+            }
+            return session;
+        }
+
+        void print(JSONObject reply) {
+            System.out.println(json ? reply.toString() : ReplyRenderer.render(reply));
+        }
+    }
+
+    @Command(name = "config", mixinStandardHelpOptions = true,
+            description = "Show the effective configuration and where each value comes from.")
+    static final class ConfigCommand implements Runnable {
+        private static final String[] KEYS = {"bind-address", "ddb-port", "data-dir", "persistence", "fsync",
+                "checkpoint-wal-size", "checkpoint-interval-seconds", "max-memory", "eviction-policy", "max-clients",
+                "max-connections-per-ip", "client-timeout-seconds", "io-threads", "worker-threads", "backup-interval-minutes",
+                "backup-retention", "ddb-main-token", "bootstrap-group", "bootstrap-group-password", "log-level", "log-file",
+                "max-connections", "client-idle-timeout-ms", "persist-flush-interval-ms", "persist-snapshot-interval-ms"};
+
+        @Option(names = {"--json"}, description = "Machine readable output")
+        boolean json;
 
         @Override
-        public Integer call() throws IOException {
-            ServerConfig config = config();
-            String g = group != null ? group : System.getenv("DENIS_GROUP");
-            String p = password != null ? password : System.getenv("DENIS_PASSWORD");
-            try (RemoteClient client = RemoteClient.connect(host != null ? host : localHost(config),
-                    port != null ? port : config.port(), 5000)) {
-                if (g != null && p != null) {
-                    client.login(g, p);
+        public void run() {
+            DenisProperties properties = new DenisProperties();
+            JSONObject all = new JSONObject();
+            for (String key : KEYS) {
+                String value = properties.getProperty(key);
+                boolean secret = key.contains("token") || key.contains("password");
+                String shown = value == null || value.isBlank() ? "" : secret ? "***" : value;
+                String source = properties.isFromEnvironment(key) ? "env" : value == null || value.isBlank() ? "unset" : "file/default";
+                if (json) {
+                    all.put(key, new JSONObject().put("value", shown).put("source", source));
+                } else {
+                    System.out.printf(java.util.Locale.ROOT, "%-30s %-40s (%s)%n", key, shown, source);
                 }
-                if (token != null) {
-                    JSONObject auth = client.call("AUTH " + token);
-                    if (!auth.optBoolean("ok")) {
-                        System.err.println(auth.optString("error"));
-                        return 1;
-                    }
-                }
-                int status = 0;
-                for (String command : commands) {
-                    String reply = client.callRaw(command);
-                    System.out.println(reply);
-                    if (reply.startsWith("{\"ok\":false")) {
-                        status = 1;
-                    }
-                }
-                return status;
             }
+            String home = properties.home().toAbsolutePath().toString();
+            if (json) {
+                System.out.println(all.put("configFile", properties.getExternalPath().toAbsolutePath().toString()).put("home", home));
+            } else {
+                System.out.println("config file: " + properties.getExternalPath().toAbsolutePath());
+                System.out.println("DENIS_HOME:  " + home);
+            }
+        }
+    }
+
+    @Command(name = "status", mixinStandardHelpOptions = true, description = "PING a running server; with --group/--password also show INFO.")
+    static final class StatusCommand implements Callable<Integer> {
+        @Mixin
+        Connection connection;
+
+        @Override
+        public Integer call() {
+            try (RemoteSession session = connection.open(false)) {
+                JSONObject ping = session.send("PING");
+                if (!ping.optBoolean("ok")) {
+                    connection.print(ping);
+                    return 1;
+                }
+                if (connection.group == null) {
+                    connection.print(ping.put("message", "PONG from " + connection.host() + ":" + connection.port()));
+                    return 0;
+                }
+                connection.print(session.send("INFO"));
+                return 0;
+            } catch (IOException e) {
+                System.err.println("error: " + e.getMessage());
+                return 1;
+            }
+        }
+    }
+
+    @Command(name = "exec", mixinStandardHelpOptions = true,
+            description = "Run protocol commands against a running server, e.g. denis cli exec -g admin -p secret INFO")
+    static final class Exec implements Callable<Integer> {
+        @Mixin
+        Connection connection;
+        @Parameters(arity = "1..*", paramLabel = "<command>", description = "Protocol lines, e.g. \"SET greeting hello\" \"GET greeting\"")
+        List<String> commands;
+
+        @Override
+        public Integer call() {
+            // a project is selected only when asked for (--token / --create-project): INFO, PROJECTS, ADMIN need none
+            try (RemoteSession session = connection.open(false)) {
+                int failed = 0;
+                for (String command : commands) {
+                    JSONObject reply = session.send(command);
+                    if (!reply.optBoolean("ok")) {
+                        failed++;
+                    }
+                    connection.print(reply);
+                }
+                return failed == 0 ? 0 : 1;
+            } catch (IOException e) {
+                System.err.println("error: " + e.getMessage());
+                return 1;
+            }
+        }
+    }
+
+    @Command(name = "shell", mixinStandardHelpOptions = true, description = "Interactive session with a running server (type .help for hints).")
+    static final class RemoteShell implements Callable<Integer> {
+        @Mixin
+        Connection connection;
+
+        @Override
+        public Integer call() {
+            try (RemoteSession session = connection.open(false)) {
+                String project = session.token();
+                System.out.println("Denis shell - connected to " + connection.host() + ":" + connection.port()
+                        + (connection.group != null ? " as " + connection.group : " (not logged in; use LIN <group> <password>)"));
+                System.out.println("Type HELP for server commands, .help for shell hints, .exit to quit.");
+                BufferedReader in = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8));
+                while (true) {
+                    System.out.print(prompt(connection.group, project));
+                    System.out.flush();
+                    String line = in.readLine();
+                    if (line == null) {
+                        break;
+                    }
+                    line = line.trim();
+                    if (line.isEmpty()) {
+                        continue;
+                    }
+                    if (line.equals(".exit") || line.equalsIgnoreCase("EXIT") || line.equalsIgnoreCase("QUIT")) {
+                        break;
+                    }
+                    if (line.equals(".help")) {
+                        System.out.println(".exit         leave the shell\n.json on|off  raw JSON replies\nHELP          server command reference");
+                        continue;
+                    }
+                    if (line.startsWith(".json")) {
+                        connection.json = !line.endsWith("off");
+                        System.out.println("json " + (connection.json ? "on" : "off"));
+                        continue;
+                    }
+                    JSONObject reply = session.send(line);
+                    connection.print(reply);
+                    if (reply.optBoolean("ok") && line.toUpperCase(java.util.Locale.ROOT).startsWith("AUTH ") && !reply.has("token")) {
+                        project = line.substring(5).trim();
+                    }
+                }
+                return 0;
+            } catch (IOException e) {
+                System.err.println("error: " + e.getMessage());
+                return 1;
+            }
+        }
+
+        private static String prompt(String group, String project) {
+            StringBuilder p = new StringBuilder("denis");
+            if (group != null) {
+                p.append('[').append(group);
+                if (project != null) {
+                    p.append('/').append(project, 0, Math.min(8, project.length())).append("...");
+                }
+                p.append(']');
+            }
+            return p.append("> ").toString();
         }
     }
 }

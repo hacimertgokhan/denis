@@ -6,7 +6,7 @@
 
     <groupId>github.hacimertgokhan</groupId>
     <artifactId>denis</artifactId>
-    <version>0.1.0-alpha</version>
+    <version>0.7.0</version>
     <name>Denis Database</name>
     <description>Small, fast in-memory key-value and SQL database with a write-ahead log, snapshots and online backups.</description>
 

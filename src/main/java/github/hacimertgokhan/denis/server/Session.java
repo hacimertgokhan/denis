@@ -2,11 +2,13 @@ package github.hacimertgokhan.denis.server;
 
 import github.hacimertgokhan.denis.backup.BackupManager;
 import github.hacimertgokhan.denis.project.ProjectRegistry;
+import github.hacimertgokhan.denis.query.QueryExecutor;
 import github.hacimertgokhan.denis.sections.group.GroupManager;
 import github.hacimertgokhan.denis.sql.SqlEngine;
 import github.hacimertgokhan.denis.sql.SqlException;
 import github.hacimertgokhan.denis.sql.SqlResult;
 import github.hacimertgokhan.denis.storage.Keyspace;
+import github.hacimertgokhan.denis.storage.QuotaException;
 import github.hacimertgokhan.denis.storage.Slot;
 import github.hacimertgokhan.denis.storage.StorageEngine;
 import github.hacimertgokhan.denis.storage.StorageException;
@@ -16,11 +18,15 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.RejectedExecutionException;
@@ -43,8 +49,10 @@ import java.util.function.Supplier;
 public final class Session {
     private static final DenisLogger log = new DenisLogger(Session.class);
     public static final int PROTOCOL_VERSION = 2;
-    private static final List<String> FEATURES = List.of("json", "sql", "sql-params", "ttl", "incr", "keys", "mget",
-            "dump", "import", "backup", "projects", "info");
+    /** {@code QUERY {"sql": ...}}: bound SQL; any other {@code QUERY {...}} is a document. */
+    private static final java.util.regex.Pattern BOUND_SQL = java.util.regex.Pattern.compile("\\{\\s*\"");
+    private static final List<String> FEATURES = List.of("json", "sql", "sql-params", "query-document", "ttl", "incr",
+            "keys", "mget", "dump", "import", "backup", "projects", "info", "admin", "quota");
 
     private final ServerContext ctx;
     private final String peer;
@@ -133,13 +141,23 @@ public final class Session {
         try {
             return work.get();
         } catch (StorageException e) {
-            return error(e.code(), e.getMessage());
+            return storageError(e);
         } catch (SqlException e) {
             return sqlError(e.getMessage());
         } catch (RuntimeException e) {
             log.error("Command failed for " + peer + ": " + e, e);
             return error("INTERNAL", "internal error: " + e.getMessage());
         }
+    }
+
+    /** Quota refusals carry {@code resource} and {@code limit}, as in 0.4+. */
+    private String storageError(StorageException e) {
+        if (json && e instanceof QuotaException q) {
+            ctx.metrics().errors.increment();
+            return new JSONObject().put("ok", false).put("error", q.getMessage()).put("code", q.code())
+                    .put("resource", q.resource()).put("limit", q.limit()).toString();
+        }
+        return error(e.code(), e.getMessage());
     }
 
     private String sqlError(String message) {
@@ -167,7 +185,7 @@ public final class Session {
         try {
             return dispatch(line);
         } catch (StorageException e) {
-            return Reply.of(error(e.code(), e.getMessage()));
+            return Reply.of(storageError(e));
         } catch (SqlException e) {
             return Reply.of(sqlError(e.getMessage()));
         } catch (RuntimeException e) {
@@ -181,7 +199,7 @@ public final class Session {
         int space = line.indexOf(' ');
         String command = (space < 0 ? line : line.substring(0, space)).toUpperCase(Locale.ROOT);
         return switch (command) {
-            case "LIN", "AUTH", "IMPORT", "QUERY" -> command + " ***";
+            case "LIN", "AUTH", "ADMIN", "IMPORT", "QUERY" -> command + " ***";
             case "SET", "UPDATE" -> {
                 int second = space < 0 ? -1 : line.indexOf(' ', space + 1);
                 yield second < 0 ? line : line.substring(0, second) + " ***";
@@ -226,6 +244,9 @@ public final class Session {
             case "LIN" -> {
                 return login(args);
             }
+            case "ADMIN" -> {
+                return admin(args);
+            }
             default -> {
                 // everything below needs a login
             }
@@ -251,7 +272,8 @@ public final class Session {
                 return Reply.of(object(info()));
             }
             case "SAVE" -> {
-                return adminOnly(() -> async(this::save));
+                // any group may ask for a checkpoint (as in 0.3-0.5); they are serialised and cheap when nothing changed
+                return async(this::save);
             }
             case "BACKUP" -> {
                 return adminOnly(() -> async(this::backup));
@@ -287,8 +309,8 @@ public final class Session {
             case "DEL" -> del(key, parts);
             case "UPDATE" -> update(key, parts);
             case "HEAVEN" -> {
-                ctx.storage().clearCache(keyspace);
-                yield Reply.of(ok("Ok."));
+                long removed = ctx.storage().clearCache(keyspace);
+                yield Reply.of(json ? "{\"ok\":true,\"message\":\"Ok.\",\"removed\":" + removed + "}" : ok("Ok."));
             }
             case "EXISTS" -> exists(key);
             case "KEYS" -> keys(args);
@@ -300,8 +322,10 @@ public final class Session {
             case "DBSIZE" -> dbsize();
             case "DUMP" -> async(this::dump);
             case "IMPORT" -> args.isBlank() ? Reply.of(usage("USAGE: IMPORT <json>")) : async(() -> importData(args));
-            case "QUERY" -> args.isBlank() ? Reply.of(usage("USAGE: QUERY {\"sql\":\"...\",\"params\":[...]}")) : async(() -> query(args));
-            default -> Reply.of(error("UNKNOWN", "Unknown command: " + command));
+            case "QUERY" -> args.isBlank()
+                    ? Reply.of(usage("USAGE: QUERY { alias: resolver(args) { fields } ... } | QUERY {\"sql\":\"...\",\"params\":[...]}"))
+                    : async(() -> query(args));
+            default -> Reply.of(error("UNKNOWN", "Unknown command: " + command + " (try HELP)"));
         };
     }
 
@@ -383,6 +407,140 @@ public final class Session {
             }
         }
         return flags;
+    }
+
+    // =================================================================== ADMIN (main token)
+
+    /**
+     * {@code ADMIN <main-token> LIST|CREATE|IMPORT|USAGE|QUOTA|FLUSH|DROP ...}: project
+     * administration for operators and the Denis Cloud platform, no login needed.
+     * The main token is compared in constant time and wrong tokens count as failed
+     * logins of the address.
+     */
+    private Reply admin(String args) {
+        String[] words = args.trim().split("\s+");
+        if (words.length < 2 || words[0].isEmpty()) {
+            return Reply.of(usage("USAGE: ADMIN <main-token> LIST|CREATE|IMPORT|USAGE|QUOTA|FLUSH|DROP ..."));
+        }
+        long wait = ctx.loginGuard().retryAfter(peer);
+        if (wait > 0) {
+            return Reply.of(error("LOCKED", "Too many failed logins; try again in " + ((wait + 999) / 1000) + " s"));
+        }
+        String mainToken = ctx.config().mainToken();
+        boolean valid = mainToken != null && !mainToken.isBlank()
+                && MessageDigest.isEqual(mainToken.getBytes(StandardCharsets.UTF_8), words[0].getBytes(StandardCharsets.UTF_8));
+        if (!valid) {
+            ctx.loginGuard().failure(peer);
+            ctx.metrics().loginFailures.increment();
+            return Reply.of(error("AUTH", "ADMIN refused: wrong main token"));
+        }
+        ctx.loginGuard().success(peer);
+        return async(() -> adminAction(words));
+    }
+
+    private String adminAction(String[] words) {
+        String action = words[1].toUpperCase(Locale.ROOT);
+        ProjectRegistry projects = ctx.projects();
+        try {
+            switch (action) {
+                case "LIST" -> {
+                    JSONArray list = new JSONArray();
+                    List<String> tokens = new ArrayList<>();
+                    for (ProjectRegistry.Project p : projects.list()) {
+                        list.put(projectJson(p.token()));
+                        tokens.add(p.token());
+                    }
+                    return json ? object(new JSONObject().put("projects", list).put("count", list.length()))
+                            : tokens.isEmpty() ? "(no projects)" : String.join(" ", tokens);
+                }
+                case "CREATE" -> {
+                    String created = projects.create(null);
+                    if (words.length >= 4) {
+                        setQuota(created, Long.parseLong(words[2]), Long.parseLong(words[3]));
+                    }
+                    return json ? object(new JSONObject().put("message", "Project created").put("token", created)) : created;
+                }
+                case "IMPORT" -> {
+                    if (words.length < 3) {
+                        return usage("USAGE: ADMIN <main-token> IMPORT <token> [maxKeys maxBytes]");
+                    }
+                    boolean added;
+                    try {
+                        added = projects.register(words[2], null);
+                    } catch (IllegalArgumentException e) {
+                        return error("USAGE", e.getMessage());
+                    }
+                    if (words.length >= 5) {
+                        setQuota(words[2], Long.parseLong(words[3]), Long.parseLong(words[4]));
+                    }
+                    String message = added ? "Project imported" : "Project already existed";
+                    return json ? object(new JSONObject().put("message", message).put("token", words[2]).put("added", added))
+                            : added ? "imported" : "already existed";
+                }
+                case "USAGE", "QUOTA", "FLUSH", "DROP" -> {
+                    if (words.length < 3 || !projects.exists(words[2])) {
+                        return error("NOTFOUND", "Unknown project" + (words.length < 3 ? "" : ": " + words[2]));
+                    }
+                    String target = words[2];
+                    switch (action) {
+                        case "USAGE" -> {
+                            return json ? object(projectJson(target)) : projectJson(target).toString();
+                        }
+                        case "QUOTA" -> {
+                            if (words.length < 5) {
+                                return usage("USAGE: ADMIN <main-token> QUOTA <token> <maxKeys> <maxBytes>");
+                            }
+                            setQuota(target, Long.parseLong(words[3]), Long.parseLong(words[4]));
+                            return json ? object(projectJson(target).put("message", "Quota updated")) : ok("Quota updated");
+                        }
+                        case "FLUSH" -> {
+                            Keyspace ks = ctx.storage().findKeyspace(target);
+                            if (ks != null) {
+                                ctx.storage().purge(ks).join();
+                            }
+                            return ok("Project emptied: " + target);
+                        }
+                        default -> {
+                            ctx.storage().dropKeyspace(target).join();
+                            projects.delete(target);
+                            return ok("Project deleted: " + target);
+                        }
+                    }
+                }
+                default -> {
+                    return usage("USAGE: ADMIN <main-token> LIST|CREATE|IMPORT|USAGE|QUOTA|FLUSH|DROP ...");
+                }
+            }
+        } catch (NumberFormatException e) {
+            return error("USAGE", "Limits must be integers (0 = unlimited)");
+        } catch (IOException e) {
+            log.error("ADMIN " + action + " failed: " + e.getMessage());
+            return error("IO", "Could not update the project registry");
+        }
+    }
+
+    private void setQuota(String projectToken, long maxKeys, long maxBytes) throws IOException {
+        ctx.projects().setQuota(projectToken, new ProjectRegistry.Quota(maxKeys, maxBytes));
+        Keyspace ks = ctx.storage().findKeyspace(projectToken);
+        if (ks != null) {
+            ks.setQuota(maxKeys, maxBytes);
+        }
+    }
+
+    /** {@code {token, usage:{cachedKeys,cachedBytes,persistedKeys,persistedBytes}, quota:{maxKeys,maxBytes}}} */
+    private JSONObject projectJson(String projectToken) {
+        return new JSONObject()
+                .put("token", projectToken)
+                .put("usage", usageJson(ctx.storage().findKeyspace(projectToken)))
+                .put("quota", ctx.projects().quota(projectToken).toJson());
+    }
+
+    private static JSONObject usageJson(Keyspace ks) {
+        return new JSONObject()
+                .put("cachedKeys", ks == null ? 0 : ks.cacheKeyCount())
+                .put("cachedBytes", ks == null ? 0 : ks.cacheBytes())
+                .put("persistedKeys", ks == null ? 0 : ks.persistedKeys())
+                .put("persistedBytes", ks == null ? 0 : ks.persistedBytes());
     }
 
     // =================================================================== login / projects
@@ -476,6 +634,8 @@ public final class Session {
         }
         token = candidate;
         keyspace = ctx.storage().keyspace(candidate);
+        ProjectRegistry.Quota quota = ctx.projects().quota(candidate);
+        keyspace.setQuota(quota.maxKeys(), quota.maxBytes());
         return Reply.of(ok("Authenticated to project: " + candidate));
     }
 
@@ -659,7 +819,8 @@ public final class Session {
 
     private String keysReply(List<String> keys, int limit) {
         boolean truncated = keys.size() > limit;
-        List<String> shown = truncated ? keys.subList(0, limit) : keys;
+        List<String> shown = new ArrayList<>(truncated ? keys.subList(0, limit) : keys);
+        shown.sort(null);
         JSONArray array = new JSONArray(shown);
         if (json) {
             return new JSONObject().put("ok", true).put("keys", array).put("count", shown.size()).put("truncated", truncated).toString();
@@ -672,16 +833,26 @@ public final class Session {
         if (keys.length == 0 || keys[0].isEmpty()) {
             return Reply.of(usage("USAGE: MGET <key> [key ...]"));
         }
-        JSONObject data = new JSONObject();
+        // written by hand: JSONObject would not keep the requested key order
+        StringBuilder data = new StringBuilder(16 + keys.length * 24).append('{');
+        Set<String> seen = new HashSet<>();
         for (String key : keys) {
+            if (!seen.add(key)) {
+                continue;
+            }
             Slot slot = ctx.storage().read(keyspace, key);
             String value = slot == null ? null : slot.cache() != null ? slot.cache() : slot.persistent();
-            data.put(key, value == null ? JSONObject.NULL : value);
+            if (data.length() > 1) {
+                data.append(',');
+            }
+            data.append(JSONObject.quote(key)).append(':').append(value == null ? "null" : JSONObject.quote(value));
         }
+        String object = data.append('}').toString();
         if (json) {
-            return Reply.of(new JSONObject().put("ok", true).put("data", data).toString());
+            // "values" is the field name of Denis 0.3-0.5
+            return Reply.of("{\"ok\":true,\"data\":" + object + ",\"values\":" + object + "}");
         }
-        return Reply.of(data.toString());
+        return Reply.of(object);
     }
 
     private Reply incr(boolean decrement, String args) {
@@ -885,9 +1056,15 @@ public final class Session {
 
     /** {@code QUERY {"sql": "...", "params": [...]}} — parameterised SQL, always answered as a SQL result. */
     private String query(String args) {
+        String document = args.strip();
+        // a document field starts with an identifier, a JSON request with a quoted key
+        if (!BOUND_SQL.matcher(document).lookingAt()) {
+            // the document reply is JSON in both modes (as in 0.4/0.5)
+            return new QueryExecutor(ctx.storage(), ctx.sql(), keyspace).run(document).toString();
+        }
         JSONObject request;
         try {
-            request = new JSONObject(args);
+            request = new JSONObject(document);
         } catch (JSONException e) {
             return error("USAGE", "QUERY needs a JSON object: " + e.getMessage());
         }
@@ -908,9 +1085,9 @@ public final class Session {
     private String save() {
         try {
             StorageEngine.CheckpointInfo info = ctx.storage().checkpoint();
-            JSONObject body = new JSONObject().put("message", "Snapshot written").put("bytes", info.bytes())
+            JSONObject body = new JSONObject().put("message", "Saved.").put("bytes", info.bytes())
                     .put("records", info.records()).put("millis", info.millis());
-            return json ? object(body) : ok("Snapshot written (" + info.bytes() + " bytes, " + info.millis() + " ms)");
+            return json ? object(body) : ok("Saved.");
         } catch (IOException e) {
             return error("PERSISTENCE", "Snapshot failed: " + e.getMessage());
         }
@@ -1025,21 +1202,78 @@ public final class Session {
                     .put("millis", r.millis())
                     .put("migratedLegacy", r.migratedLegacy()));
         }
-        return new JSONObject().put("info", info);
+        // the top-level fields are the INFO reply of 0.3-0.5, which Denis Cloud and older clients read
+        JSONObject result = new JSONObject()
+                .put("version", ctx.version())
+                .put("uptimeSeconds", (System.currentTimeMillis() - m.startedAt) / 1000)
+                .put("startedAt", java.time.Instant.ofEpochMilli(m.startedAt).toString())
+                .put("connections", new JSONObject().put("open", m.connected.get()).put("total", m.accepted.sum()))
+                .put("commandsTotal", m.commands.sum())
+                .put("cacheKeys", s.cacheKeys())
+                .put("persistedKeys", s.persistentKeys())
+                .put("persistedDirty", s.changesSinceCheckpoint() > 0)
+                .put("projects", ctx.projects().size())
+                .put("group", group)
+                .put("memory", new JSONObject().put("usedMb", (rt.totalMemory() - rt.freeMemory()) / 1024 / 1024)
+                        .put("maxMb", rt.maxMemory() / 1024 / 1024))
+                .put("info", info);
+        if (keyspace != null) {
+            ProjectRegistry.Quota quota = ctx.projects().quota(token);
+            result.put("project", usageJson(keyspace).put("quota", quota.toJson()));
+        }
+        return result;
     }
 
-    private String help() {
-        String[] commands = {
-                "PING", "HELLO", "MODE <json|text>", "LIN <group> <password>", "EXIT",
-                "AUTH <token> | AUTH CREATE | AUTH DELETE <token>", "PROJECTS", "WHOAMI", "INFO",
-                "SET <key> <value> [-&save] [-&cache] [-&ttl=<s>]", "GET <key> [-&from-protobuff]", "DEL <key> [-&cache|-&protobuff]",
-                "UPDATE <key> <value>", "EXISTS <key>", "KEYS [pattern] [-&limit=<n>]", "MGET <key>...",
-                "INCR|DECR <key> [delta] [-&save]", "EXPIRE <key> <s>", "TTL <key>", "PERSIST <key>", "DBSIZE", "HEAVEN",
-                "DUMP", "IMPORT <json>", "SQL <statement>", "QUERY {\"sql\":..,\"params\":[..]}",
-                "SAVE (admin)", "BACKUP (admin)", "BACKUPS (admin)"};
-        if (json) {
-            return new JSONObject().put("ok", true).put("commands", new JSONArray(commands)).toString();
+    /** One entry of HELP (the shape of 0.3-0.5: name, usage, description, needsLogin, needsProject). */
+    private record CommandDoc(String name, String usage, String description, boolean needsLogin, boolean needsProject) {
+        JSONObject toJson() {
+            return new JSONObject().put("name", name).put("usage", usage).put("description", description)
+                    .put("needsLogin", needsLogin).put("needsProject", needsProject);
         }
-        return String.join("; ", commands);
+    }
+
+    private static final List<CommandDoc> COMMANDS = List.of(
+            new CommandDoc("PING", "PING", "Liveness check", false, false),
+            new CommandDoc("HELLO", "HELLO", "Server name, version, protocol and features", false, false),
+            new CommandDoc("MODE", "MODE <json|text>", "Reply format of this connection", false, false),
+            new CommandDoc("HELP", "HELP", "This list", false, false),
+            new CommandDoc("LIN", "LIN <group> <password>", "Log in with a group", false, false),
+            new CommandDoc("ADMIN", "ADMIN <main-token> LIST|CREATE|IMPORT|USAGE|QUOTA|FLUSH|DROP ...", "Project administration with the main token", false, false),
+            new CommandDoc("EXIT", "EXIT", "Close the connection", false, false),
+            new CommandDoc("AUTH", "AUTH <token> | AUTH CREATE | AUTH DELETE <token>", "Select, create or delete a project", true, false),
+            new CommandDoc("PROJECTS", "PROJECTS", "Projects this group can open", true, false),
+            new CommandDoc("WHOAMI", "WHOAMI", "Group, admin flag and current project", true, false),
+            new CommandDoc("INFO", "INFO", "Server statistics", true, false),
+            new CommandDoc("SAVE", "SAVE", "Write a snapshot now", true, false),
+            new CommandDoc("BACKUP", "BACKUP", "Create a verified backup (admin groups)", true, false),
+            new CommandDoc("BACKUPS", "BACKUPS", "List backups (admin groups)", true, false),
+            new CommandDoc("SET", "SET <key> <value> [-&save] [-&cache] [-&ttl=<s>]", "Write a value; -&save also writes the durable layer", true, true),
+            new CommandDoc("GET", "GET <key> [-&from-protobuff] [-&asa-json]", "Read a value (cache first)", true, true),
+            new CommandDoc("DEL", "DEL <key> [-&cache|-&protobuff]", "Delete a key", true, true),
+            new CommandDoc("UPDATE", "UPDATE <key> <value>", "Overwrite the cache value", true, true),
+            new CommandDoc("EXISTS", "EXISTS <key>", "Whether a key exists", true, true),
+            new CommandDoc("KEYS", "KEYS [pattern] [-&cache|-&protobuff] [-&limit=<n>]", "Keys matching a glob", true, true),
+            new CommandDoc("MGET", "MGET <key> [<key> ...]", "Several values at once", true, true),
+            new CommandDoc("INCR", "INCR|DECR <key> [delta] [-&save]", "Atomic counter", true, true),
+            new CommandDoc("EXPIRE", "EXPIRE <key> <seconds> | TTL <key> | PERSIST <key>", "Time to live of the cache value", true, true),
+            new CommandDoc("DBSIZE", "DBSIZE", "Key and table counts of the project", true, true),
+            new CommandDoc("HEAVEN", "HEAVEN", "Drop every cache value of the project", true, true),
+            new CommandDoc("DUMP", "DUMP", "Export the project as JSON", true, true),
+            new CommandDoc("IMPORT", "IMPORT <json>", "Import a DUMP (replace/append for tables)", true, true),
+            new CommandDoc("QUERY", "QUERY { alias: resolver(args) { fields } ... } | QUERY {\"sql\":..,\"params\":[..]}",
+                    "Many reads in one round trip, or SQL with bound parameters", true, true),
+            new CommandDoc("SQL", "SQL <statement>", "Run a SQL statement (also typed directly)", true, true));
+
+    private String help() {
+        if (json) {
+            JSONArray commands = new JSONArray();
+            COMMANDS.forEach(c -> commands.put(c.toJson()));
+            return new JSONObject().put("ok", true).put("commands", commands).toString();
+        }
+        StringBuilder text = new StringBuilder("Denis commands:");
+        for (CommandDoc c : COMMANDS) {
+            text.append(" | ").append(c.usage());
+        }
+        return text.toString();
     }
 }

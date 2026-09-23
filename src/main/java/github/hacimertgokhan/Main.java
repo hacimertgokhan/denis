@@ -1,5 +1,6 @@
 package github.hacimertgokhan;
 
+import github.hacimertgokhan.denis.CreateSecureToken;
 import github.hacimertgokhan.denis.Version;
 import github.hacimertgokhan.denis.backup.BackupManager;
 import github.hacimertgokhan.denis.cli.CLIMain;
@@ -95,6 +96,16 @@ public class Main {
         } catch (IllegalArgumentException e) {
             log.error("Invalid configuration: " + e.getMessage());
             return 2;
+        }
+        String mainToken = config.mainToken();
+        if (mainToken == null || mainToken.isBlank()) {
+            // ADMIN commands need a main token; generated once and kept in denis.properties, never logged
+            mainToken = new CreateSecureToken().getToken();
+            properties.setProperty("ddb-main-token", mainToken);
+            config = config.withMainToken(mainToken);
+            log.info("Generated the main token for ADMIN commands (ddb-main-token in " + properties.getExternalPath().toAbsolutePath() + ")");
+        } else if (mainToken.length() < 32) {
+            log.warn("ddb-main-token is shorter than 32 characters; ADMIN commands are only as safe as this token");
         }
         log.info("Denis Database " + Version.get() + " starting (Java " + System.getProperty("java.version") + ", "
                 + Runtime.getRuntime().availableProcessors() + " cpus, heap max " + (Runtime.getRuntime().maxMemory() >> 20) + " MB)");
@@ -229,6 +240,10 @@ public class Main {
         try {
             if (groups.ensure(group, password, true)) {
                 log.info("Bootstrap group created: " + group + " (admin)");
+            } else if (groups.find(group) != null && !groups.find(group).admin()) {
+                // groups made by 0.3-0.6 predate admin roles; the bootstrap group is the operator's
+                groups.grant(group, GroupManager.ADMIN);
+                log.info("Bootstrap group " + group + " is now an admin group");
             } else {
                 log.info("Bootstrap group already exists: " + group);
             }

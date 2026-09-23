@@ -27,6 +27,10 @@ import java.util.concurrent.CompletableFuture;
  * {@link DenisException} - one failure does not stop the others. A pipeline
  * is not atomic (other clients' commands may interleave on the server) and
  * not thread-safe; after {@code execute} it is empty and can be reused.
+ *
+ * <p>{@link #execute()} without arguments sends the batch;
+ * {@link #execute(String, Object...)} queues a SQL statement like the other
+ * command methods.
  */
 public final class Pipeline extends AsyncCommands {
     private final DenisClient client;

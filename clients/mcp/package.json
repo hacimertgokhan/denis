@@ -1,0 +1,32 @@
+{
+  "name": "denis-mcp-server",
+  "version": "0.1.0",
+  "description": "MCP server for Denis Database: lets AI assistants inspect the schema, query and modify data over the Model Context Protocol",
+  "type": "module",
+  "main": "src/index.js",
+  "bin": {
+    "denis-mcp-server": "src/index.js"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hacimertgokhan/denis.git",
+    "directory": "clients/mcp"
+  },
+  "keywords": ["denis", "mcp", "model-context-protocol", "ai", "sql", "key-value", "database"],
+  "engines": {
+    "node": ">=18"
+  },
+  "files": ["src/", "README.md"],
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test test/*.test.js",
+    "test:integration": "DENIS_INTEGRATION=1 node --test test/*.test.js",
+    "inspect": "npx @modelcontextprotocol/inspector node src/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "denis-client": "file:../node",
+    "zod": "^3.25.0"
+  }
+}

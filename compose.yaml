@@ -1,13 +1,19 @@
 services:
   denis:
-    build: .
+    build:
+      context: .
+      args:
+        VERSION: "${DENIS_VERSION:-dev}"
     image: denis:local
     container_name: denis
+    init: true
     ports:
       # bind to 127.0.0.1 on the host unless other machines must reach it
       - "${DENIS_PUBLISH:-127.0.0.1}:${DDB_PORT:-5142}:5142"
     environment:
       DDB_PORT: "5142"
+      # main token for ADMIN commands; empty = generated on first start (see /data/denis.properties)
+      DDB_MAIN_TOKEN: "${DDB_MAIN_TOKEN:-}"
       # admin group created on first start so clients can LIN immediately
       DENIS_BOOTSTRAP_GROUP: "${DENIS_BOOTSTRAP_GROUP:-admin}"
       DENIS_BOOTSTRAP_GROUP_PASSWORD: "${DENIS_BOOTSTRAP_GROUP_PASSWORD:?set DENIS_BOOTSTRAP_GROUP_PASSWORD in .env}"
@@ -15,7 +21,10 @@ services:
       DENIS_MAX_MEMORY: "${DENIS_MAX_MEMORY:-0}"
       DENIS_BACKUP_INTERVAL_MINUTES: "${DENIS_BACKUP_INTERVAL_MINUTES:-0}"
       DENIS_BACKUP_RETENTION: "${DENIS_BACKUP_RETENTION:-7}"
+      DENIS_MAX_CLIENTS: "${DENIS_MAX_CLIENTS:-10000}"
       DENIS_MAX_CONNECTIONS_PER_IP: "${DENIS_MAX_CONNECTIONS_PER_IP:-64}"
+      DENIS_CLIENT_TIMEOUT_SECONDS: "${DENIS_CLIENT_TIMEOUT_SECONDS:-0}"
+      DENIS_LOG_LEVEL: "${DENIS_LOG_LEVEL:-info}"
     volumes:
       - denis-data:/data
     restart: unless-stopped

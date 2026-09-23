@@ -332,22 +332,38 @@ public final class SqlEngine {
     }
 
     private SqlResult showTables(Keyspace ks) {
-        List<Object[]> rows = new ArrayList<>();
+        org.json.JSONArray tables = new org.json.JSONArray();
         List<String> names = new ArrayList<>(ks.tables().keySet());
         names.sort(null);
         for (String name : names) {
             Table t = ks.table(name);
-            if (t == null) {
-                continue;
-            }
-            t.lock().readLock().lock();
-            try {
-                rows.add(new Object[]{name, (long) t.rowCount(), (long) t.schema().size(), (long) t.indexes().size(), t.estimatedBytes()});
-            } finally {
-                t.lock().readLock().unlock();
+            if (t != null) {
+                tables.put(tableInfo(t));
             }
         }
-        return SqlResult.query(List.of("table", "rows", "columns", "indexes", "bytes"), rows);
+        return SqlResult.tables(tables);
+    }
+
+    /**
+     * {@code {name, columns:[{name,type,notNull?,primaryKey?,unique?,default?}], rows, indexes:[{name,column,unique}], bytes}}
+     * — the shape SHOW TABLES and DESCRIBE have had since 0.3.
+     */
+    public org.json.JSONObject tableInfo(Table t) {
+        t.lock().readLock().lock();
+        try {
+            org.json.JSONArray columns = new org.json.JSONArray();
+            for (Column c : t.schema().columns()) {
+                columns.put(c.toJson());
+            }
+            org.json.JSONArray indexes = new org.json.JSONArray();
+            for (Index index : t.indexes()) {
+                indexes.put(new org.json.JSONObject().put("name", index.name()).put("column", index.column()).put("unique", index.unique()));
+            }
+            return new org.json.JSONObject().put("name", t.name()).put("columns", columns).put("rows", t.rowCount())
+                    .put("indexes", indexes).put("bytes", t.estimatedBytes());
+        } finally {
+            t.lock().readLock().unlock();
+        }
     }
 
     private SqlResult showIndexes(Keyspace ks, Statement.ShowIndexes st) {
@@ -365,12 +381,7 @@ public final class SqlEngine {
     }
 
     private SqlResult describe(Keyspace ks, Statement.Describe st) {
-        Table t = requireTable(ks, st.table());
-        List<Object[]> rows = new ArrayList<>();
-        for (Column c : t.schema().columns()) {
-            rows.add(new Object[]{c.name(), c.declaredType(), c.type().name(), c.notNull(), c.primaryKey(), c.unique(), c.defaultValue()});
-        }
-        return SqlResult.query(List.of("column", "type", "storage", "not_null", "primary_key", "unique", "default"), rows);
+        return SqlResult.tables(new org.json.JSONArray().put(tableInfo(requireTable(ks, st.table()))));
     }
 
     // =================================================================== access paths
@@ -1298,6 +1309,7 @@ public final class SqlEngine {
                 bytes += 64 + 24L * values.length;
             }
             storage.reserveMemory(bytes);
+            storage.checkRowQuota(ks, newRows.size(), bytes);
 
             // phase 2: uniqueness (against the table and within the statement)
             if (!st.replace()) {
@@ -1613,6 +1625,7 @@ public final class SqlEngine {
             prepared.add(values);
         }
         storage.reserveMemory(96L * prepared.size());
+        storage.checkRowQuota(ks, prepared.size(), 96L * prepared.size());
         for (Object[] values : prepared) {
             long rowId = table.nextRowId();
             storage.logTableMutation(ks, new Mutation.PutRow(ks.id(), table.name(), rowId, values));

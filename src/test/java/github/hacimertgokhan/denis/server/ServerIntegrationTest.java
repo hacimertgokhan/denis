@@ -36,6 +36,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** The wire protocol end to end over real sockets. */
 class ServerIntegrationTest {
+    static final String MAIN_TOKEN = "M".repeat(128);
     @TempDir
     Path dir;
 
@@ -48,7 +49,7 @@ class ServerIntegrationTest {
         StorageConfig storageConfig = StorageConfig.defaults(dir.resolve("data")).withFsync(fsync).withCheckpoint(0, 0);
         ServerConfig config = new ServerConfig("127.0.0.1", 0, 100, maxPerIp, maxLine, 2, 2, 64, 0, 1 << 20, false,
                 loginFailures, 60, 20_000, true, 1000, 1000, dir.resolve("denis.toml"), dir.resolve("ddb.json"),
-                dir.resolve("backups"), 0, 3, storageConfig);
+                dir.resolve("backups"), 0, 3, storageConfig, MAIN_TOKEN);
         storage = new StorageEngine(storageConfig).open();
         GroupManager groups = new GroupManager(config.groupsFile(), new PasswordHasher(20_000));
         groups.create("admin", "admin-pw", true);
@@ -209,7 +210,7 @@ class ServerIntegrationTest {
             assertTrue(new JSONObject(c.in.readLine()).getBoolean("ok"));
             assertEquals("v" + i, new JSONObject(c.in.readLine()).getString("data"));
             if (i % 100 == 0) {
-                assertEquals(i, new JSONObject(c.in.readLine()).getJSONArray("rows").getJSONArray(0).getLong(0));
+                assertEquals(i, new JSONObject(c.in.readLine()).getJSONArray("rows").getJSONObject(0).getLong(String.valueOf(i)));
             }
         }
     }
@@ -232,7 +233,7 @@ class ServerIntegrationTest {
         assertEquals(List.of("sensor", "n", "MAX(value)"), result.getJSONArray("columns").toList());
         // a REAL keeps its fraction on the wire (org.json alone would print 12)
         String raw = c.send("QUERY " + q);
-        assertTrue(raw.contains("[[\"a\",5,12.0]]"), raw);
+        assertTrue(raw.contains("\"rows\":[{\"sensor\":\"a\",\"n\":5,\"MAX(value)\":12.0}]"), raw);
         JSONObject error = c.json("SQL SELECT * FROM nothing");
         assertFalse(error.getBoolean("ok"));
         assertEquals("SQL", error.getString("code"));
@@ -251,8 +252,8 @@ class ServerIntegrationTest {
         Client admin = jsonClient("admin", "admin-pw");
         assertTrue(admin.json("AUTH " + token).getBoolean("ok"), "admins can open every project");
         assertEquals(1, app.json("PROJECTS").getInt("count"));
-        assertEquals("FORBIDDEN", app.json("SAVE").getString("code"));
-        assertTrue(admin.json("SAVE").getBoolean("ok"));
+        assertEquals("FORBIDDEN", app.json("BACKUP").getString("code"));
+        assertTrue(app.json("SAVE").getBoolean("ok"), "any group may request a snapshot, as in 0.3-0.5");
         JSONObject backup = admin.json("BACKUP");
         assertTrue(backup.getBoolean("ok"), backup.toString());
         assertEquals(1, admin.json("BACKUPS").getJSONArray("backups").length());
@@ -312,7 +313,7 @@ class ServerIntegrationTest {
         assertTrue(imported.getBoolean("ok"), imported.toString());
         assertEquals("1", c.json("GET a").getString("data"));
         assertEquals("2", c.json("GET b").getString("data"));
-        assertEquals(2, c.json("SQL SELECT COUNT(*) FROM t").getJSONArray("rows").getJSONArray(0).getInt(0));
+        assertEquals(2, c.json("SQL SELECT COUNT(*) AS n FROM t").getJSONArray("rows").getJSONObject(0).getInt("n"));
     }
 
     @Test

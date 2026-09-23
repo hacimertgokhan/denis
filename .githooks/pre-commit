@@ -1,0 +1,14 @@
+#!/bin/sh
+# Refuse to commit anything that looks like a live secret. Placeholders in
+# .env.example are empty, so a real value in a staged file is always a mistake.
+# Enable with: git config core.hooksPath .githooks
+added=$(git diff --cached -U0 | grep -E '^\+' | grep -Ev '^\+\+\+ ')
+if printf '%s\n' "$added" | grep -E '(re_[A-Za-z0-9_]{20,}|sk_(live|test)_[A-Za-z0-9]{16,}|ghp_[A-Za-z0-9]{30,}|AKIA[0-9A-Z]{16}|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY)' >/dev/null; then
+  echo "pre-commit: a staged change contains what looks like a live secret. Keep it in .env (gitignored)." >&2
+  exit 1
+fi
+if git diff --cached --name-only | grep -E '(^|/)\.env(\.cloud|\.local|\.production)?$' >/dev/null; then
+  echo "pre-commit: .env files are never committed." >&2
+  exit 1
+fi
+exit 0

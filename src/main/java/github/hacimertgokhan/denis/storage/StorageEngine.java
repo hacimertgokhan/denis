@@ -142,16 +142,24 @@ public final class StorageEngine implements AutoCloseable {
             replay = WalReplayer.replay(config.walDir(), walStart, config.lenientRecovery(), this::apply);
 
             Path legacy = config.legacyDatabaseFile();
-            if (legacy != null && Files.exists(legacy) && !Files.exists(snapshot) && replay.records() == 0) {
+            boolean legacyPresent = legacy != null && (Files.exists(legacy)
+                    || LegacyProtobufReader.journals(legacy).stream().anyMatch(Files::exists));
+            if (legacyPresent && !Files.exists(snapshot) && replay.records() == 0) {
                 legacyKeys = importLegacy(legacy);
                 migrated = true;
             }
             wal = new WriteAheadLog(config.walDir(), config.fsync(), config.walSegmentBytes(), config.walQueueCapacity());
             if (migrated) {
                 checkpoint();
-                Path renamed = legacy.resolveSibling(legacy.getFileName() + ".migrated");
-                Files.move(legacy, renamed, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-                log.info(String.format("Imported %d keys from %s (renamed to %s)", legacyKeys, legacy, renamed.getFileName()));
+                // kept (renamed), never deleted: the operator decides when the old files can go
+                List<Path> oldFiles = new ArrayList<>(LegacyProtobufReader.journals(legacy));
+                oldFiles.add(legacy);
+                for (Path old : oldFiles) {
+                    if (Files.exists(old)) {
+                        Files.move(old, old.resolveSibling(old.getFileName() + ".migrated"), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                    }
+                }
+                log.info(String.format("Imported %d keys and tables from %s (old files renamed to *.migrated)", legacyKeys, legacy));
             }
         }
         long millis = (System.nanoTime() - started) / 1_000_000;
@@ -162,14 +170,20 @@ public final class StorageEngine implements AutoCloseable {
     }
 
     private long importLegacy(Path legacy) throws IOException {
-        Map<String, Map<String, String>> data = LegacyProtobufReader.read(legacy);
+        Map<String, Map<String, String>> data = LegacyProtobufReader.readWithJournal(legacy);
         long count = 0;
         for (Map.Entry<String, Map<String, String>> project : data.entrySet()) {
             Keyspace ks = keyspace(project.getKey());
+            Map<String, String> sqlKeys = new java.util.TreeMap<>();
             for (Map.Entry<String, String> entry : project.getValue().entrySet()) {
+                if (entry.getKey().startsWith(RESERVED_PREFIX)) {
+                    sqlKeys.put(entry.getKey(), entry.getValue());
+                    continue;
+                }
                 apply(new Mutation.Put(ks.id(), entry.getKey(), entry.getValue()));
                 count++;
             }
+            count += LegacyTables.convert(ks.id(), sqlKeys, this::apply, log);
         }
         return count;
     }
@@ -357,6 +371,7 @@ public final class StorageEngine implements AutoCloseable {
     public CompletableFuture<Void> put(Keyspace ks, String key, String value, boolean cache, boolean durable, long ttlMillis) {
         checkKey(key);
         checkAlive(ks);
+        checkQuota(ks, key, cache ? value : null, durable ? value : null);
         if (durable) {
             requireDurability();
             ensureDefined(ks);
@@ -438,6 +453,8 @@ public final class StorageEngine implements AutoCloseable {
     public IncrResult incr(Keyspace ks, String key, long delta, boolean durable) {
         checkKey(key);
         checkAlive(ks);
+        // a counter only adds a key the first time; its few digits are not worth a second pass
+        checkQuota(ks, key, "0", durable ? "0" : null);
         if (durable) {
             requireDurability();
             ensureDefined(ks);
@@ -630,6 +647,8 @@ public final class StorageEngine implements AutoCloseable {
 
     private void track(Keyspace ks, String key, Slot old, Slot next) {
         memory.add(Slot.cost(key, next) - Slot.cost(key, old));
+        ks.cacheBytes.add(size(key, next == null ? null : next.cache) - size(key, old == null ? null : old.cache));
+        ks.persistentBytes.add(size(key, next == null ? null : next.persistent) - size(key, old == null ? null : old.persistent));
         boolean oldCache = old != null && old.cache != null;
         boolean newCache = next != null && next.cache != null;
         boolean oldPersistent = old != null && old.persistent != null;
@@ -639,6 +658,91 @@ public final class StorageEngine implements AutoCloseable {
         }
         if (oldPersistent != newPersistent) {
             ks.persistentKeys.add(newPersistent ? 1 : -1);
+        }
+    }
+
+    /** Quota size of one entry: key plus value characters (0 when the layer is empty). */
+    static long size(String key, String value) {
+        return value == null ? 0 : key.length() + value.length();
+    }
+
+    /**
+     * Refuse a write that would take the project past its limits. The check is
+     * made against the current usage before the write (like any quota under
+     * concurrent writers it is exact per key, approximate across keys).
+     */
+    private void checkQuota(Keyspace ks, String key, String cacheValue, String persistentValue) {
+        long maxKeys = ks.maxKeys;
+        long maxBytes = ks.maxBytes;
+        if (maxKeys <= 0 && maxBytes <= 0) {
+            return;
+        }
+        Slot old = ks.slots.get(key);
+        String oldCache = old == null ? null : old.cache;
+        String oldPersistent = old == null ? null : old.persistent;
+        long cacheKeys = ks.cacheKeys.sum();
+        long cacheBytes = ks.cacheBytes.sum();
+        if (cacheValue != null) {
+            cacheKeys += oldCache == null ? 1 : 0;
+            cacheBytes += size(key, cacheValue) - size(key, oldCache);
+        }
+        long persistedKeys = ks.persistedKeys();
+        long persistedBytes = ks.persistedBytes();
+        if (persistentValue != null) {
+            persistedKeys += oldPersistent == null ? 1 : 0;
+            persistedBytes += size(key, persistentValue) - size(key, oldPersistent);
+        }
+        enforce(maxKeys, maxBytes, cacheKeys, cacheBytes, persistedKeys, persistedBytes);
+    }
+
+    /** Quota check for {@code rows} new table rows of about {@code bytes} bytes. */
+    public void checkRowQuota(Keyspace ks, long rows, long bytes) {
+        long maxKeys = ks.maxKeys;
+        long maxBytes = ks.maxBytes;
+        if (maxKeys <= 0 && maxBytes <= 0) {
+            return;
+        }
+        enforce(maxKeys, maxBytes, 0, 0, ks.persistedKeys() + rows, ks.persistedBytes() + bytes);
+    }
+
+    private static void enforce(long maxKeys, long maxBytes, long cacheKeys, long cacheBytes, long persistedKeys, long persistedBytes) {
+        if (maxKeys > 0 && (cacheKeys > maxKeys || persistedKeys > maxKeys)) {
+            throw new QuotaException("keys", maxKeys);
+        }
+        if (maxBytes > 0 && (cacheBytes > maxBytes || persistedBytes > maxBytes)) {
+            throw new QuotaException("bytes", maxBytes);
+        }
+    }
+
+    /**
+     * Delete every key and table of a project but keep the project ({@code ADMIN FLUSH}).
+     * Logged as drop + define of the same id, so replay ends with an empty keyspace.
+     */
+    public CompletableFuture<Void> purge(Keyspace ks) {
+        checkAlive(ks);
+        int e = enterWrite();
+        try {
+            CompletableFuture<Void> durable = DONE;
+            if (ks.defined && config.persistence()) {
+                logRecord(MutationCodec.encodeRecord(new Mutation.DropKeyspace(ks.id())));
+                durable = logRecord(MutationCodec.encodeRecord(new Mutation.DefineKeyspace(ks.id(), ks.name())));
+                durableSinceCheckpoint.incrementAndGet();
+            }
+            for (String key : ks.slots.keySet()) {
+                ks.slots.computeIfPresent(key, (k, old) -> {
+                    track(ks, k, old, null);
+                    return null;
+                });
+            }
+            for (Map.Entry<String, Table> entry : ks.tables.entrySet()) {
+                if (ks.tables.remove(entry.getKey(), entry.getValue())) {
+                    entry.getValue().release();
+                }
+            }
+            ks.ttlKeys.clear();
+            return durable;
+        } finally {
+            exitWrite(e);
         }
     }
 

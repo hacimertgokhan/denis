@@ -1,6 +1,5 @@
 package github.hacimertgokhan.readers;
 
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -156,11 +155,42 @@ public class DenisProperties {
             if (parent != null) {
                 Files.createDirectories(parent);
             }
-            try (FileOutputStream output = new FileOutputStream(externalPath.toFile())) {
-                properties.store(output, null);
+            // edit the one line in place so the comments of the file survive
+            java.util.List<String> lines = Files.exists(externalPath)
+                    ? new java.util.ArrayList<>(Files.readAllLines(externalPath, java.nio.charset.StandardCharsets.UTF_8))
+                    : new java.util.ArrayList<>();
+            String entry = key + "=" + escape(value);
+            boolean replaced = false;
+            for (int i = 0; i < lines.size(); i++) {
+                String trimmed = lines.get(i).trim();
+                if (!trimmed.startsWith("#") && !trimmed.startsWith("!")
+                        && (trimmed.startsWith(key + "=") || trimmed.startsWith(key + " ") || trimmed.startsWith(key + ":") || trimmed.equals(key))) {
+                    lines.set(i, entry);
+                    replaced = true;
+                    break;
+                }
             }
+            if (!replaced) {
+                lines.add(entry);
+            }
+            Files.write(externalPath, lines, java.nio.charset.StandardCharsets.UTF_8);
         } catch (IOException ex) {
-            ex.printStackTrace();
+            throw new java.io.UncheckedIOException("Cannot write " + externalPath, ex);
         }
+    }
+
+    /** Properties-file escaping of a value (backslashes, leading spaces, line breaks). */
+    private static String escape(String value) {
+        StringBuilder sb = new StringBuilder(value.length());
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            switch (c) {
+                case '\\' -> sb.append("\\\\");
+                case '\n' -> sb.append("\\n");
+                case '\r' -> sb.append("\\r");
+                default -> sb.append(i == 0 && c == ' ' ? "\\ " : String.valueOf(c));
+            }
+        }
+        return sb.toString();
     }
 }

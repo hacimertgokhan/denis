@@ -30,7 +30,7 @@ jobs:
       - name: End-to-end matrix
         env:
           BENCH_DURATION: ${{ github.event.inputs.duration || '10' }}
-          BENCH_COMPARE: benchmarks/results/0.1.0.jsonl
+          BENCH_COMPARE: benchmarks/results/0.6.1.jsonl
         run: bash benchmarks/run.sh "ci-${GITHUB_SHA::7}" | tee e2e.txt
       - name: JMH micro benchmarks
         run: java -jar benchmarks/target/denis-benchmarks.jar -wi 2 -i 3 -f 1 -rf json -rff jmh.json | tee jmh.txt

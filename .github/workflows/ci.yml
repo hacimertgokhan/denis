@@ -82,6 +82,21 @@ jobs:
       - run: npm test
         working-directory: studio
 
+  web:
+    name: Denis Cloud (type check)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+        working-directory: web
+      - run: npx tsc --noEmit
+        working-directory: web
+
   docker:
     name: Docker image + client integration tests
     runs-on: ubuntu-latest
@@ -101,6 +116,7 @@ jobs:
         run: |
           docker run -d --name denis -p 5142:5142 \
             -e DENIS_BOOTSTRAP_GROUP=ci -e DENIS_BOOTSTRAP_GROUP_PASSWORD=ci-password \
+            -e DDB_MAIN_TOKEN="$(printf 'C%.0s' $(seq 1 128))" \
             -e DENIS_PASSWORD_ITERATIONS=20000 denis:ci
           for i in $(seq 1 30); do
             status=$(docker inspect --format '{{.State.Health.Status}}' denis)
@@ -125,6 +141,15 @@ jobs:
           DENIS_GROUP: ci
           DENIS_PASSWORD: ci-password
         run: npm run test:integration
+      - name: MCP server tests (unit + integration through the SDK client)
+        working-directory: clients/mcp
+        env:
+          DENIS_INTEGRATION: "1"
+          DENIS_GROUP: ci
+          DENIS_PASSWORD: ci-password
+        run: |
+          npm install --no-audit --no-fund
+          node --test test/*.test.js
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -139,12 +164,11 @@ jobs:
         run: mvn -B test
       - name: Data survives a restart
         run: |
-          docker exec denis /app/entrypoint.sh cli exec -g ci -p ci-password "AUTH CREATE" > created.json
-          token=$(sed -n 's/.*"token":"\([^"]*\)".*/\1/p' created.json)
-          docker exec denis /app/entrypoint.sh cli exec -g ci -p ci-password -t "$token" "SET survivor yes -&save"
+          token=$(docker exec denis /app/entrypoint.sh cli exec --json -g ci -p ci-password "AUTH CREATE" | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
+          docker exec denis /app/entrypoint.sh cli exec --json -g ci -p ci-password -t "$token" "SET survivor yes -&save"
           docker restart denis
           sleep 8
-          docker exec denis /app/entrypoint.sh cli exec -g ci -p ci-password -t "$token" "GET survivor" | grep '"data":"yes"'
+          docker exec denis /app/entrypoint.sh cli exec --json -g ci -p ci-password -t "$token" "GET survivor" | grep '"data":"yes"'
       - name: Server logs
         if: always()
         run: docker logs denis || true

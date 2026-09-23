@@ -17,7 +17,7 @@ wire protocol described in [`../docs/PROTOCOL.md`](../docs/PROTOCOL.md).
 | **Dashboard** | Polls `INFO` every N seconds (default 2 s, see Settings): ops/s, connected clients, memory used vs `max-memory` (bar), keys (cache / durable), tables, hit ratio, evictions, uptime, persistence health (fsync mode, healthy, WAL size, last checkpoint, last error), JVM heap, traffic and, for admin groups, the last recovery. Sparklines (inline SVG) for ops/s and memory. Pause / refresh. |
 | **Projects** | `PROJECTS` table with shortened token + copy button, owner, key and table counts. Create (shows the new token, "use now"), delete (typed confirmation of the token prefix), switch the current project (`AUTH` for the whole connection). |
 | **Keys** | Glob search with layer filter (all / cache / durable) and limit, paginated list with layer badges and TTL. Detail panel: JSON values pretty-printed (saved compact), raw text otherwise; separate tabs when the cache and durable values differ. Save to cache or durable (+ optional TTL), delete a layer or both, EXPIRE / PERSIST, INCR helper for integer values, "New key" dialog, "Clear cache" (`HEAVEN`). Values that the line protocol cannot carry (line breaks, a word starting with `-&`) are explained and can be stored as a JSON string instead. |
-| **SQL** | Monospace editor (Ctrl/Cmd+Enter runs, several statements separated by `;` run in order), optional JSON parameter array (sent with `QUERY`, safe from injection), results grid with client-side sorting, NULL shown distinctly, copy cell / row / all, CSV / JSON export via a save dialog, *Explain*, tables sidebar (`SHOW TABLES`, click = `DESCRIBE`, ▷ = `SELECT … LIMIT 100`), persisted history, statement timing. |
+| **SQL** | Monospace editor (Ctrl/Cmd+Enter runs, several statements separated by `;` run in order), optional JSON parameter array (every statement is sent with `QUERY {"sql","params"}`, parameters bound by the server, safe from injection), results grid with client-side sorting, NULL shown distinctly, copy cell / row / all, CSV / JSON export via a save dialog, *Explain*, tables sidebar (`SHOW TABLES`, click = `DESCRIBE`, ▷ = `SELECT … LIMIT 100`), persisted history, statement timing. |
 | **Backup & Restore** | Admin groups: `BACKUP` now, `BACKUPS` list (name, size, date, copy path), `SAVE` snapshot. Everyone: logical export of the current project (`DUMP` → `.denis.json` with metadata) and import from such a file (or a raw DUMP) with a preview (keys, tables, rows, existing-table conflicts), "replace existing tables" option, progress and result. |
 | **Console** | Raw protocol lines with history (Up/Down) and pretty-printed JSON replies. `LIN` asks for confirmation (the password is masked in the history); `AUTH <token>` / `LIN` apply to the whole window's connection; `MODE` and `EXIT` are refused (the studio needs JSON mode). |
 | **Settings** | Theme (system / light / dark), dashboard refresh interval, default key list limit, confirmation of destructive actions. |
@@ -190,7 +190,7 @@ testing).
   "formatVersion": 1,
   "exportedAt": "2026-09-23T18:00:00.000Z",
   "studio": { "version": "0.1.0" },
-  "source": { "host": "127.0.0.1", "port": 5142, "group": "app", "project": "7dMs9h2f…vvh5", "serverVersion": "0.1.0-alpha" },
+  "source": { "host": "127.0.0.1", "port": 5142, "group": "app", "project": "7dMs9h2f…vvh5", "serverVersion": "0.7.0" },
   "summary": { "keys": 3, "cacheKeys": 3, "persistentKeys": 2, "ttlKeys": 1, "tables": 1, "rows": 2 },
   "dump": { "format": 1, "cache": {}, "persistent": {}, "ttl": {}, "tables": {} }
 }

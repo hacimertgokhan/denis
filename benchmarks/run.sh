@@ -68,7 +68,7 @@ run --workload mixed   --connections 32 --pipeline 1
 run --workload persist --connections 8  --pipeline 16 --keys 2000
 run --workload persist --connections 1  --pipeline 1  --keys 2000
 run --workload sql     --connections 8  --pipeline 16 --sql-rows 1000
-run --workload sql-indexed --connections 8 --pipeline 16 --sql-rows 1000 || echo "   (sql-indexed needs Denis 0.1+)"
+run --workload sql-indexed --connections 8 --pipeline 16 --sql-rows 1000 || echo "   (sql-indexed needs PRIMARY KEY support, Denis 0.7+)"
 
 echo "==> results in $OUT"
 if [ -n "$PREVIOUS" ] && [ -f "$PREVIOUS" ]; then

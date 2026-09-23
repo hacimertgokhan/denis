@@ -2,8 +2,10 @@ package github.hacimertgokhan.drivers;
 
 import github.hacimertgokhan.drivers.exceptions.DenisAuthException;
 import github.hacimertgokhan.drivers.exceptions.DenisException;
+import github.hacimertgokhan.drivers.exceptions.DenisQuotaException;
 import github.hacimertgokhan.drivers.exceptions.DenisSqlException;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -11,6 +13,7 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -80,7 +83,12 @@ class DenisClientIntegrationTest {
         assertEquals(GROUP, who.get("group"));
         assertEquals(client.token(), who.get("project"));
         assertEquals(128, client.token().length());
-        assertTrue(client.info().containsKey("server"));
+        ServerInfo info = client.info();
+        assertNotNull(info.version());
+        assertTrue(info.has("version") && info.has("uptimeSeconds"), "top-level INFO fields");
+        assertNotNull(info.section("server"), "the detailed INFO sections");
+        assertTrue(info.openConnections() >= 3);
+        assertNotNull(info.project(), "the selected project's usage");
         assertFalse(client.help().isEmpty());
     }
 
@@ -166,7 +174,7 @@ class DenisClientIntegrationTest {
         assertEquals("Bob'); DROP TABLE users; --", injection.getString(0, "name"));
         assertNull(injection.getDouble(0, "score"));
 
-        String legacy = client.sql("SELECT name FROM users\nWHERE id = 1");
+        String legacy = client.sqlText("SELECT name FROM users\nWHERE id = 1");
         assertTrue(legacy.contains("Ada"), legacy);
 
         DenisSqlException e = assertThrows(DenisSqlException.class, () -> client.query("SELECT * FROM nope"));
@@ -311,10 +319,143 @@ class DenisClientIntegrationTest {
             try {
                 legacy.set("shared", "persisted value", true);
                 assertEquals("persisted value", legacy.get("shared"));
-                assertTrue(legacy.sql("CREATE TABLE t (id INTEGER)").startsWith("OK"));
+                assertEquals(QueryResult.AFFECTED, legacy.sql("CREATE TABLE t (id INTEGER)").type());
             } finally {
                 legacy.deleteProject(token);
             }
+        }
+    }
+
+    // =================================================================== 2.1: master-line features
+
+    @Test
+    void sqlShapesTablesAndDescribe() {
+        client.execute("CREATE TABLE shapes (id INTEGER PRIMARY KEY, name TEXT, score REAL)");
+        assertEquals(1, client.execute("INSERT INTO shapes (id, name, score) VALUES (?, ?, ?)", 1, "Ada", 9.5));
+        assertEquals(2, client.execute("INSERT INTO shapes (id, name, score) VALUES (2, 'Bob', 1.5), (3, 'Cy', 2)"));
+
+        // rows are objects on the wire; the column order follows the SELECT list
+        QueryResult r = client.query("SELECT score, name, id FROM shapes WHERE id = ?", 1);
+        assertEquals(QueryResult.ROWS, r.type());
+        assertEquals(List.of("score", "name", "id"), r.columns());
+        assertEquals(Arrays.asList(9.5, "Ada", 1L), r.rows().get(0));
+        assertEquals(List.of("score", "name", "id"), new ArrayList<>(r.toMaps().get(0).keySet()));
+
+        QueryResult structured = client.sql("SELECT * FROM shapes ORDER BY id");
+        assertEquals(3, structured.size());
+        assertEquals("rows", structured.asMap().get("type"));
+        assertEquals(QueryResult.AFFECTED, client.sql("UPDATE shapes SET score = 3 WHERE id = 3").type());
+        assertThrows(DenisException.class, () -> client.execute("SELECT * FROM shapes"));
+
+        TableInfo described = client.describe("shapes");
+        assertEquals("shapes", described.name());
+        assertEquals(List.of("id", "name", "score"), described.columnNames());
+        assertEquals(3, described.rows());
+        assertNotNull(described.column("score").type());
+        assertTrue(client.tables().stream().anyMatch(t -> t.name().equals("shapes") && t.rows() == 3));
+        QueryResult show = client.query("SHOW TABLES");
+        assertEquals(QueryResult.TABLES, show.type());
+        assertTrue(show.tables().stream().anyMatch(t -> t.name().equals("shapes")));
+        assertInstanceOf(DenisSqlException.class, assertThrows(DenisException.class, () -> client.describe("no_such_table")));
+        client.execute("DROP TABLE shapes");
+    }
+
+    @Test
+    void queryGraphDocument() {
+        client.set("gq:user:1", "{\"name\":\"Ada\",\"address\":{\"city\":\"London\",\"zip\":\"N1\"},\"secret\":1}");
+        client.execute("CREATE TABLE gq_orders (id INTEGER, user_id INTEGER, total INTEGER)");
+        client.execute("INSERT INTO gq_orders (id, user_id, total) VALUES (1, 1, 36), (2, 1, 40), (3, 2, 5)");
+        try {
+            GraphResult r = client.queryGraph("{\n"
+                    + "  user: get(\"gq:user:1\") { name address { city } }\n"
+                    + "  orders: table(\"gq_orders\", where: \"user_id = 1\", order: \"total desc\", limit: 5) { id total }\n"
+                    + "  n: count(\"gq_orders\")\n"
+                    + "  broken: table(\"gq_nope\")\n"
+                    + "}");
+            assertEquals(Map.of("name", "Ada", "address", Map.of("city", "London")), r.get("user"));
+            List<?> orders = (List<?>) r.get("orders");
+            assertEquals(2, orders.size());
+            assertEquals(Map.of("id", 2L, "total", 40L), orders.get(0));
+            assertEquals(3L, r.get("n"));
+            assertTrue(r.hasErrors());
+            assertEquals("broken", r.errors().get(0).path());
+            assertNull(r.get("broken"));
+            DenisException syntax = assertThrows(DenisException.class, () -> client.queryGraph("{ a: get(\"x\" }"));
+            assertNotNull(syntax.reply().get("offset"), syntax.reply().toString());
+        } finally {
+            client.execute("DROP TABLE gq_orders");
+            client.del("gq:user:1");
+        }
+    }
+
+    @Test
+    void infoMgetAndClearCounts() {
+        ServerInfo info = client.info();
+        assertTrue(info.uptimeSeconds() >= 0);
+        assertTrue(info.commandsTotal() > 0);
+        assertTrue(info.projects() >= 1);
+        assertTrue(info.memoryMaxMb() > 0);
+        assertEquals(GROUP, info.group());
+        assertTrue(info.details().containsKey("stats"), info.details().keySet().toString());
+        assertEquals(info.version(), Protocol.path(info.details(), "server", "version"));
+
+        try (DenisClient other = builder().createProject(true).poolSize(1).build()) {
+            try {
+                other.set("c:a", "1");
+                other.set("c:b", "2");
+                other.set("c:durable", "3", SetOptions.persist());
+                Map<String, String> m = other.mget(List.of("c:a", "c:missing", "c:b"));
+                assertEquals(Arrays.asList("1", null, "2"), new ArrayList<>(m.values()));
+                assertEquals(3, other.clear());
+                assertEquals("3", other.get("c:durable"), "HEAVEN keeps the durable values");
+                ProjectUsage usage = other.info().project();
+                assertNotNull(usage);
+                assertEquals(0, usage.cachedKeys());
+            } finally {
+                other.deleteProject(other.token());
+            }
+        }
+    }
+
+    @Test
+    void adminAndQuota() {
+        String mainToken = System.getenv("DENIS_MAIN_TOKEN");
+        Assumptions.assumeTrue(mainToken != null && !mainToken.isBlank(), "DENIS_MAIN_TOKEN not set");
+        try (DenisClient anonymous = DenisClient.builder().host(HOST).port(PORT).poolSize(1).build()) {
+            DenisAdmin admin = anonymous.admin(mainToken);
+            assertEquals("AUTH", assertThrows(DenisAuthException.class, () -> anonymous.admin("wrong-main-token").list()).code());
+
+            String token = admin.create(2, 0);
+            try {
+                assertEquals(2, admin.usage(token).maxKeys());
+                assertTrue(admin.list().stream().anyMatch(p -> p.token().equals(token)));
+                try (DenisClient user = builder().token(token).poolSize(1).build()) {
+                    user.set("q:1", "a");
+                    user.set("q:2", "b");
+                    DenisQuotaException e = assertThrows(DenisQuotaException.class, () -> user.set("q:3", "c"));
+                    assertEquals("QUOTA", e.code());
+                    assertEquals("keys", e.resource());
+                    assertEquals(2, e.limit());
+                    ProjectUsage usage = admin.usage(token);
+                    assertEquals(2, usage.cachedKeys());
+                    assertTrue(usage.cachedBytes() > 0);
+
+                    ProjectUsage lifted = admin.quota(token, 0, 0);
+                    assertFalse(lifted.hasQuota());
+                    user.set("q:3", "c");
+                    assertEquals("c", user.get("q:3"));
+
+                    admin.flush(token);
+                    assertNull(user.get("q:1"));
+                }
+                assertFalse(admin.importProject(token), "importing an existing token is a no-op");
+                assertTrue(admin.async().list().join().stream().anyMatch(p -> p.token().equals(token)));
+            } finally {
+                admin.drop(token);
+            }
+            assertTrue(admin.list().stream().noneMatch(p -> p.token().equals(token)));
+            DenisException unknown = assertThrows(DenisException.class, () -> admin.usage(token));
+            assertTrue(String.valueOf(unknown.reply().get("error")).startsWith("Unknown project"), unknown.getMessage());
         }
     }
 }

@@ -112,17 +112,38 @@ If `INFO` shows `"healthy": false`, the log cannot be written (disk full or
 read-only); durable writes are refused with `PERSISTENCE` until space is
 freed, then the server recovers by itself.
 
-## Upgrading from 0.0.x
+## Upgrading
 
-1. Stop the old server and keep a copy of its directory.
-2. Install 0.1 into the same directory (or copy `denis.toml`, `ddb.json`,
-   `database.bin` into the new `DENIS_HOME`).
-3. Start it: `database.bin` is imported into `data/` and renamed
-   `database.bin.migrated`; group passwords keep working and are re-hashed
-   with PBKDF2 on the next login.
+From any earlier release (0.0.x, 0.3-0.6):
+
+1. Stop the old server (`docker compose down` / Ctrl+C) and keep a copy of its
+   directory or volume.
+2. Install 0.7 into the same directory (or copy `denis.properties`,
+   `denis.toml`, `ddb.json`, `database.bin` and `database.journal*` into the
+   new `DENIS_HOME`; the Docker image uses the same `/data` volume).
+3. Start it. `database.bin` plus the 0.4-0.6 journal (`database.journal.old`,
+   `database.journal`, a torn last line is ignored) are imported into `data/`,
+   SQL tables of 0.3-0.6 (`__sql:` keys) become real tables, and the old files
+   are renamed `*.migrated`. Project tokens and quotas in `ddb.json` are kept;
+   group passwords keep working and are re-hashed with PBKDF2 on the next login.
 4. The server now listens on `127.0.0.1` only — set `bind-address=0.0.0.0` if
-   clients connect from other machines. `pawd.dat` is no longer used; delete
-   it after you have stored the passwords elsewhere.
+   clients connect from other machines (the Docker image already does).
+   `pawd.dat` is no longer used; delete it after you have stored the passwords
+   elsewhere.
+
+Configuration keys of 0.3-0.6 still work: `max-connections` → `max-clients`,
+`client-idle-timeout-ms` → `client-timeout-seconds`, `persist-flush-interval-ms`
+(`0` → `fsync=always`, otherwise `everysec`), `persist-snapshot-interval-ms` →
+checkpoint interval. `language`, `use-delogg` and `open-log-terminal` are ignored.
+
+### Main token
+
+`ddb-main-token` authenticates `ADMIN` commands (project provisioning and
+quotas, used by Denis Cloud). When it is empty, the server generates a
+128-character token on first start and writes it into `denis.properties`; the
+log shows the file, never the token. Set it yourself (`DDB_MAIN_TOKEN`) with at
+least 32 random characters, and treat it like a root password: wrong tokens
+count as failed logins.
 
 ## Security checklist
 
@@ -131,6 +152,6 @@ freed, then the server recovers by itself.
   terminator (Denis does not speak TLS itself).
 - Use long random group passwords (`denis cli group passwd <name>` generates
   one); give applications non-admin groups.
-- Keep `enforce-project-ownership=true`.
+- Keep `enforce-project-ownership=true` and the main token secret (see above).
 - Run as an unprivileged user (the systemd unit and Docker image do).
 - Protect `denis.toml` and backups: they contain password hashes and all data.

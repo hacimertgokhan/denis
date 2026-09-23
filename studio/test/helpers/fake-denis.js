@@ -4,7 +4,11 @@
  * A small in-process TCP server that speaks enough of the Denis protocol
  * (docs/PROTOCOL.md) for connection-manager tests: MODE, HELLO, PING, LIN,
  * WHOAMI, AUTH (token / CREATE / DELETE), PROJECTS, INFO, KEYS, EXISTS, TTL,
- * GET, SET, DEL, INCR, EXPIRE, PERSIST, DBSIZE, QUERY, DUMP, IMPORT, EXIT.
+ * GET, SET, DEL, INCR, EXPIRE, PERSIST, DBSIZE, SQL, QUERY, DUMP, IMPORT, EXIT.
+ * SQL replies have the shape of the merged server (docs/PROTOCOL.md):
+ * {type:"rows", columns, rows:[{col: value}]}, {type:"affected", ...},
+ * {type:"tables", tables:[{name, columns, rows, indexes, bytes}]}; INFO has the
+ * top-level statistics and the detailed sections under "info".
  *
  * It can be stopped and restarted on the same port to simulate a server
  * restart. `lines` records every received line (for assertions).
@@ -122,7 +126,7 @@ class FakeDenis {
           count: this.projects.size,
         });
       case "INFO":
-        return ok({ info: { server: { version: this.version, protocol: 2, uptimeSeconds: 5 }, clients: { connected: this.sockets.size }, stats: { opsPerSecond: 3, commands: this.lines.length }, memory: { usedBytes: 100, maxBytes: 0 }, persistence: { healthy: true, fsync: "everysec" }, keyspace: { keys: 0 } } });
+        return ok({ version: this.version, uptimeSeconds: 5, connections: { open: this.sockets.size, total: this.sockets.size }, commandsTotal: this.lines.length, info: { server: { version: this.version, protocol: 2, uptimeSeconds: 5 }, clients: { connected: this.sockets.size }, stats: { opsPerSecond: 3, commands: this.lines.length }, memory: { usedBytes: 100, maxBytes: 0 }, persistence: { healthy: true, fsync: "everysec" }, keyspace: { keys: 0 } } });
       case "SAVE":
       case "BACKUP":
       case "BACKUPS":
@@ -201,11 +205,11 @@ class FakeDenis {
           else slot.cache = null;
         }
         return ok({ message: "Ok." });
+      case "SQL":
+        return this._sql(project, args, []);
       case "QUERY": {
         const q = JSON.parse(args);
-        if (/^select/i.test(q.sql)) return ok({ columns: ["id", "name"], rows: [[1, q.params && q.params[0] !== undefined ? q.params[0] : "Ada"]], count: 1, data: "[]" });
-        if (/^bad/i.test(q.sql)) return { ok: false, error: "Syntax error", code: "SQL", data: "ERROR: Syntax error" };
-        return ok({ message: "1 row inserted", affected: 1, lastRowId: 7, data: "OK: 1 row inserted" });
+        return this._sql(project, q.sql, q.params || []);
       }
       case "DUMP": {
         const cache = {};
@@ -247,5 +251,31 @@ class FakeDenis {
     }
   }
 }
+
+/** Table info as SHOW TABLES / DESCRIBE report it. */
+function tableInfo(name, def) {
+  return { name, columns: def.columns || [], rows: (def.rows || []).length, indexes: def.indexes || [], bytes: JSON.stringify(def.rows || []).length };
+}
+
+FakeDenis.prototype._sql = function (project, sql, params) {
+  const ok = (o = {}) => ({ ok: true, ...o });
+  const text = String(sql).trim();
+  if (/^select/i.test(text)) {
+    const rows = [{ name: params[0] !== undefined ? params[0] : "Ada", id: 1 }];
+    return ok({ type: "rows", columns: ["id", "name"], rows, count: 1, data: JSON.stringify(rows) });
+  }
+  if (/^show tables/i.test(text)) {
+    const tables = Object.entries(project.tables).map(([name, def]) => tableInfo(name, def));
+    return ok({ type: "tables", tables, count: tables.length });
+  }
+  const describe = /^(?:describe|desc)s+(w+)/i.exec(text);
+  if (describe) {
+    const def = project.tables[describe[1]];
+    if (!def) return { ok: false, error: `Table not found: ${describe[1]}`, code: "SQL", data: `ERROR: Table not found: ${describe[1]}` };
+    return ok({ type: "tables", tables: [tableInfo(describe[1], def)], count: 1 });
+  }
+  if (/^bad/i.test(text)) return { ok: false, error: "Syntax error", code: "SQL", data: "ERROR: Syntax error" };
+  return ok({ type: "affected", message: "1 row inserted", affected: 1, lastRowId: 7, data: "OK: 1 row inserted" });
+};
 
 module.exports = { FakeDenis };

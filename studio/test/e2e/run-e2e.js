@@ -187,6 +187,9 @@ async function main() {
     await manager.run((api) => api.query("INSERT INTO users (name, age)\nVALUES (?, ?)", ["=cmd()", 36]));
     selectResult = await manager.run((api) => api.query("SELECT * FROM users ORDER BY id", []));
     assert(selectResult.columns.join() === "id,name,age" && selectResult.rows.length === 2, `select ${JSON.stringify(selectResult)}`);
+    // the server sends row objects; the grid's arrays follow the order of "columns"
+    const reordered = await manager.run((api) => api.query("SELECT age, name, id FROM users ORDER BY id", []));
+    assert(reordered.columns.join() === "age,name,id" && reordered.rows[1][0] === 36 && reordered.rows[1][2] === 2, `column order ${JSON.stringify(reordered)}`);
     const explain = await manager.run((api) => api.query("EXPLAIN SELECT * FROM users WHERE id = 1"));
     assert(explain.columns[0] === "plan", "EXPLAIN plan column");
     const show = await manager.run((api) => api.query("SHOW TABLES"));

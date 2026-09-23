@@ -1,14 +1,13 @@
 "use strict";
 
-// Unit tests against an in-process fake Denis server (no real server needed):
+// Unit tests of the pooled TCP client against an in-process fake Denis server
+// (test/fake-server.js; no real server needed):
 //   node --test test/unit.test.js
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const net = require("node:net");
 const { DenisClient, DenisConnection, DenisError, DenisPipeline } = require("../index.js");
-
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const { fakeServer, sleep } = require("./fake-server.js");
 
 async function waitFor(predicate, ms = 2000) {
   const end = Date.now() + ms;
@@ -16,176 +15,6 @@ async function waitFor(predicate, ms = 2000) {
     if (Date.now() > end) throw new Error("condition not reached in time");
     await sleep(5);
   }
-}
-
-/**
- * A fake server speaking enough of the JSON-mode protocol: MODE, LIN, AUTH
- * (CREATE/DELETE), PING, GET/SET/UPDATE/DEL/INCR, IMPORT, WHOAMI, plus test
- * commands: ECHO <text>, SPLIT <text> (reply written byte by byte), DELAY <ms> <text>,
- * SLOW (never answers), KILL (drops the socket), FAIL <code>.
- * Lines of one connection are handled strictly one after another, like Denis.
- */
-async function fakeServer(options = {}) {
-  const users = options.users || { ci: "pass word" };
-  const state = {
-    projects: new Map([["tok0", new Map()], ["tok1", new Map()]]),
-    created: 0,
-    conns: [],
-    imports: [],
-    refuse: options.refuse || false,
-  };
-
-  function handle(conn, line) {
-    const space = line.indexOf(" ");
-    const cmd = (space < 0 ? line : line.slice(0, space)).toUpperCase();
-    const args = space < 0 ? "" : line.slice(space + 1);
-    const words = args.split(" ");
-    switch (cmd) {
-      case "MODE":
-        return { ok: true, message: "mode json" };
-      case "PING":
-        return { ok: true, message: "PONG" };
-      case "EXIT":
-        return () => conn.socket.end(JSON.stringify({ ok: true, message: "Bye." }) + "\n");
-      case "ECHO":
-        return { ok: true, data: args };
-      case "SPLIT":
-        return async () => {
-          const bytes = Buffer.from(JSON.stringify({ ok: true, data: args }) + "\n");
-          for (const byte of bytes) {
-            conn.socket.write(Buffer.from([byte]));
-            await sleep(1);
-          }
-        };
-      case "DELAY":
-        return sleep(Number(words[0])).then(() => ({ ok: true, data: words.slice(1).join(" ") }));
-      case "SLOW":
-        return new Promise(() => {});
-      case "KILL":
-        return () => conn.socket.destroy();
-      case "FAIL":
-        return { ok: false, error: `failed with ${words[0]}`, code: words[0] };
-      case "LIN": {
-        const group = words[0];
-        const password = args.slice(group.length + 1);
-        if (users[group] !== undefined && users[group] === password) {
-          conn.loggedIn = true;
-          return { ok: true, message: `Logged in to group: ${group}`, group, admin: true };
-        }
-        return { ok: false, error: "Login failed: unknown group or wrong password", code: "AUTH" };
-      }
-      default:
-        break;
-    }
-    if (!conn.loggedIn) return { ok: false, error: "Please login first using LIN command", code: "NOAUTH" };
-    if (cmd === "AUTH") {
-      if (words[0] === "CREATE") {
-        const token = `new${++state.created}`;
-        state.projects.set(token, new Map());
-        return { ok: true, message: "Project created", token };
-      }
-      if (words[0] === "DELETE") {
-        state.projects.delete(words[1]);
-        if (conn.token === words[1]) conn.token = null;
-        return { ok: true, message: "Project deleted" };
-      }
-      if (!state.projects.has(words[0])) return { ok: false, error: `Cannot auth with: ${words[0]}`, code: "AUTH" };
-      conn.token = words[0];
-      return { ok: true, message: `Authenticated to project: ${words[0]}` };
-    }
-    if (cmd === "WHOAMI") return { ok: true, group: "ci", admin: true, project: conn.token };
-    const store = state.projects.get(conn.token);
-    if (!store) return { ok: false, error: "Please authenticate first using AUTH command", code: "NOPROJECT" };
-    const key = words[0];
-    switch (cmd) {
-      case "SET":
-      case "UPDATE": {
-        const rest = args.slice(key.length + 1);
-        const value = rest.split(" ").filter((w) => !w.startsWith("-&")).join(" ");
-        store.set(key, value);
-        return { ok: true, message: "Ok (Cache)" };
-      }
-      case "GET":
-        if (key === "__oom") return { ok: false, error: "out of memory", code: "OOM" };
-        return store.has(key) ? { ok: true, key, data: store.get(key) } : { ok: false, key, error: "not found", code: "NOTFOUND" };
-      case "DEL": {
-        const existed = store.delete(key);
-        return { ok: true, message: "Ok (Cache,Protobuf).", deleted: existed };
-      }
-      case "INCR": {
-        const value = Number(store.get(key) || 0) + (words[1] && !words[1].startsWith("-&") ? Number(words[1]) : 1);
-        store.set(key, String(value));
-        return { ok: true, key, data: String(value), value };
-      }
-      case "IMPORT": {
-        const data = JSON.parse(args);
-        state.imports.push({ line, data });
-        const tables = Object.values(data.tables || {});
-        return {
-          ok: true,
-          message: "Imported",
-          imported: {
-            persistent: Object.keys(data.persistent || {}).length,
-            cache: Object.keys(data.cache || {}).length,
-            tables: tables.length,
-            rows: tables.reduce((n, t) => n + (t.rows || []).length, 0),
-          },
-        };
-      }
-      default:
-        return { ok: false, error: `Unknown command: ${cmd}`, code: "UNKNOWN" };
-    }
-  }
-
-  const sockets = new Set();
-  const server = net.createServer((socket) => {
-    sockets.add(socket);
-    socket.on("close", () => sockets.delete(socket));
-    socket.on("error", () => {});
-    socket.setNoDelay(true);
-    if (state.refuse) {
-      socket.end(JSON.stringify({ ok: false, error: "max number of clients reached", code: "LIMIT" }) + "\n");
-      return;
-    }
-    const conn = { socket, lines: [], loggedIn: false, token: null, outstanding: 0, maxOutstanding: 0 };
-    state.conns.push(conn);
-    let buffer = Buffer.alloc(0);
-    let chain = Promise.resolve();
-    socket.on("data", (chunk) => {
-      buffer = Buffer.concat([buffer, chunk]);
-      let index;
-      while ((index = buffer.indexOf(10)) >= 0) {
-        const line = buffer.subarray(0, index).toString("utf8").replace(/\r$/, "").trim();
-        buffer = buffer.subarray(index + 1);
-        if (!line) continue;
-        conn.lines.push(line);
-        conn.outstanding++;
-        conn.maxOutstanding = Math.max(conn.maxOutstanding, conn.outstanding);
-        chain = chain
-          .then(() => handle(conn, line))
-          .then(async (reply) => {
-            conn.outstanding--;
-            if (socket.destroyed) return;
-            if (typeof reply === "function") await reply();
-            else socket.write(JSON.stringify(reply) + "\n");
-          });
-      }
-    });
-  });
-  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
-  state.port = server.address().port;
-  state.server = server;
-  /** Drop every client connection (the server keeps listening). */
-  state.kill = () => {
-    for (const socket of sockets) socket.destroy();
-  };
-  /** Stop listening and drop every connection. */
-  state.close = () =>
-    new Promise((resolve) => {
-      state.kill();
-      server.close(() => resolve());
-    });
-  return state;
 }
 
 function clientFor(fake, options = {}) {
@@ -304,25 +133,25 @@ test("handshake: createProject creates exactly one project for the whole pool", 
   for (const conn of fake.conns) assert.equal(conn.token, "new1");
 });
 
-test("handshake: a wrong password rejects with the server code AUTH", async (t) => {
+test("handshake: a wrong password rejects with EAUTH (server code AUTH)", async (t) => {
   const fake = await fakeServer();
   const client = clientFor(fake, { password: "wrong" });
   t.after(async () => {
     await client.close();
     await fake.close();
   });
-  await assert.rejects(client.ping(), (err) => err instanceof DenisError && err.code === "AUTH" && err.reply.ok === false);
-  await assert.rejects(client.connect(), (err) => err.code === "AUTH");
+  await assert.rejects(client.ping(), (err) => err instanceof DenisError && err.code === "EAUTH" && err.serverCode === "AUTH" && err.reply.ok === false);
+  await assert.rejects(client.connect(), (err) => err.code === "EAUTH");
 });
 
-test("handshake: a LIMIT refusal surfaces as code LIMIT", async (t) => {
+test("handshake: a LIMIT refusal surfaces as ESERVER with serverCode LIMIT", async (t) => {
   const fake = await fakeServer({ refuse: true });
   const client = clientFor(fake, { reconnect: false });
   t.after(async () => {
     await client.close();
     await fake.close();
   });
-  await assert.rejects(client.connect(), (err) => err.code === "LIMIT");
+  await assert.rejects(client.connect(), (err) => err.code === "ESERVER" && err.serverCode === "LIMIT");
 });
 
 test("connect: an unreachable server rejects with ECONN", async () => {
@@ -398,7 +227,8 @@ test("pipeline(): one write on one connection, per-command results and errors", 
   assert.equal(results.length, 7);
   assert.deepEqual(results.slice(0, 3), [true, "1", null]);
   assert.ok(results[3] instanceof DenisError);
-  assert.equal(results[3].code, "OOM");
+  assert.equal(results[3].code, "ESERVER");
+  assert.equal(results[3].serverCode, "OOM");
   assert.equal(results[3].reply.code, "OOM");
   assert.deepEqual(results.slice(4, 6), [1, 5]);
   assert.ok(results[6] instanceof DenisError);
@@ -559,7 +389,7 @@ test("use(): AUTH on every pooled connection; a refused token keeps the old one"
   assert.equal(await client.use("tok1"), true);
   assert.equal(client.token, "tok1");
   assert.deepEqual(fake.conns.map((c) => c.token), ["tok1", "tok1", "tok1"]);
-  await assert.rejects(client.use("missing"), (err) => err.code === "AUTH");
+  await assert.rejects(client.use("missing"), (err) => err.code === "EAUTH" && err.serverCode === "AUTH");
   assert.equal(client.token, "tok1");
   assert.deepEqual(fake.conns.map((c) => c.token), ["tok1", "tok1", "tok1"]);
   await assert.rejects(client.use("has space"), (err) => err.code === "EINVAL");
@@ -577,7 +407,7 @@ test("deleteProject(current token): the pool is recycled onto no project", async
   assert.equal(client.token, undefined);
   const who = await client.whoami();
   assert.equal(who.project, null);
-  await assert.rejects(client.get("a"), (err) => err.code === "NOPROJECT");
+  await assert.rejects(client.get("a"), (err) => err.code === "ESERVER" && err.serverCode === "NOPROJECT");
   await waitFor(() => fake.conns.length === 4);
   for (const conn of fake.conns.slice(2)) assert.deepEqual(conn.lines.slice(0, 2), ["MODE json", "LIN ci pass word"]);
   assert.equal(fake.conns.slice(2).some((c) => c.lines.some((l) => l.startsWith("AUTH tok"))), false);
@@ -602,7 +432,7 @@ test("set(): empty values and trailing whitespace survive the server's line trim
   assert.deepEqual(lines.slice(3), [
     "SET e  -&cache",
     "SET w a   -&cache",
-    "SET p v -&save -&ttl=5",
+    "SET p v -&cache -&save -&ttl=5",
     'SET o {"a":[1,"x y"]}',
     "SET u b  -&cache",
     "UPDATE v plain",
@@ -640,17 +470,18 @@ test("errors: invalid input is rejected locally with EINVAL", async (t) => {
   assert.throws(() => new DenisClient({ poolSize: 0 }), invalid);
 });
 
-test("errors: server codes become DenisError.code, command() never throws on ok:false", async (t) => {
+test("errors: server errors are ESERVER with the server code in serverCode, command() never throws on ok:false", async (t) => {
   const fake = await fakeServer();
   const client = clientFor(fake, { poolSize: 1 });
   t.after(async () => {
     await client.close();
     await fake.close();
   });
-  await assert.rejects(client.get("__oom"), (err) => err.code === "OOM" && err.reply.error === "out of memory");
+  await assert.rejects(client.get("__oom"), (err) => err.code === "ESERVER" && err.serverCode === "OOM" && err.reply.error === "out of memory");
   const reply = await client.command("FAIL BUSY");
   assert.deepEqual(reply, { ok: false, error: "failed with BUSY", code: "BUSY" });
-  await assert.rejects(client.exists("k"), (err) => err.code === "UNKNOWN");
+  assert.equal((await client.command("NOPE")).code, "UNKNOWN");
+  await assert.rejects(client.backups(), (err) => err.code === "ESERVER" && err.serverCode === "UNKNOWN" && /try HELP/.test(err.message));
   assert.equal(await client.get("missing"), null);
   assert.equal(await client.del("missing"), false);
 });

@@ -359,6 +359,45 @@ class StorageEngineTest {
         }
     }
 
+    /** Denis 0.3-0.5: snapshot + JSON journal, SQL tables as __sql: keys. */
+    @Test
+    void releases03To05AreImportedWithJournalAndTables() throws IOException {
+        byte[] entries = new byte[0];
+        String[][] snapshot = {
+                {"a", "1"},
+                {"__sql:t:schema", "[{\"name\":\"id\",\"type\":\"INT\"},{\"name\":\"name\",\"type\":\"TEXT\"}]"},
+                {"__sql:t:seq", "2"},
+                {"__sql:t:row:1", "{\"id\":1,\"name\":\"Ada\",\"_rowid\":1}"}};
+        for (String[] kv : snapshot) {
+            entries = concat(entries, field(2, concat(field(1, kv[0]), field(2, kv[1]))));
+        }
+        Path legacy = dir.resolve("database.bin");
+        Files.write(legacy, field(1, concat(field(1, "tok"), entries)));
+        Files.writeString(dir.resolve("database.bin.journal"), String.join("\n",
+                "[\"S\",\"tok\",\"b\",\"2\"]",
+                "[\"D\",\"tok\",\"a\"]",
+                "[\"S\",\"tok\",\"__sql:t:row:2\",\"{\\\"id\\\":2,\\\"name\\\":\\\"Grace\\\",\\\"_rowid\\\":2}\"]",
+                "[\"S\",\"tok\",\"c\",\"torn") + "\n");
+
+        StorageConfig config = config().withLegacyDatabase(legacy);
+        try (StorageEngine engine = open(config)) {
+            assertNull(value(engine, "tok", "a"), "deleted by the journal");
+            assertEquals("2", value(engine, "tok", "b"));
+            assertNull(value(engine, "tok", "c"), "the torn last journal line is ignored");
+            var table = engine.findKeyspace("tok").table("t");
+            assertNotNull(table, "__sql: keys became a real table");
+            assertEquals(2, table.rowCount());
+            assertEquals("Grace", table.row(2)[1]);
+            assertEquals(1L, table.row(1)[0], "values take the declared column type");
+            assertNull(value(engine, "tok", "__sql:t:seq"), "no __sql: keys remain");
+        }
+        assertTrue(Files.exists(dir.resolve("database.bin.migrated")));
+        assertTrue(Files.exists(dir.resolve("database.bin.journal.migrated")));
+        try (StorageEngine engine = open(config)) {
+            assertEquals(2, engine.findKeyspace("tok").table("t").rowCount(), "survives the restart after migration");
+        }
+    }
+
     private static byte[] field(int number, String text) {
         return field(number, text.getBytes(StandardCharsets.UTF_8));
     }

@@ -20,14 +20,40 @@ java -jar benchmarks/target/denis-benchmarks.jar          # JMH (after run.sh or
 CI runs the matrix and JMH weekly and on demand (`.github/workflows/benchmark.yml`)
 and publishes the tables in the job summary.
 
-## 0.0.2.9 → 0.1.0
+## 0.6.1 → 0.7.0
+
+Intel Core i9-13900K (32 threads), 64 GB, NVMe SSD, Windows 11, Temurin 17.0.20,
+loopback, 64-byte values, 10 s per run after 3 s warm-up, both with their
+default configuration (0.6.1: journal fsynced every second; 0.7: `fsync=everysec`).
+Files: [`results/0.6.1.jsonl`](results/0.6.1.jsonl) (release jar of master) and
+[`results/0.7.0-engine.jsonl`](results/0.7.0-engine.jsonl) (the 0.7 storage, network and SQL
+engine, measured before master's ADMIN/quota/QUERY features were merged into it; the
+merge adds a quota check of two volatile reads per write). Re-run with
+`benchmarks/run.sh 0.7.0` to record the release build.
+
+| workload (connections, pipeline) | 0.6.1 ops/s | 0.7 ops/s | speed-up | p99 0.6.1 | p99 0.7 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| SET, cache (8, 16) | 107,810 | 1,893,926 | 17.6× | 2,302 µs | 136 µs |
+| GET (8, 16) | 119,586 | 1,547,650 | 12.9× | 1,863 µs | 158 µs |
+| 80 % GET / 20 % SET (8, 16) | 99,183 | 1,568,176 | 15.8× | 2,379 µs | 152 µs |
+| 80 % GET / 20 % SET, no pipelining (32, 1) | 72,602 | 198,245 | 2.7× | 1,277 µs | 359 µs |
+| durable SET `-&save` (8, 16) | 47,330 | 1,314,868 | 27.8× | 1,750 µs | 204 µs |
+| durable SET `-&save` (1, 1) | 9,293 | 32,152 | 3.5× | 108 µs | 69 µs |
+| SQL `SELECT … WHERE id = ?`, 1000 rows (8, 16) | 127,690 | 218,001 | 1.7× | 1,625 µs | 752 µs |
+| same with an index / PRIMARY KEY (8, 16) | 130,096 | 251,672 | 1.9× | 1,641 µs | 709 µs |
+
+0.6.1 already had an in-memory store, a journal and hash-indexed SQL tables;
+the difference is the thread-per-connection server and synchronous per-command
+work against 0.7's event loops, group commit and pipelined reply batching.
+
+## 0.0.2.9 → 0.7 engine
 
 Intel Core i9-13900K (32 threads), 64 GB, NVMe SSD, Windows 11, Temurin 17.0.20,
 loopback, 64-byte values, 10 s per run after 3 s warm-up; 0.0.2.9 with its
-default configuration, 0.1.0 with `fsync=everysec` (default). Files:
-[`results/0.0.2.9.jsonl`](results/0.0.2.9.jsonl), [`results/0.1.0.jsonl`](results/0.1.0.jsonl).
+default configuration, the 0.7 engine with `fsync=everysec` (default). Files:
+[`results/0.0.2.9.jsonl`](results/0.0.2.9.jsonl), [`results/0.7.0-engine.jsonl`](results/0.7.0-engine.jsonl).
 
-| workload (connections, pipeline) | 0.0.2.9 ops/s | 0.1.0 ops/s | speed-up | p99 0.0.2.9 | p99 0.1.0 |
+| workload (connections, pipeline) | 0.0.2.9 ops/s | 0.7 ops/s | speed-up | p99 0.0.2.9 | p99 0.7 |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | SET, cache (8, 16) | 80,511 | 1,893,926 | 23.5× | 2,324 µs | 136 µs |
 | GET, durable data on disk (8, 16) | 6,534 | 1,547,650 | 237× | 26,771 µs | 158 µs |
@@ -47,7 +73,7 @@ Other effects of the same release: the jar went from 15.2 MB to 1.6 MB; the
 Docker container idles at ~35 MB RAM; after 14 million durable writes the data
 directory held 16 MB (checkpoints remove old log segments).
 
-### JMH (0.1.0, same machine, quick settings, indicative)
+### JMH (0.7 engine, [`results/jmh-0.7.0-engine.json`](results/jmh-0.7.0-engine.json), same machine, quick settings, indicative)
 
 | benchmark | ops/s |
 | --- | ---: |

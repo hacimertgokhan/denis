@@ -52,8 +52,8 @@ public abstract class AsyncCommands {
         return run(Commands.whoami());
     }
 
-    /** {@code INFO}: server, clients, stats, memory, persistence, keyspace and project sections. */
-    public CompletableFuture<Map<String, Object>> info() {
+    /** {@code INFO}: the summary fields and the detailed sections ({@link ServerInfo#details()}). */
+    public CompletableFuture<ServerInfo> info() {
         return run(Commands.info());
     }
 
@@ -189,8 +189,11 @@ public abstract class AsyncCommands {
         return run(Commands.dbsize());
     }
 
-    /** {@code HEAVEN}: drop every cache value of the current project (durable values stay). */
-    public CompletableFuture<Void> clear() {
+    /**
+     * {@code HEAVEN}: drop every cache value of the current project (durable values stay).
+     * Completes with the number of values dropped, or {@code -1} when the server does not report it.
+     */
+    public CompletableFuture<Long> clear() {
         return run(Commands.clear());
     }
 
@@ -212,12 +215,61 @@ public abstract class AsyncCommands {
     }
 
     /**
-     * Run a statement and return the Denis 0.0.x text result (the reply's
-     * {@code data}, e.g. {@code "OK: 1 row inserted"}). Multi-line statements
-     * are fine. Prefer {@link #query(String, Object...)} in applications.
+     * Run a statement without parameters and return its structured result
+     * ({@code rows}, {@code affected} or {@code tables}, see
+     * {@link QueryResult#type()}). Same as {@code query(statement)}.
      */
-    public CompletableFuture<String> sql(String statement) {
+    public CompletableFuture<QueryResult> sql(String statement) {
         return run(Commands.sql(statement));
+    }
+
+    /**
+     * Run a statement and return its text form: the reply's {@code data}
+     * (e.g. {@code "OK: 1 row inserted"} or a JSON array of rows). This is
+     * what {@code sql(String)} returned in 2.0.
+     */
+    public CompletableFuture<String> sqlText(String statement) {
+        return run(Commands.sqlText(statement));
+    }
+
+    /**
+     * Run a statement that changes data ({@code INSERT}, {@code UPDATE},
+     * {@code DELETE}, DDL) with {@code ?} parameters and complete with the
+     * affected row count. A statement that returns rows fails the future.
+     */
+    public CompletableFuture<Integer> execute(String sql, Object... params) {
+        return run(Commands.execute(sql, params == null ? List.of() : Arrays.asList(params)));
+    }
+
+    /** {@link #execute(String, Object...)} with a parameter list. */
+    public CompletableFuture<Integer> execute(String sql, List<?> params) {
+        return run(Commands.execute(sql, params));
+    }
+
+    /** {@code SHOW TABLES}: every table of the project with its columns and row count. */
+    public CompletableFuture<List<TableInfo>> tables() {
+        return run(Commands.tables());
+    }
+
+    /** {@code DESCRIBE table}: its columns and row count; fails with {@code SQL} when there is no such table. */
+    public CompletableFuture<TableInfo> describe(String table) {
+        return run(Commands.describe(table));
+    }
+
+    /**
+     * {@code QUERY { ... }}: resolve a GraphQL-shaped document of reads on the
+     * server in one round trip, e.g.
+     * {@code { user: get("user:1") { name } n: count("orders") }}. Fields that
+     * fail are {@code null} in {@link GraphResult#data()} and listed in
+     * {@link GraphResult#errors()}; a syntax error fails the future.
+     */
+    public CompletableFuture<GraphResult> queryGraph(String document) {
+        return run(Commands.graph(document));
+    }
+
+    /** Same as {@link #queryGraph(String)} (the name the Node.js driver uses). */
+    public CompletableFuture<GraphResult> graph(String document) {
+        return queryGraph(document);
     }
 
     // =================================================================== dump / import

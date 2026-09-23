@@ -125,6 +125,12 @@ public class Main {
         GroupManager groups = new GroupManager(config.groupsFile(), new PasswordHasher(config.passwordIterations()));
         ProjectRegistry projects = new ProjectRegistry(config.projectsFile());
         bootstrapGroup(properties, groups, log);
+        long orphaned = storage.keyspaces().stream().filter(ks -> !projects.exists(ks.name())).count();
+        if (orphaned > 0) {
+            // data is never deleted automatically: a missing or replaced ddb.json must not wipe projects
+            log.warn(orphaned + " project(s) in the data directory have no token in " + config.projectsFile()
+                    + "; restore the file or re-create the tokens to reach their data");
+        }
         if (groups.list().isEmpty()) {
             log.warn("No login group exists yet. Run 'denis init' (or 'denis cli group create <name> --admin') to create one.");
         }

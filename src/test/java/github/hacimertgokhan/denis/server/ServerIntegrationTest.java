@@ -230,7 +230,9 @@ class ServerIntegrationTest {
                 .put("params", new JSONArray().put("a"));
         JSONObject result = c.json("QUERY " + q);
         assertEquals(List.of("sensor", "n", "MAX(value)"), result.getJSONArray("columns").toList());
-        assertEquals("[[\"a\",5,12]]", result.getJSONArray("rows").toString().replace("12.0", "12"));
+        // a REAL keeps its fraction on the wire (org.json alone would print 12)
+        String raw = c.send("QUERY " + q);
+        assertTrue(raw.contains("[[\"a\",5,12.0]]"), raw);
         JSONObject error = c.json("SQL SELECT * FROM nothing");
         assertFalse(error.getBoolean("ok"));
         assertEquals("SQL", error.getString("code"));
@@ -350,6 +352,30 @@ class ServerIntegrationTest {
         // in json mode a blank line still gets exactly one reply
         assertEquals("USAGE", c.json("   ").getString("code"));
         assertEquals("PONG", c.json("PING").getString("message"));
+    }
+
+    @Test
+    void keyValueUpdateIsNotMistakenForSql() throws IOException {
+        start();
+        Client c = jsonClient("app", "app-pw");
+        createProject(c);
+        assertTrue(c.json("UPDATE note hello SET world").getBoolean("ok"));
+        assertEquals("hello SET world", c.json("GET note").getString("data"));
+        c.json("SQL CREATE TABLE t (id INT, v TEXT)");
+        c.json("SQL INSERT INTO t VALUES (1, 'a')");
+        assertEquals(1, c.json("UPDATE t SET v = 'b'").getInt("affected"));
+    }
+
+    @Test
+    void aRefusedImportLineWritesNothing() throws IOException {
+        start();
+        Client c = jsonClient("app", "app-pw");
+        createProject(c);
+        c.json("SQL CREATE TABLE t (id INT)");
+        JSONObject refused = c.json("IMPORT {\"cache\":{\"newkey\":\"x\"},\"tables\":{\"t\":{\"columns\":[{\"name\":\"id\",\"type\":\"INT\"}],\"rows\":[]}}}");
+        assertFalse(refused.getBoolean("ok"));
+        assertEquals("NOTFOUND", c.json("GET newkey").getString("code"));
+        assertFalse(c.json("IMPORT {\"persistent\":{\"bad key\":\"x\"}}").getBoolean("ok"));
     }
 
     @Test

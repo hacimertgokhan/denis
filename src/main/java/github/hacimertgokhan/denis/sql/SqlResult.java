@@ -1,6 +1,5 @@
 package github.hacimertgokhan.denis.sql;
 
-import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.List;
@@ -33,43 +32,83 @@ public record SqlResult(List<String> columns, List<Object[]> rows, long affected
         if (!isQuery()) {
             return "OK: " + message;
         }
-        JSONArray array = new JSONArray();
-        for (Object[] row : rows) {
-            JSONObject object = new JSONObject();
-            for (int i = 0; i < columns.size(); i++) {
-                object.put(columns.get(i), json(row[i]));
+        StringBuilder sb = new StringBuilder(64 + rows.size() * 32);
+        sb.append('[');
+        for (int r = 0; r < rows.size(); r++) {
+            if (r > 0) {
+                sb.append(',');
             }
-            array.put(object);
+            sb.append('{');
+            Object[] row = rows.get(r);
+            for (int i = 0; i < columns.size(); i++) {
+                if (i > 0) {
+                    sb.append(',');
+                }
+                sb.append(JSONObject.quote(columns.get(i))).append(':');
+                appendValue(sb, row[i]);
+            }
+            sb.append('}');
         }
-        return array.toString();
+        return sb.append(']').toString();
     }
 
-    /** Reply object for {@code MODE json}. */
-    public JSONObject toJson() {
-        JSONObject json = new JSONObject();
-        json.put("ok", true);
+    /**
+     * The reply line for {@code MODE json}. Written by hand rather than through
+     * org.json, which prints 2.0 as 2 and so loses the REAL type of a value.
+     */
+    public String toJsonLine() {
+        StringBuilder sb = new StringBuilder(128 + (rows == null ? 0 : rows.size() * 48));
+        sb.append("{\"ok\":true");
         if (isQuery()) {
-            JSONArray rowArray = new JSONArray();
-            for (Object[] row : rows) {
-                JSONArray values = new JSONArray();
-                for (Object v : row) {
-                    values.put(json(v));
+            sb.append(",\"columns\":[");
+            for (int i = 0; i < columns.size(); i++) {
+                if (i > 0) {
+                    sb.append(',');
                 }
-                rowArray.put(values);
+                sb.append(JSONObject.quote(columns.get(i)));
             }
-            json.put("columns", new JSONArray(columns));
-            json.put("rows", rowArray);
-            json.put("count", rows.size());
-            json.put("data", legacyText());
+            sb.append("],\"rows\":[");
+            for (int r = 0; r < rows.size(); r++) {
+                if (r > 0) {
+                    sb.append(',');
+                }
+                sb.append('[');
+                Object[] row = rows.get(r);
+                for (int i = 0; i < row.length; i++) {
+                    if (i > 0) {
+                        sb.append(',');
+                    }
+                    appendValue(sb, row[i]);
+                }
+                sb.append(']');
+            }
+            sb.append("],\"count\":").append(rows.size());
         } else {
-            json.put("message", message);
-            json.put("affected", affected);
+            sb.append(",\"message\":").append(JSONObject.quote(message));
+            sb.append(",\"affected\":").append(affected);
             if (lastRowId != null) {
-                json.put("lastRowId", lastRowId);
+                sb.append(",\"lastRowId\":").append(lastRowId);
             }
-            json.put("data", legacyText());
         }
-        return json;
+        sb.append(",\"data\":").append(JSONObject.quote(legacyText()));
+        return sb.append('}').toString();
+    }
+
+    /** JSON for a SQL value; REAL values always carry a fraction or exponent. */
+    static void appendValue(StringBuilder sb, Object v) {
+        if (v == null) {
+            sb.append("null");
+        } else if (v instanceof Double d) {
+            if (d.isNaN() || d.isInfinite()) {
+                sb.append("null");
+            } else {
+                sb.append(d.doubleValue());
+            }
+        } else if (v instanceof Long || v instanceof Boolean) {
+            sb.append(v);
+        } else {
+            sb.append(JSONObject.quote(v.toString()));
+        }
     }
 
     static Object json(Object v) {

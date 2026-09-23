@@ -336,9 +336,18 @@ public final class Session {
         return switch (command) {
             case "SELECT", "INSERT", "CREATE", "DROP", "ALTER", "TRUNCATE", "SHOW", "DESCRIBE", "DESC", "EXPLAIN",
                  "REPLACE", "UPSERT", "DELETE" -> true;
-            case "UPDATE" -> line.toUpperCase(Locale.ROOT).contains(" SET ");
+            case "UPDATE" -> isSqlUpdate(line);
             default -> false;
         };
+    }
+
+    /**
+     * {@code UPDATE <table> SET <column> = ...} is SQL; {@code UPDATE <key> <value>} is the
+     * key-value command, even when the value contains the word SET.
+     */
+    static boolean isSqlUpdate(String line) {
+        String[] words = line.trim().split("\\s+", 4);
+        return words.length == 4 && words[2].equalsIgnoreCase("SET") && words[3].contains("=");
     }
 
     private static boolean isFlag(String word) {
@@ -772,6 +781,44 @@ public final class Session {
         return object(body);
     }
 
+    /** Everything an IMPORT line could fail on after it started writing; null when it is fine. */
+    private String validateImport(JSONObject data, boolean replace, boolean append) {
+        for (String section : new String[]{"persistent", "cache"}) {
+            if (data.has(section) && data.optJSONObject(section) == null) {
+                return "\"" + section + "\" must be an object";
+            }
+            JSONObject values = data.optJSONObject(section);
+            if (values == null) {
+                continue;
+            }
+            for (String key : values.keySet()) {
+                if (key.isEmpty() || key.chars().anyMatch(Character::isWhitespace)) {
+                    return "invalid key in \"" + section + "\": " + JSONObject.quote(key);
+                }
+                if (key.startsWith(StorageEngine.RESERVED_PREFIX)) {
+                    return "reserved key in \"" + section + "\": " + key;
+                }
+            }
+        }
+        JSONObject tables = data.optJSONObject("tables");
+        if (data.has("tables") && tables == null) {
+            return "\"tables\" must be an object";
+        }
+        if (tables != null) {
+            for (String name : tables.keySet()) {
+                JSONObject def = tables.optJSONObject(name);
+                // table problems keep the SQL error code clients already expect from IMPORT
+                if (def == null || def.optJSONArray("columns") == null) {
+                    throw new SqlException("Bad table definition for " + name + ": \"columns\" is missing");
+                }
+                if (!replace && !append && keyspace.table(name.toLowerCase(Locale.ROOT)) != null) {
+                    throw new SqlException("Table already exists: " + name + " (import with replace to overwrite)");
+                }
+            }
+        }
+        return null;
+    }
+
     private String importData(String args) {
         JSONObject data;
         try {
@@ -781,6 +828,11 @@ public final class Session {
         }
         boolean replace = data.optBoolean("replace", false);
         boolean append = data.optBoolean("append", false);
+        String problem = validateImport(data, replace, append);
+        if (problem != null) {
+            // checked before anything is written, so a refused line changes nothing
+            return error("USAGE", problem);
+        }
         long persistentCount = 0;
         long cacheCount = 0;
         long rows = 0;
@@ -826,7 +878,7 @@ public final class Session {
         SqlResult result = ctx.sql().execute(keyspace, statement, params);
         result.durable().join();
         if (json) {
-            return result.toJson().toString();
+            return result.toJsonLine();
         }
         return result.legacyText();
     }

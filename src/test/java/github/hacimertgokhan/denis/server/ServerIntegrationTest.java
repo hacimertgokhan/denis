@@ -325,6 +325,34 @@ class ServerIntegrationTest {
     }
 
     @Test
+    void aProjectDeletedElsewhereStopsAcceptingWrites() throws IOException {
+        start();
+        Client a = jsonClient("app", "app-pw");
+        String token = createProject(a);
+        assertTrue(a.json("SET k v -&save").getBoolean("ok"));
+        Client b = jsonClient("app", "app-pw");
+        assertTrue(b.json("AUTH DELETE " + token).getBoolean("ok"));
+        assertEquals("NOPROJECT", a.json("SET k2 v2 -&save").getString("code"));
+        assertEquals("NOPROJECT", a.json("GET k").getString("code"), "the session must AUTH again");
+    }
+
+    @Test
+    void valuesKeepTrailingSpacesAndMayBeEmpty() throws IOException {
+        start();
+        Client c = jsonClient("app", "app-pw");
+        createProject(c);
+        assertTrue(c.json("SET spaced a  ").getBoolean("ok"));
+        assertEquals("a  ", c.json("GET spaced").getString("data"));
+        assertTrue(c.json("SET empty ").getBoolean("ok"));
+        assertEquals("", c.json("GET empty").getString("data"));
+        assertTrue(c.json("SET flagged b  -&save   ").getBoolean("ok"));
+        assertEquals("b ", c.json("GET flagged").getString("data"), "one space separates the value from the flag");
+        // in json mode a blank line still gets exactly one reply
+        assertEquals("USAGE", c.json("   ").getString("code"));
+        assertEquals("PONG", c.json("PING").getString("message"));
+    }
+
+    @Test
     void infoAndHello() throws IOException {
         start();
         Client c = new Client();

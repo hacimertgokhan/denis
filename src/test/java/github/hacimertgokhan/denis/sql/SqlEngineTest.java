@@ -356,11 +356,18 @@ class SqlEngineTest {
         run("CREATE INDEX idx_city ON users (city)");
         var dump = sql.dumpTables(ks);
         Keyspace other = storage.keyspace("other");
-        sql.importTable(other, "users", dump.getJSONObject("users"), false);
+        sql.importTable(other, "users", dump.getJSONObject("users"), false, false);
         assertEquals(5L, sql.execute(other, "SELECT COUNT(*) FROM users", null).rows().get(0)[0]);
         assertTrue(plan(sql, other, "SELECT * FROM users WHERE city = 'x'").contains("idx_city"));
-        assertThrows(SqlException.class, () -> sql.importTable(other, "users", dump.getJSONObject("users"), false));
-        sql.importTable(other, "users", dump.getJSONObject("users"), true);
+        assertThrows(SqlException.class, () -> sql.importTable(other, "users", dump.getJSONObject("users"), false, false));
+        sql.importTable(other, "users", dump.getJSONObject("users"), true, false);
         assertEquals(5L, sql.execute(other, "SELECT COUNT(*) FROM users", null).rows().get(0)[0]);
+        // appending the same rows again violates the primary key and changes nothing
+        assertThrows(SqlException.class, () -> sql.importTable(other, "users", dump.getJSONObject("users"), false, true));
+        assertEquals(5L, sql.execute(other, "SELECT COUNT(*) FROM users", null).rows().get(0)[0]);
+        var more = new org.json.JSONObject(dump.getJSONObject("users").toString());
+        more.put("rows", new org.json.JSONArray().put(new org.json.JSONArray().put(6).put("Barbara").put(52).put("MIT")));
+        assertEquals(1, sql.importTable(other, "users", more, false, true));
+        assertEquals(6L, sql.execute(other, "SELECT COUNT(*) FROM users", null).rows().get(0)[0]);
     }
 }

@@ -9,6 +9,10 @@ replies.
 - Libraries switch to `MODE json` first: then every reply is exactly one JSON
   object per line.
 - A line longer than `max-line-size` (default 8 MB) closes the connection.
+- Leading whitespace is ignored; trailing whitespace is part of the line (a
+  value may end in spaces, and `SET k ` stores an empty value).
+- A blank line gets no reply in text mode (pressing Enter in telnet) and a
+  `USAGE` error in json mode, so clients always get one reply per line.
 
 ## Reply format in `MODE json`
 
@@ -20,7 +24,7 @@ replies.
 | code | meaning |
 | --- | --- |
 | `NOAUTH` | command needs `LIN` first |
-| `NOPROJECT` | command needs `AUTH <token>` first |
+| `NOPROJECT` | command needs `AUTH <token>` first (also when the project was deleted by another session) |
 | `AUTH` | login failed / project not accessible |
 | `LOCKED` | too many failed logins from this address; wait |
 | `FORBIDDEN` | admin group required |
@@ -85,7 +89,7 @@ value (written to the log, survives restarts). Reads prefer the cache value.
 | command | notes | json reply |
 | --- | --- | --- |
 | `SET <key> <value> [-&save] [-&cache] [-&ttl=<s>]` | always sets the cache value; `-&save` (alias `-&protobuff`) also the durable one; `-&ttl` expires the cache value | `{"ok":true,"message":"Ok (Cache)"}` |
-| `GET <key> [-&from-protobuff] [-&asa-json]` | `-&from-protobuff` prefers the durable value | `{"ok":true,"key":"k","data":"v"}` / `{"ok":false,"key":"k","error":"not found","code":"NOTFOUND"}` |
+| `GET <key> [-&from-protobuff] [-&asa-json]` | `-&from-protobuff` prefers the durable value; `-&from-cache` is accepted and behaves like the default (as in 0.0.x) | `{"ok":true,"key":"k","data":"v"}` / `{"ok":false,"key":"k","error":"not found","code":"NOTFOUND"}` |
 | `DEL <key> [-&cache \| -&protobuff]` | default both layers | `{"ok":true,"message":"...","deleted":true}` |
 | `UPDATE <key> <value>` | cache only | `{"ok":true,"message":"Ok."}` |
 | `EXISTS <key>` | | `{"ok":true,"key":"k","exists":true,"cache":true,"persistent":false}` |
@@ -116,7 +120,10 @@ encode it (JSON/base64) on the client.
 
 `IMPORT <json>` takes the same object (without `ok`) and merges it into the
 current project; with `"replace":true` existing tables of the same name are
-replaced. Large projects can be imported in several `IMPORT` lines.
+replaced. With `"append":true` the rows of a table are added to an existing
+table with the same number of columns — so a table larger than one line is
+sent as a first line that creates it and further `append` lines. Large
+projects can be imported in several `IMPORT` lines.
 Reply: `{"ok":true,"message":"Imported","imported":{"persistent":n,"cache":n,"tables":n,"rows":n}}`.
 
 ## SQL

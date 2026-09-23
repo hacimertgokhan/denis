@@ -18,10 +18,10 @@ import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Turns SQL text into an immutable {@link Statement}.
@@ -29,35 +29,30 @@ import java.util.Map;
  * <p>Parsing uses ANTLR's two-stage strategy: the fast SLL prediction mode
  * with a bail-out error strategy first, and the full LL mode only when SLL
  * fails (which for this grammar is practically never on valid input). Parsed
- * statements are kept in a small LRU cache keyed by the exact text, so a
+ * statements are kept in a small cache keyed by the exact text, so a
  * client that repeats a query shape with {@code ?} parameters pays for
  * parsing once.
  */
 public final class SqlParser {
-    private static final int CACHE_SIZE = 512;
-    private static final Map<String, Statement> CACHE = new LinkedHashMap<>(CACHE_SIZE, 0.75f, true) {
-        @Override
-        protected boolean removeEldestEntry(Map.Entry<String, Statement> eldest) {
-            return size() > CACHE_SIZE;
-        }
-    };
+    private static final int CACHE_SIZE = 1024;
+    // lock-free reads: every SQL command of every worker looks here; when full it is simply cleared
+    private static final Map<String, Statement> CACHE = new ConcurrentHashMap<>(CACHE_SIZE * 2);
 
     private SqlParser() {
     }
 
     public static Statement parse(String sql) {
         String text = normalize(sql);
-        synchronized (CACHE) {
-            Statement cached = CACHE.get(text);
-            if (cached != null) {
-                return cached;
-            }
+        Statement cached = CACHE.get(text);
+        if (cached != null) {
+            return cached;
         }
         Statement statement = parseUncached(text);
         if (text.length() <= 4096) {
-            synchronized (CACHE) {
-                CACHE.put(text, statement);
+            if (CACHE.size() >= CACHE_SIZE) {
+                CACHE.clear();
             }
+            CACHE.put(text, statement);
         }
         return statement;
     }

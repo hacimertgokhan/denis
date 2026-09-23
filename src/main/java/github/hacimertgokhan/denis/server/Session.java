@@ -154,9 +154,11 @@ public final class Session {
 
     /** Handle one input line. Never throws. */
     public Reply handle(String input) {
-        String line = input.trim();
+        // only leading whitespace is insignificant: values may end in spaces (and may be empty)
+        String line = input.stripLeading();
         if (line.isEmpty()) {
-            return Reply.NONE;
+            // telnet users press Enter; clients get a reply for every line they send
+            return json ? Reply.of(error("USAGE", "empty command")) : Reply.NONE;
         }
         ctx.metrics().commands.increment();
         if (ctx.config().logCommands()) {
@@ -262,6 +264,12 @@ public final class Session {
             }
         }
 
+        if (keyspace != null && keyspace.dropped()) {
+            // deleted by another session: stop using it rather than writing into a detached keyspace
+            keyspace = null;
+            token = null;
+            return Reply.of(error("NOPROJECT", "The project was deleted; AUTH to another project"));
+        }
         if (keyspace == null) {
             return Reply.of(error("NOPROJECT", "Please authenticate first using AUTH command"));
         }
@@ -518,8 +526,8 @@ public final class Session {
         String value = rest;
         List<String> flags = List.of();
         if (rest.contains("-&")) {
-            // flags follow the value and are not part of it
-            String[] words = rest.split(" ", -1);
+            // flags follow the value and are not part of it; whitespace after the last flag is not part of the value
+            String[] words = rest.stripTrailing().split(" ", -1);
             StringBuilder sb = new StringBuilder(rest.length());
             flags = new ArrayList<>();
             boolean first = true;
@@ -772,6 +780,7 @@ public final class Session {
             return error("USAGE", "IMPORT needs a JSON object: " + e.getMessage());
         }
         boolean replace = data.optBoolean("replace", false);
+        boolean append = data.optBoolean("append", false);
         long persistentCount = 0;
         long cacheCount = 0;
         long rows = 0;
@@ -798,7 +807,7 @@ public final class Session {
         int tableCount = 0;
         if (tables != null) {
             for (String name : tables.keySet()) {
-                rows += ctx.sql().importTable(keyspace, name, tables.getJSONObject(name), replace);
+                rows += ctx.sql().importTable(keyspace, name, tables.getJSONObject(name), replace, append);
                 tableCount++;
             }
         }

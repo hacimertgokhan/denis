@@ -24,6 +24,8 @@ public final class Keyspace {
     final LongAdder persistentKeys = new LongAdder();
     /** Set once a DefineKeyspace record is in the log; before that nothing durable references the id. */
     volatile boolean defined;
+    /** Set when the project is deleted; sessions still holding it must stop using it. */
+    volatile boolean dropped;
 
     private Iterator<Map.Entry<String, Slot>> evictionCursor;
     private Iterator<String> expiryCursor;
@@ -47,6 +49,10 @@ public final class Keyspace {
 
     public long persistentKeyCount() {
         return persistentKeys.sum();
+    }
+
+    public boolean dropped() {
+        return dropped;
     }
 
     public int keyCount() {

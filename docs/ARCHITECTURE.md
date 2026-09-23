@@ -157,7 +157,7 @@ run while a server answers on the configured port.
 
 `SqlParser` turns text into an immutable AST using an ANTLR 4 grammar
 (`src/main/antlr4/.../DenisSql.g4`) with the fast SLL mode first and full LL
-only on failure; parsed statements are cached (LRU, 512), so a query shape
+only on failure; parsed statements are cached (lock-free, 1024 entries), so a query shape
 with `?` parameters is parsed once. `SqlEngine` binds names to positions,
 compiles expressions into closures and plans the first table's access:
 

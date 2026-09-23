@@ -296,6 +296,7 @@ public final class StorageEngine implements AutoCloseable {
     }
 
     private void removeKeyspace(Keyspace ks) {
+        ks.dropped = true;
         byName.remove(ks.name(), ks);
         byId.remove(ks.id(), ks);
         long freed = 256;
@@ -355,6 +356,7 @@ public final class StorageEngine implements AutoCloseable {
      */
     public CompletableFuture<Void> put(Keyspace ks, String key, String value, boolean cache, boolean durable, long ttlMillis) {
         checkKey(key);
+        checkAlive(ks);
         if (durable) {
             requireDurability();
             ensureDefined(ks);
@@ -392,6 +394,7 @@ public final class StorageEngine implements AutoCloseable {
 
     /** Delete from the given layers. */
     public DeleteResult delete(Keyspace ks, String key, boolean cache, boolean durable) {
+        checkAlive(ks);
         if (durable) {
             Slot current = ks.slots.get(key);
             if (current != null && current.persistent != null) {
@@ -434,6 +437,7 @@ public final class StorageEngine implements AutoCloseable {
      */
     public IncrResult incr(Keyspace ks, String key, long delta, boolean durable) {
         checkKey(key);
+        checkAlive(ks);
         if (durable) {
             requireDurability();
             ensureDefined(ks);
@@ -612,6 +616,12 @@ public final class StorageEngine implements AutoCloseable {
         }
     }
 
+    private static void checkAlive(Keyspace ks) {
+        if (ks.dropped) {
+            throw new StorageException("NOPROJECT", "the project was deleted");
+        }
+    }
+
     private static void checkKey(String key) {
         if (key.startsWith(RESERVED_PREFIX)) {
             throw new StorageException("RESERVED", "keys starting with " + RESERVED_PREFIX + " are reserved");
@@ -640,6 +650,7 @@ public final class StorageEngine implements AutoCloseable {
      * update) and applies the change to memory right after.
      */
     public CompletableFuture<Void> logTableMutation(Keyspace ks, Mutation mutation) {
+        checkAlive(ks);
         if (!config.persistence()) {
             return DONE;
         }

@@ -1523,17 +1523,32 @@ public final class SqlEngine {
 
     /**
      * Create a table from a {@link #dumpTables} entry. With {@code replace} an
-     * existing table of that name is dropped first; otherwise it is an error.
+     * existing table of that name is dropped first; with {@code append} the
+     * rows are added to an existing table of the same column count (so a table
+     * larger than one protocol line can be imported in several parts);
+     * otherwise an existing table is an error.
      *
      * @return rows imported
      */
-    public long importTable(Keyspace ks, String name, org.json.JSONObject def, boolean replace) {
+    public long importTable(Keyspace ks, String name, org.json.JSONObject def, boolean replace, boolean append) {
         String table = name.toLowerCase(Locale.ROOT);
         TableSchema schema;
         try {
             schema = TableSchema.fromJson(new org.json.JSONObject().put("columns", def.getJSONArray("columns")).toString());
         } catch (RuntimeException e) {
             throw new SqlException("Bad table definition for " + table + ": " + e.getMessage());
+        }
+        if (append && ks.table(table) != null) {
+            Table existing = lockForWrite(ks, table);
+            try {
+                if (existing.schema().size() != schema.size()) {
+                    throw new SqlException("Cannot append to " + table + ": it has " + existing.schema().size()
+                            + " columns, the import has " + schema.size());
+                }
+                return insertRows(ks, existing, def.optJSONArray("rows"));
+            } finally {
+                existing.lock().writeLock().unlock();
+            }
         }
         if (ks.table(table) != null) {
             if (!replace) {
@@ -1549,24 +1564,7 @@ public final class SqlEngine {
                 throw new SqlException("Table already exists: " + table);
             }
             storage.logTableMutation(ks, new Mutation.CreateTable(ks.id(), table, schema.toJson()));
-            org.json.JSONArray rows = def.optJSONArray("rows");
-            long count = 0;
-            for (int r = 0; rows != null && r < rows.length(); r++) {
-                org.json.JSONArray source = rows.getJSONArray(r);
-                Object[] values = new Object[schema.size()];
-                for (int i = 0; i < values.length && i < source.length(); i++) {
-                    values[i] = fromJson(source.opt(i));
-                }
-                coerceRow(schema, values, null);
-                String violation = created.uniqueViolation(values, -1);
-                if (violation != null) {
-                    throw new SqlException("UNIQUE constraint failed while importing " + table + "." + violation);
-                }
-                long rowId = created.nextRowId();
-                storage.logTableMutation(ks, new Mutation.PutRow(ks.id(), table, rowId, values));
-                created.put(rowId, values);
-                count++;
-            }
+            long count = insertRows(ks, created, def.optJSONArray("rows"));
             org.json.JSONArray indexes = def.optJSONArray("indexes");
             for (int i = 0; indexes != null && i < indexes.length(); i++) {
                 org.json.JSONObject index = indexes.getJSONObject(i);
@@ -1582,6 +1580,45 @@ public final class SqlEngine {
         } finally {
             created.lock().writeLock().unlock();
         }
+    }
+
+    /** Positional JSON rows into a table whose write lock the caller holds. Validates every row before adding any. */
+    private long insertRows(Keyspace ks, Table table, org.json.JSONArray rows) {
+        if (rows == null) {
+            return 0;
+        }
+        TableSchema schema = table.schema();
+        List<Object[]> prepared = new ArrayList<>(rows.length());
+        List<Set<Object>> seen = new ArrayList<>();
+        List<Index> unique = new ArrayList<>();
+        for (Index index : table.indexes()) {
+            if (index.unique()) {
+                unique.add(index);
+                seen.add(new HashSet<>());
+            }
+        }
+        for (int r = 0; r < rows.length(); r++) {
+            org.json.JSONArray source = rows.getJSONArray(r);
+            Object[] values = new Object[schema.size()];
+            for (int i = 0; i < values.length && i < source.length(); i++) {
+                values[i] = fromJson(source.opt(i));
+            }
+            coerceRow(schema, values, null);
+            for (int u = 0; u < unique.size(); u++) {
+                Object v = values[unique.get(u).position()];
+                if (v != null && (unique.get(u).conflict(v, -1) >= 0 || !seen.get(u).add(Values.indexKey(v)))) {
+                    throw new SqlException("UNIQUE constraint failed while importing " + table.name() + "." + unique.get(u).column());
+                }
+            }
+            prepared.add(values);
+        }
+        storage.reserveMemory(96L * prepared.size());
+        for (Object[] values : prepared) {
+            long rowId = table.nextRowId();
+            storage.logTableMutation(ks, new Mutation.PutRow(ks.id(), table.name(), rowId, values));
+            table.put(rowId, values);
+        }
+        return prepared.size();
     }
 
     /** JSON value (org.json) to a SQL value. */

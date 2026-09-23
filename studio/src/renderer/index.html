@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en" data-theme="system">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Denis Studio</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script type="module" src="app.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#view">Skip to content</a>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand">
+          <img src="assets/logo.svg" alt="" width="28" height="28" />
+          <span class="brand-name">Denis Studio</span>
+        </div>
+        <nav aria-label="Views">
+          <ul id="nav" class="nav"></ul>
+        </nav>
+        <div class="sidebar-foot">
+          <button type="button" id="new-window" class="btn btn-ghost btn-small" title="Open a new window (Ctrl+Shift+N)">New window</button>
+        </div>
+      </aside>
+      <main id="view" class="view" tabindex="-1" aria-live="off"></main>
+      <footer id="statusbar" class="statusbar" aria-label="Connection status"></footer>
+    </div>
+    <div id="toasts" class="toasts" aria-live="polite" aria-atomic="false"></div>
+    <noscript>Denis Studio needs JavaScript.</noscript>
+  </body>
+</html>

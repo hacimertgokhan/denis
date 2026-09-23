@@ -1,0 +1,5 @@
+{
+  "type": "module",
+  "private": true,
+  "description": "Renderer sources are ES modules loaded by Chromium; this marker lets Node import them in unit tests."
+}

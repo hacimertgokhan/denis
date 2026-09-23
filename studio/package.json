@@ -1,0 +1,110 @@
+{
+  "name": "denis-studio",
+  "productName": "Denis Studio",
+  "version": "0.1.0",
+  "description": "Desktop manager for Denis Database: connections, keys, SQL, server health, projects and backups.",
+  "main": "src/main/main.js",
+  "private": true,
+  "license": "Apache-2.0",
+  "author": {
+    "name": "hacimertgokhan",
+    "email": "hacimertgokhan@users.noreply.github.com"
+  },
+  "homepage": "https://github.com/hacimertgokhan/denis",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hacimertgokhan/denis.git",
+    "directory": "studio"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test --test-reporter=spec \"test/unit/*.test.js\" \"test/unit/*.test.mjs\"",
+    "test:e2e": "node test/e2e/run-e2e.js",
+    "test:electron": "node --test --test-reporter=spec \"test/electron/*.spec.js\"",
+    "icons": "node scripts/make-icons.js",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win",
+    "dist:mac": "electron-builder --mac",
+    "dist:linux": "electron-builder --linux",
+    "dist:all": "electron-builder --win --mac --linux"
+  },
+  "dependencies": {
+    "denis-client": "file:../clients/node"
+  },
+  "devDependencies": {
+    "electron": "^44.4.5",
+    "electron-builder": "^26.15.3",
+    "playwright": "^1.63.0"
+  },
+  "build": {
+    "appId": "io.github.hacimertgokhan.denis.studio",
+    "productName": "Denis Studio",
+    "copyright": "Copyright (c) Denis Database contributors",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "package.json",
+      "src/**/*",
+      "!**/*.map"
+    ],
+    "asar": true,
+    "artifactName": "Denis-Studio-${version}-${os}-${arch}.${ext}",
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "Denis-Studio-Setup-${version}-${arch}.${ext}",
+      "shortcutName": "Denis Studio"
+    },
+    "portable": {
+      "artifactName": "Denis-Studio-${version}-portable-${arch}.${ext}"
+    },
+    "mac": {
+      "icon": "build/icon.icns",
+      "category": "public.app-category.developer-tools",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "hardenedRuntime": true
+    },
+    "linux": {
+      "icon": "build/icons",
+      "category": "Development",
+      "synopsis": "Desktop manager for Denis Database",
+      "maintainer": "hacimertgokhan <hacimertgokhan@users.noreply.github.com>",
+      "target": [
+        "AppImage",
+        "deb"
+      ]
+    }
+  }
+}

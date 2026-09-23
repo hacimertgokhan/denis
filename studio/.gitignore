@@ -1,0 +1,5 @@
+node_modules/
+dist/
+*.log
+.e2e-tmp/
+test-results/

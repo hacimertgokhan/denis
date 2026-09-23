@@ -1,220 +1,231 @@
 package github.hacimertgokhan;
 
-import github.hacimertgokhan.denis.DenisTerminal;
-import github.hacimertgokhan.denis.DenisClient;
-import github.hacimertgokhan.denis.CreateSecureToken;
-import github.hacimertgokhan.denis.calculators.ThreadPoolCalculator;
+import github.hacimertgokhan.denis.Version;
+import github.hacimertgokhan.denis.backup.BackupManager;
 import github.hacimertgokhan.denis.cli.CLIMain;
-import github.hacimertgokhan.denis.fingerprint.PawdStore;
-import github.hacimertgokhan.denis.language.DenisLanguage;
+import github.hacimertgokhan.denis.project.ProjectRegistry;
 import github.hacimertgokhan.denis.sections.group.GroupManager;
-import github.hacimertgokhan.json.JsonFile;
+import github.hacimertgokhan.denis.security.LoginGuard;
+import github.hacimertgokhan.denis.security.PasswordHasher;
+import github.hacimertgokhan.denis.server.DenisServer;
+import github.hacimertgokhan.denis.server.ServerConfig;
+import github.hacimertgokhan.denis.server.ServerContext;
+import github.hacimertgokhan.denis.server.ServerMetrics;
+import github.hacimertgokhan.denis.sql.SqlEngine;
+import github.hacimertgokhan.denis.storage.StorageEngine;
 import github.hacimertgokhan.logger.DenisLogger;
-import github.hacimertgokhan.pointers.Any;
 import github.hacimertgokhan.readers.DenisProperties;
-import github.hacimertgokhan.readers.DenisToml;
 
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
+import java.util.Arrays;
+import java.util.Locale;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
+/** Entry point: {@code denis server}, {@code denis cli ...}, {@code denis init}, {@code denis --version}. */
 public class Main {
-    static DenisLogger denisLogger = new DenisLogger(Main.class);
-    static DenisProperties denisProperties = new DenisProperties();
-    static boolean delogg = denisProperties.getBoolean("use-delogg", false);
-    static boolean swd = denisProperties.getBoolean("start-with-details", false);
-    static int PORT = denisProperties.getInt("ddb-port", 5142);
-    static String host = denisProperties.getProperty("ddb-address", "localhost");
-    // Opening a desktop terminal that tails the activity log is opt-in: the
-    // server normally runs headless (Docker, systemd).
-    static boolean openLogWindow = denisProperties.getBoolean("open-log-terminal", false);
-    static JsonFile ddb = new JsonFile("ddb.json");
-    static ThreadPoolCalculator threadPoolCalculator = new ThreadPoolCalculator();
-    static final int THREAD_POOL_SIZE = threadPoolCalculator.calculateCacheDatabaseThreads(0.7, 0.3);
-    static ExecutorService executor = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
-    static ConcurrentHashMap<String, Any> store = new ConcurrentHashMap<>();
-    static final int MAX_CONNECTIONS_PER_IP = denisProperties.getInt("max-connections-per-ip", 12);
-    static ConcurrentHashMap<InetAddress, Integer> ipConnectionCount = new ConcurrentHashMap<>();
-    static DenisToml denisToml = new DenisToml("denis.toml");
 
     public static void main(String[] args) {
         if (args.length > 0) {
             String command = args[0].toLowerCase(Locale.ROOT);
-            if (command.equals("cli") || command.equals("shell") || command.equals("tools")) {
-                CLIMain.main(Arrays.copyOfRange(args, 1, args.length));
-                return;
-            }
-            if (command.equals("server") || command.equals("start")) {
-                startServer();
-                return;
-            }
-            if (command.equals("--version") || command.equals("version")) {
-                System.out.println("Denis Database " + getVersion());
-                return;
-            }
-            if (command.equals("--help") || command.equals("help")) {
-                printUsage();
-                return;
-            }
-        }
-        startServer();
-    }
-
-    private static void startServer() {
-        List<String> list;
-        try {
-            list = new DenisLanguage().getLanguageFile().getList("startup-information");
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        for(String s : list) {
-            denisLogger.info(s);
-        }
-        if (swd) {
-            List<String> swdList;
-            try {
-                swdList = new DenisLanguage().getLanguageFile().getList("startup-swd");
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-            for(String s : swdList) {
-                denisLogger.info(s.replace("<host>", host).replace("<port>", String.valueOf(PORT)));
-            }
-            if (delogg) {
-                try {
-                    denisLogger.info(String.valueOf(new DenisLanguage().getLanguageFile().readJson().get("denis-global-logger")));
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
+            switch (command) {
+                case "cli", "shell", "tools" -> {
+                    CLIMain.main(Arrays.copyOfRange(args, 1, args.length));
+                    return;
+                }
+                case "init", "backup", "db", "group", "token" -> {
+                    CLIMain.main(args);
+                    return;
+                }
+                case "server", "start" -> {
+                    exitOnError(runServer());
+                    return;
+                }
+                case "--version", "version", "-v" -> {
+                    System.out.println("Denis Database " + Version.get());
+                    return;
+                }
+                case "--help", "help", "-h" -> {
+                    printUsage();
+                    return;
+                }
+                default -> {
+                    System.err.println("Unknown command: " + args[0]);
+                    printUsage();
+                    System.exit(2);
                 }
             }
         }
-        denisLogger.info("Checking pawd.dat file.");
-        PawdStore pawdStore = new PawdStore();
-        pawdStore.loadFromFile();
-        denisLogger.info(String.format("Thread Pool Size %s", String.valueOf(THREAD_POOL_SIZE)));
-        bootstrapGroup();
-        handleUseMode();
+        exitOnError(runServer());
+    }
+
+    /** A clean stop returns normally (the JVM is already shutting down); failures exit non-zero. */
+    private static void exitOnError(int code) {
+        if (code != 0) {
+            System.exit(code);
+        }
+    }
+
+    private static void printUsage() {
+        System.out.println("Denis Database " + Version.get());
+        System.out.println("Usage:");
+        System.out.println("  denis init                 Create a configuration and an admin group (first run)");
+        System.out.println("  denis server               Start the database server");
+        System.out.println("  denis backup <create|list|verify|restore>");
+        System.out.println("  denis db <verify|compact>  Offline checks of the data directory");
+        System.out.println("  denis cli [--help]         Management commands (groups, tokens, interactive shell)");
+        System.out.println("  denis --version            Show version");
+    }
+
+    /** Start the server and block until it is stopped. @return process exit code */
+    public static int runServer() {
+        DenisProperties properties = new DenisProperties();
+        DenisLogger.configure(properties.getProperty("log-level", "info"), properties.getProperty("log-file", "logs/denis.log"));
+        DenisLogger log = new DenisLogger(Main.class);
+        ServerConfig config;
+        try {
+            config = ServerConfig.from(properties);
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid configuration: " + e.getMessage());
+            return 2;
+        }
+        log.info("Denis Database " + Version.get() + " starting (Java " + System.getProperty("java.version") + ", "
+                + Runtime.getRuntime().availableProcessors() + " cpus, heap max " + (Runtime.getRuntime().maxMemory() >> 20) + " MB)");
+
+        StorageEngine storage = new StorageEngine(config.storage());
+        try {
+            storage.open();
+        } catch (IOException | RuntimeException e) {
+            log.error("Cannot open the data directory " + config.storage().dataDir().toAbsolutePath() + ": " + e.getMessage());
+            return 1;
+        }
+        StorageEngine.RecoveryInfo recovery = storage.recoveryInfo();
+        if (config.storage().persistence()) {
+            log.info(String.format("Data directory %s: %d snapshot records, %d log records in %d segment(s), recovered in %d ms%s",
+                    config.storage().dataDir().toAbsolutePath(), recovery.snapshotRecords(), recovery.walRecords(),
+                    recovery.walSegments(), recovery.millis(),
+                    recovery.truncatedBytes() > 0 ? " (" + recovery.truncatedBytes() + " bytes of an interrupted write discarded)" : ""));
+            log.info("Durability: fsync=" + config.storage().fsync().configName()
+                    + ", checkpoint every " + (config.storage().checkpointWalBytes() >> 20) + " MB of log or "
+                    + config.storage().checkpointIntervalMillis() / 1000 + " s");
+        } else {
+            log.warn("Persistence is off: all data lives in memory and is lost on restart");
+        }
+        if (config.storage().maxMemoryBytes() > 0) {
+            log.info("Memory limit: " + (config.storage().maxMemoryBytes() >> 20) + " MB, eviction " + config.storage().eviction());
+        }
+
+        GroupManager groups = new GroupManager(config.groupsFile(), new PasswordHasher(config.passwordIterations()));
+        ProjectRegistry projects = new ProjectRegistry(config.projectsFile());
+        bootstrapGroup(properties, groups, log);
+        if (groups.list().isEmpty()) {
+            log.warn("No login group exists yet. Run 'denis init' (or 'denis cli group create <name> --admin') to create one.");
+        }
+
+        AtomicInteger workerId = new AtomicInteger();
+        ThreadPoolExecutor workers = new ThreadPoolExecutor(config.workerThreads(), config.workerThreads(), 60, TimeUnit.SECONDS,
+                new ArrayBlockingQueue<>(config.workerQueue()), r -> {
+            Thread t = new Thread(r, "denis-worker-" + workerId.incrementAndGet());
+            t.setDaemon(true);
+            return t;
+        });
+        workers.allowCoreThreadTimeOut(true);
+
+        BackupManager backups = new BackupManager(storage, config.backupDir(), config.groupsFile(), config.projectsFile(),
+                config.backupRetention(), Version.get());
+        ServerMetrics metrics = new ServerMetrics();
+        ServerContext context = new ServerContext(config, storage, new SqlEngine(storage, config.maxResultRows()), groups, projects,
+                backups, new LoginGuard(config.loginMaxFailures(), config.loginLockoutSeconds() * 1000L), metrics, workers, Version.get());
+
+        DenisServer server = new DenisServer(config, context);
+        try {
+            server.start();
+        } catch (IOException e) {
+            log.error("Cannot listen on " + config.bindAddress() + ":" + config.port() + ": " + e.getMessage()
+                    + " (is another server running on this port?)");
+            storage.close();
+            return 1;
+        }
+        log.info("Listening on " + server.address() + " (" + config.ioThreads() + " io thread(s), "
+                + config.workerThreads() + " worker thread(s))");
+        if (config.bindAddress().equals("127.0.0.1") || config.bindAddress().equals("localhost")) {
+            log.info("Only local clients can connect; set bind-address=0.0.0.0 (DENIS_BIND_ADDRESS) to accept remote connections");
+        }
+
+        ScheduledExecutorService scheduler = null;
+        if (config.backupIntervalMinutes() > 0) {
+            scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r, "denis-backup");
+                t.setDaemon(true);
+                return t;
+            });
+            scheduler.scheduleWithFixedDelay(() -> {
+                try {
+                    backups.create();
+                } catch (IOException | RuntimeException e) {
+                    log.error("Scheduled backup failed: " + e.getMessage());
+                }
+            }, config.backupIntervalMinutes(), config.backupIntervalMinutes(), TimeUnit.MINUTES);
+            log.info("Backups every " + config.backupIntervalMinutes() + " min to " + config.backupDir().toAbsolutePath()
+                    + " (keeping " + config.backupRetention() + ")");
+        }
+
+        CountDownLatch stopped = new CountDownLatch(1);
+        ScheduledExecutorService backupScheduler = scheduler;
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            log.info("Shutting down...");
+            server.close();
+            if (backupScheduler != null) {
+                backupScheduler.shutdownNow();
+            }
+            workers.shutdown();
+            try {
+                workers.awaitTermination(10, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            storage.close();
+            log.info("Denis stopped");
+            stopped.countDown();
+        }, "denis-shutdown"));
+        try {
+            stopped.await();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        return 0;
     }
 
     /**
      * Non-interactive provisioning: with {@code DENIS_BOOTSTRAP_GROUP} and
      * {@code DENIS_BOOTSTRAP_GROUP_PASSWORD} set (or the same keys in
-     * denis.properties), the group is created on first start so a fresh
-     * container accepts {@code LIN} right away. An existing group is left alone.
+     * denis.properties), the group is created as an admin group on first start
+     * so a fresh container accepts {@code LIN} right away. An existing group is
+     * left alone.
      */
-    private static void bootstrapGroup() {
-        String group = denisProperties.getProperty("bootstrap-group");
+    private static void bootstrapGroup(DenisProperties properties, GroupManager groups, DenisLogger log) {
+        String group = properties.getProperty("bootstrap-group");
         if (group == null || group.isBlank()) {
             return;
         }
-        String password = denisProperties.getProperty("bootstrap-group-password");
+        String password = properties.getProperty("bootstrap-group-password");
         if (password == null || password.isBlank()) {
-            denisLogger.error("bootstrap-group is set but bootstrap-group-password is empty; group not created.");
+            log.error("bootstrap-group is set but bootstrap-group-password is empty; group not created.");
             return;
         }
         try {
-            if (new GroupManager().ensure(group, password)) {
-                denisLogger.info("Bootstrap group created: " + group);
+            if (groups.ensure(group, password, true)) {
+                log.info("Bootstrap group created: " + group + " (admin)");
             } else {
-                denisLogger.info("Bootstrap group already exists: " + group);
+                log.info("Bootstrap group already exists: " + group);
             }
         } catch (IOException | RuntimeException e) {
-            denisLogger.error("Bootstrap group could not be created: " + e.getMessage());
+            log.error("Bootstrap group could not be created: " + e.getMessage());
         }
     }
-
-    private static void printUsage() {
-        System.out.println("Denis Database " + getVersion());
-        System.out.println("Usage:");
-        System.out.println("  denis server        Start database server");
-        System.out.println("  denis cli           Open management shell");
-        System.out.println("  denis cli --help    Show CLI commands");
-        System.out.println("  denis --version     Show version");
-    }
-
-    private static String getVersion() {
-        String version = Main.class.getPackage().getImplementationVersion();
-        return version == null ? "dev" : version;
-    }
-
-    private static String resolveMainToken() {
-        String token = denisProperties.getProperty("ddb-main-token");
-        if (token != null && token.length() == 128) {
-            return token;
-        }
-        if (token != null && !token.isBlank()) {
-            denisLogger.warn("ddb-main-token must be exactly 128 characters; the configured value is ignored and a new token is generated.");
-        }
-
-        String generatedToken = new CreateSecureToken().getToken();
-        denisProperties.setProperty("ddb-main-token", generatedToken);
-        return generatedToken;
-    }
-
-    private static void handleUseMode() {
-        String token = resolveMainToken();
-        if (token.length() == 128) {
-            try (ServerSocket serverSocket = new ServerSocket(PORT)) {
-                List<String> swdList;
-                try {
-                    swdList = new DenisLanguage().getLanguageFile().getList("startup-port-and-token-information");
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-                for(String s : swdList) {
-                    denisLogger.info(s.replace("<port>", String.valueOf(PORT))
-                            .replace("<token>", denisProperties.isFromEnvironment("ddb-main-token") ? "(from environment)" : token));
-                }
-                if (!ddb.fileExists()) {
-                    ddb.createEmptyJson();
-                }
-                DenisTerminal logTerminal = new DenisTerminal(openLogWindow);
-                logTerminal.startLogTerminal(null);
-                logTerminal.writeLog(String.format("Denis started at %s", new Date().toString().toLowerCase(Locale.ROOT)));
-                Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                    logTerminal.writeLog(String.format("Denis stopped at %s", new Date().toString().toLowerCase(Locale.ROOT)));
-                    logTerminal.closeLogTerminal();
-                }));
-
-                while (true) {
-                    denisLogger.info((String) new DenisLanguage().getLanguageFile().readJson().get("waiting-for-client-connection"));
-                    Socket clientSocket = serverSocket.accept();
-                    InetAddress clientAddress = clientSocket.getInetAddress();
-                    int currentConnections = ipConnectionCount.getOrDefault(clientAddress, Integer.valueOf(0));
-                    if (currentConnections >= MAX_CONNECTIONS_PER_IP) {
-                        denisLogger.warn("Connection limit reached for IP address: " + clientAddress);
-                        clientSocket.close();
-                        continue;
-                    }
-                    ipConnectionCount.put(clientAddress, Integer.valueOf(currentConnections + 1));
-                    denisLogger.info((new DenisLanguage().getLanguageFile().readJson().get("client-connected").toString()).replace("<socket>", clientAddress.toString()));
-                    logTerminal.writeLog(String.format("Client connected: %s", clientAddress));
-                    executor.execute(() -> {
-                        DenisClient ddbServer = new DenisClient(clientSocket, store, delogg ? logTerminal : null);
-                        try {
-                            ddbServer.handleClient(clientSocket);
-                        } finally {
-                            ipConnectionCount.put(clientAddress, Integer.valueOf(Math.max(0, ipConnectionCount.get(clientAddress) - 1)));
-                            try {
-                                clientSocket.close();
-                            } catch (IOException e) {
-                                denisLogger.error("Error closing socket: " + e.getMessage());
-                            }
-                        }
-                    });
-                }
-            } catch (IOException e) {
-                denisLogger.error("IOException occurred: " + e.getMessage());
-                e.printStackTrace();
-            }
-        } else {
-            denisLogger.error("You cannot use DDB without correct token value. (Token length must be 128)");
-        }
-    }
-
 }

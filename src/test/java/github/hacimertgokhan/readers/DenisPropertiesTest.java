@@ -16,7 +16,7 @@ class DenisPropertiesTest {
         DenisProperties props = new DenisProperties(Map.of());
 
         assertEquals(5142, props.getInt("ddb-port", 0));
-        assertEquals("localhost", props.getProperty("ddb-address"));
+        assertEquals("127.0.0.1", props.getProperty("bind-address"));
         assertFalse(props.isFromEnvironment("ddb-port"));
     }
 

@@ -1,5 +1,6 @@
 package github.hacimertgokhan.denis.sections.group;
 
+import github.hacimertgokhan.denis.security.PasswordHasher;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -18,7 +19,7 @@ class GroupManagerTest {
     Path dir;
 
     private GroupManager manager() {
-        return new GroupManager(dir.resolve("denis.toml").toString());
+        return new GroupManager(dir.resolve("denis.toml"), new PasswordHasher(20_000));
     }
 
     @Test
@@ -31,9 +32,9 @@ class GroupManagerTest {
         assertEquals("s3cret", created.password());
         assertFalse(created.generatedPassword());
         assertTrue(manager.exists("crm"));
-        assertTrue(manager.verify("crm", "s3cret"));
-        assertFalse(manager.verify("crm", "wrong"));
-        assertFalse(manager.verify("nobody", "s3cret"));
+        assertTrue(manager.login("crm", "s3cret").ok());
+        assertFalse(manager.login("crm", "wrong").ok());
+        assertFalse(manager.login("nobody", "s3cret").ok());
         assertEquals(List.of("crm"), manager.list());
     }
 
@@ -45,6 +46,15 @@ class GroupManagerTest {
         assertFalse(toml.contains("s3cret"));
         assertTrue(toml.contains("salt"));
         assertTrue(toml.contains("access"));
+    }
+
+    @Test
+    void generatedPasswordsAreNotWrittenAnywhere() throws IOException {
+        GroupManager.CreatedGroup created = manager().create("gen", null);
+        assertTrue(created.generatedPassword());
+        assertTrue(created.password().length() >= 20);
+        assertFalse(Files.readString(dir.resolve("denis.toml")).contains(created.password()));
+        assertFalse(Files.exists(dir.resolve("pawd.dat")));
     }
 
     @Test
@@ -64,6 +74,16 @@ class GroupManagerTest {
         assertTrue(manager.ensure("crm", "first"));
         assertFalse(manager.ensure("crm", "second"));
         // the first password stays valid; ensure never rotates it
-        assertTrue(manager.verify("crm", "first"));
+        assertTrue(manager.login("crm", "first").ok());
+    }
+
+    @Test
+    void groupsAddedByAnotherProcessAreSeen() throws Exception {
+        GroupManager server = manager();
+        assertFalse(server.exists("late"));
+        // the CLI writes the file while the server keeps its instance
+        manager().create("late", "pw");
+        Thread.sleep(1100);
+        assertTrue(server.exists("late"));
     }
 }

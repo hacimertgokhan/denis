@@ -24,8 +24,10 @@ PREVIOUS=${BENCH_COMPARE:-$(ls -t "$RESULTS"/*.jsonl 2>/dev/null | grep -v "/$LA
 
 echo "==> building"
 if [ -z "${BENCH_SERVER_JAR:-}" ]; then
-  (cd "$ROOT" && mvn -B -q -DskipTests install)
-  SERVER_JAR=$(ls "$ROOT"/target/denis-*.jar | grep -v original | head -n 1)
+  (cd "$ROOT" && mvn -B -q -DskipTests clean install)
+  # the exact artifact of this checkout (target/ may hold other jars)
+  VERSION=$(sed -n 's:^    <version>\(.*\)</version>:\1:p' "$ROOT/pom.xml" | head -n 1)
+  SERVER_JAR="$ROOT/target/denis-$VERSION.jar"
 else
   SERVER_JAR=$BENCH_SERVER_JAR
 fi

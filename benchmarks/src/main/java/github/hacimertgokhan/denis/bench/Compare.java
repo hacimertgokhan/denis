@@ -65,16 +65,16 @@ public final class Compare {
             Run b = before.get(shape);
             Run a = after.get(shape);
             String speedUp = b != null && a != null && b.opsPerSec() > 0 && b.errors() == 0
-                    ? String.format(Locale.ROOT, "%.1f×", a.opsPerSec() / b.opsPerSec())
-                    : "–";
+                    ? String.format(Locale.ROOT, "%.1fx", a.opsPerSec() / b.opsPerSec())
+                    : "-";
             System.out.printf(Locale.ROOT, "| %s | %s | %s | %s | %s | %s | %s/%s |%n", shape,
-                    b == null ? "–" : String.format(Locale.ROOT, "%,.0f", b.opsPerSec()),
-                    a == null ? "–" : String.format(Locale.ROOT, "%,.0f", a.opsPerSec()),
+                    b == null ? "-" : String.format(Locale.ROOT, "%,.0f", b.opsPerSec()),
+                    a == null ? "-" : String.format(Locale.ROOT, "%,.0f", a.opsPerSec()),
                     speedUp,
-                    b == null ? "–" : b.p99() + " µs",
-                    a == null ? "–" : a.p99() + " µs",
-                    b == null ? "–" : String.valueOf(b.errors()),
-                    a == null ? "–" : String.valueOf(a.errors()));
+                    b == null ? "-" : b.p99() + " us",
+                    a == null ? "-" : a.p99() + " us",
+                    b == null ? "-" : String.valueOf(b.errors()),
+                    a == null ? "-" : String.valueOf(a.errors()));
         }
     }
 }

@@ -8,7 +8,7 @@ Raspberry Pi.
 
 [![CI](https://github.com/hacimertgokhan/denis/actions/workflows/ci.yml/badge.svg)](https://github.com/hacimertgokhan/denis/actions/workflows/ci.yml)
 
-- **Fast**: ~1.4 M ops/s pipelined on one machine, sub-millisecond p99;
+- **Fast**: ~1.5–1.9 M ops/s pipelined on one machine, sub-millisecond p99;
   reads never touch the disk ([benchmarks](benchmarks/README.md)).
 - **Durable**: `fsync=always|everysec|no`, CRC-checked log, torn-write repair,
   checkpoints that never block writers, disk use bounded by the data size.

@@ -12,9 +12,9 @@
 - Denis 0.0.x `database.bin` is imported once on first start.
 
 ### Performance (same machine, same tool, see `benchmarks/`)
-- Cache writes 80k → 1.4M ops/s, reads with data on disk 6.5k → 1.1M ops/s,
-  concurrent durable writes: 0.0.x failed and corrupted `database.bin`; now 1.1M ops/s without errors.
-- SQL point query (1000 rows) 3.3k → 130k ops/s; with a PRIMARY KEY it is an index lookup.
+- Cache writes 80k → 1.9M ops/s, reads with data on disk 6.5k → 1.5M ops/s,
+  concurrent durable writes: 0.0.x failed and corrupted `database.bin`; now 1.3M ops/s without errors.
+- SQL point query (1000 rows) 3.3k → 218k ops/s; with a PRIMARY KEY it is an index lookup.
 - Jar 15.2 MB → 1.6 MB; container idles at ~35 MB RAM.
 
 ### Server

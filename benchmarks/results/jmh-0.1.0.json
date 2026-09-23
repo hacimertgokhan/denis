@@ -1,0 +1,775 @@
+[
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "github.hacimertgokhan.denis.bench.CodecBenchmark.decodePut",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "C:\\Users\\YaskaGroup\\tools\\jdk-17.0.20.1+1\\bin\\java.exe",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "17.0.20.1",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "17.0.20.1+1",
+        "warmupIterations" : 1,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "2 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 8002321.944648147,
+            "scoreError" : 7646955.970122503,
+            "scoreConfidence" : [
+                355365.9745256435,
+                1.564927791477065E7
+            ],
+            "scorePercentiles" : {
+                "0.0" : 7690701.933780642,
+                "50.0" : 7837412.40522671,
+                "90.0" : 8478851.494937088,
+                "95.0" : 8478851.494937088,
+                "99.0" : 8478851.494937088,
+                "99.9" : 8478851.494937088,
+                "99.99" : 8478851.494937088,
+                "99.999" : 8478851.494937088,
+                "99.9999" : 8478851.494937088,
+                "100.0" : 8478851.494937088
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    8478851.494937088,
+                    7837412.40522671,
+                    7690701.933780642
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "github.hacimertgokhan.denis.bench.CodecBenchmark.encodePut",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "C:\\Users\\YaskaGroup\\tools\\jdk-17.0.20.1+1\\bin\\java.exe",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "17.0.20.1",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "17.0.20.1+1",
+        "warmupIterations" : 1,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "2 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 1.96009774686961E7,
+            "scoreError" : 2.5164926830221113E7,
+            "scoreConfidence" : [
+                -5563949.361525014,
+                4.476590429891721E7
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1.81875441526416E7,
+                "50.0" : 1.967182554104812E7,
+                "90.0" : 2.0943562712398574E7,
+                "95.0" : 2.0943562712398574E7,
+                "99.0" : 2.0943562712398574E7,
+                "99.9" : 2.0943562712398574E7,
+                "99.99" : 2.0943562712398574E7,
+                "99.999" : 2.0943562712398574E7,
+                "99.9999" : 2.0943562712398574E7,
+                "100.0" : 2.0943562712398574E7
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    1.967182554104812E7,
+                    2.0943562712398574E7,
+                    1.81875441526416E7
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "github.hacimertgokhan.denis.bench.CodecBenchmark.encodeRow",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "C:\\Users\\YaskaGroup\\tools\\jdk-17.0.20.1+1\\bin\\java.exe",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "17.0.20.1",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "17.0.20.1+1",
+        "warmupIterations" : 1,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "2 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 1.860674248430462E7,
+            "scoreError" : 1.6594917445259525E7,
+            "scoreConfidence" : [
+                2011825.0390450973,
+                3.520165992956415E7
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1.78094217770758E7,
+                "50.0" : 1.8413267264244232E7,
+                "90.0" : 1.9597538411593832E7,
+                "95.0" : 1.9597538411593832E7,
+                "99.0" : 1.9597538411593832E7,
+                "99.9" : 1.9597538411593832E7,
+                "99.99" : 1.9597538411593832E7,
+                "99.999" : 1.9597538411593832E7,
+                "99.9999" : 1.9597538411593832E7,
+                "100.0" : 1.9597538411593832E7
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    1.8413267264244232E7,
+                    1.9597538411593832E7,
+                    1.78094217770758E7
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "github.hacimertgokhan.denis.bench.SqlBenchmark.groupByAggregate",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "C:\\Users\\YaskaGroup\\tools\\jdk-17.0.20.1+1\\bin\\java.exe",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "17.0.20.1",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "17.0.20.1+1",
+        "warmupIterations" : 1,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "2 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "rows" : "10000"
+        },
+        "primaryMetric" : {
+            "score" : 2735.2614254727873,
+            "scoreError" : 8372.740210457372,
+            "scoreConfidence" : [
+                -5637.478784984585,
+                11108.001635930159
+            ],
+            "scorePercentiles" : {
+                "0.0" : 2395.370463058145,
+                "50.0" : 2553.0992245799143,
+                "90.0" : 3257.3145887803025,
+                "95.0" : 3257.3145887803025,
+                "99.0" : 3257.3145887803025,
+                "99.9" : 3257.3145887803025,
+                "99.99" : 3257.3145887803025,
+                "99.999" : 3257.3145887803025,
+                "99.9999" : 3257.3145887803025,
+                "100.0" : 3257.3145887803025
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    3257.3145887803025,
+                    2395.370463058145,
+                    2553.0992245799143
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "github.hacimertgokhan.denis.bench.SqlBenchmark.insert",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "C:\\Users\\YaskaGroup\\tools\\jdk-17.0.20.1+1\\bin\\java.exe",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "17.0.20.1",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "17.0.20.1+1",
+        "warmupIterations" : 1,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "2 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "rows" : "10000"
+        },
+        "primaryMetric" : {
+            "score" : 433292.8546880915,
+            "scoreError" : 917209.9251753167,
+            "scoreConfidence" : [
+                -483917.07048722525,
+                1350502.7798634083
+            ],
+            "scorePercentiles" : {
+                "0.0" : 391995.9814212056,
+                "50.0" : 418606.61824427976,
+                "90.0" : 489275.96439878904,
+                "95.0" : 489275.96439878904,
+                "99.0" : 489275.96439878904,
+                "99.9" : 489275.96439878904,
+                "99.99" : 489275.96439878904,
+                "99.999" : 489275.96439878904,
+                "99.9999" : 489275.96439878904,
+                "100.0" : 489275.96439878904
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    489275.96439878904,
+                    418606.61824427976,
+                    391995.9814212056
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "github.hacimertgokhan.denis.bench.SqlBenchmark.joinWithIndex",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "C:\\Users\\YaskaGroup\\tools\\jdk-17.0.20.1+1\\bin\\java.exe",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "17.0.20.1",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "17.0.20.1+1",
+        "warmupIterations" : 1,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "2 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "rows" : "10000"
+        },
+        "primaryMetric" : {
+            "score" : 823047.6242222855,
+            "scoreError" : 1351009.195751933,
+            "scoreConfidence" : [
+                -527961.5715296475,
+                2174056.8199742185
+            ],
+            "scorePercentiles" : {
+                "0.0" : 760716.6215091514,
+                "50.0" : 803517.5971964371,
+                "90.0" : 904908.6539612676,
+                "95.0" : 904908.6539612676,
+                "99.0" : 904908.6539612676,
+                "99.9" : 904908.6539612676,
+                "99.99" : 904908.6539612676,
+                "99.999" : 904908.6539612676,
+                "99.9999" : 904908.6539612676,
+                "100.0" : 904908.6539612676
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    904908.6539612676,
+                    803517.5971964371,
+                    760716.6215091514
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "github.hacimertgokhan.denis.bench.SqlBenchmark.latestTenByIndex",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "C:\\Users\\YaskaGroup\\tools\\jdk-17.0.20.1+1\\bin\\java.exe",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "17.0.20.1",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "17.0.20.1+1",
+        "warmupIterations" : 1,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "2 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "rows" : "10000"
+        },
+        "primaryMetric" : {
+            "score" : 591936.7994314044,
+            "scoreError" : 1391857.275611623,
+            "scoreConfidence" : [
+                -799920.4761802185,
+                1983794.0750430273
+            ],
+            "scorePercentiles" : {
+                "0.0" : 535409.0177919855,
+                "50.0" : 561685.8477545228,
+                "90.0" : 678715.5327477051,
+                "95.0" : 678715.5327477051,
+                "99.0" : 678715.5327477051,
+                "99.9" : 678715.5327477051,
+                "99.99" : 678715.5327477051,
+                "99.999" : 678715.5327477051,
+                "99.9999" : 678715.5327477051,
+                "100.0" : 678715.5327477051
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    678715.5327477051,
+                    561685.8477545228,
+                    535409.0177919855
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "github.hacimertgokhan.denis.bench.SqlBenchmark.pointLookupByPrimaryKey",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "C:\\Users\\YaskaGroup\\tools\\jdk-17.0.20.1+1\\bin\\java.exe",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "17.0.20.1",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "17.0.20.1+1",
+        "warmupIterations" : 1,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "2 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "rows" : "10000"
+        },
+        "primaryMetric" : {
+            "score" : 1273094.6624939616,
+            "scoreError" : 281695.34273407666,
+            "scoreConfidence" : [
+                991399.319759885,
+                1554790.0052280384
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1262998.2676514105,
+                "50.0" : 1265416.4515983292,
+                "90.0" : 1290869.2682321449,
+                "95.0" : 1290869.2682321449,
+                "99.0" : 1290869.2682321449,
+                "99.9" : 1290869.2682321449,
+                "99.99" : 1290869.2682321449,
+                "99.999" : 1290869.2682321449,
+                "99.9999" : 1290869.2682321449,
+                "100.0" : 1290869.2682321449
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    1290869.2682321449,
+                    1265416.4515983292,
+                    1262998.2676514105
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "github.hacimertgokhan.denis.bench.SqlBenchmark.pointLookupFullScan",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "C:\\Users\\YaskaGroup\\tools\\jdk-17.0.20.1+1\\bin\\java.exe",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "17.0.20.1",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "17.0.20.1+1",
+        "warmupIterations" : 1,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "2 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "rows" : "10000"
+        },
+        "primaryMetric" : {
+            "score" : 11417.592093000909,
+            "scoreError" : 12707.282559092944,
+            "scoreConfidence" : [
+                -1289.6904660920354,
+                24124.87465209385
+            ],
+            "scorePercentiles" : {
+                "0.0" : 10709.216187106935,
+                "50.0" : 11441.92344108847,
+                "90.0" : 12101.636650807322,
+                "95.0" : 12101.636650807322,
+                "99.0" : 12101.636650807322,
+                "99.9" : 12101.636650807322,
+                "99.99" : 12101.636650807322,
+                "99.999" : 12101.636650807322,
+                "99.9999" : 12101.636650807322,
+                "100.0" : 12101.636650807322
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    12101.636650807322,
+                    10709.216187106935,
+                    11441.92344108847
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "github.hacimertgokhan.denis.bench.StorageBenchmark.get",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "C:\\Users\\YaskaGroup\\tools\\jdk-17.0.20.1+1\\bin\\java.exe",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "17.0.20.1",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "17.0.20.1+1",
+        "warmupIterations" : 1,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "2 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "fsync" : "everysec"
+        },
+        "primaryMetric" : {
+            "score" : 2.091218840063246E7,
+            "scoreError" : 3.338548882677795E7,
+            "scoreConfidence" : [
+                -1.247330042614549E7,
+                5.4297677227410406E7
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1.9187253263978947E7,
+                "50.0" : 2.0717658320822895E7,
+                "90.0" : 2.2831653617095545E7,
+                "95.0" : 2.2831653617095545E7,
+                "99.0" : 2.2831653617095545E7,
+                "99.9" : 2.2831653617095545E7,
+                "99.99" : 2.2831653617095545E7,
+                "99.999" : 2.2831653617095545E7,
+                "99.9999" : 2.2831653617095545E7,
+                "100.0" : 2.2831653617095545E7
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    1.9187253263978947E7,
+                    2.0717658320822895E7,
+                    2.2831653617095545E7
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "github.hacimertgokhan.denis.bench.StorageBenchmark.getConcurrent",
+        "mode" : "thrpt",
+        "threads" : 4,
+        "forks" : 1,
+        "jvm" : "C:\\Users\\YaskaGroup\\tools\\jdk-17.0.20.1+1\\bin\\java.exe",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "17.0.20.1",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "17.0.20.1+1",
+        "warmupIterations" : 1,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "2 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "fsync" : "everysec"
+        },
+        "primaryMetric" : {
+            "score" : 7.313601712665808E7,
+            "scoreError" : 8.466389119856945E7,
+            "scoreConfidence" : [
+                -1.1527874071911365E7,
+                1.5779990832522753E8
+            ],
+            "scorePercentiles" : {
+                "0.0" : 6.801327740383336E7,
+                "50.0" : 7.433563236091001E7,
+                "90.0" : 7.705914161523089E7,
+                "95.0" : 7.705914161523089E7,
+                "99.0" : 7.705914161523089E7,
+                "99.9" : 7.705914161523089E7,
+                "99.99" : 7.705914161523089E7,
+                "99.999" : 7.705914161523089E7,
+                "99.9999" : 7.705914161523089E7,
+                "100.0" : 7.705914161523089E7
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    7.705914161523089E7,
+                    6.801327740383336E7,
+                    7.433563236091001E7
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "github.hacimertgokhan.denis.bench.StorageBenchmark.incr",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "C:\\Users\\YaskaGroup\\tools\\jdk-17.0.20.1+1\\bin\\java.exe",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "17.0.20.1",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "17.0.20.1+1",
+        "warmupIterations" : 1,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "2 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "fsync" : "everysec"
+        },
+        "primaryMetric" : {
+            "score" : 1.521287500169004E7,
+            "scoreError" : 1.9510307436133694E7,
+            "scoreConfidence" : [
+                -4297432.4344436545,
+                3.4723182437823735E7
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1.4539983934383972E7,
+                "50.0" : 1.4652612824538652E7,
+                "90.0" : 1.6446028246147497E7,
+                "95.0" : 1.6446028246147497E7,
+                "99.0" : 1.6446028246147497E7,
+                "99.9" : 1.6446028246147497E7,
+                "99.99" : 1.6446028246147497E7,
+                "99.999" : 1.6446028246147497E7,
+                "99.9999" : 1.6446028246147497E7,
+                "100.0" : 1.6446028246147497E7
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    1.6446028246147497E7,
+                    1.4652612824538652E7,
+                    1.4539983934383972E7
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "github.hacimertgokhan.denis.bench.StorageBenchmark.putCache",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "C:\\Users\\YaskaGroup\\tools\\jdk-17.0.20.1+1\\bin\\java.exe",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "17.0.20.1",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "17.0.20.1+1",
+        "warmupIterations" : 1,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "2 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "fsync" : "everysec"
+        },
+        "primaryMetric" : {
+            "score" : 5880928.372315697,
+            "scoreError" : 1.085707741607026E7,
+            "scoreConfidence" : [
+                -4976149.043754563,
+                1.6738005788385957E7
+            ],
+            "scorePercentiles" : {
+                "0.0" : 5198576.621780249,
+                "50.0" : 6151701.071600281,
+                "90.0" : 6292507.423566562,
+                "95.0" : 6292507.423566562,
+                "99.0" : 6292507.423566562,
+                "99.9" : 6292507.423566562,
+                "99.99" : 6292507.423566562,
+                "99.999" : 6292507.423566562,
+                "99.9999" : 6292507.423566562,
+                "100.0" : 6292507.423566562
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    6292507.423566562,
+                    6151701.071600281,
+                    5198576.621780249
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "github.hacimertgokhan.denis.bench.StorageBenchmark.putDurable",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "C:\\Users\\YaskaGroup\\tools\\jdk-17.0.20.1+1\\bin\\java.exe",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "17.0.20.1",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "17.0.20.1+1",
+        "warmupIterations" : 1,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "2 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "fsync" : "everysec"
+        },
+        "primaryMetric" : {
+            "score" : 2030190.1051750842,
+            "scoreError" : 2288833.153310193,
+            "scoreConfidence" : [
+                -258643.048135109,
+                4319023.258485277
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1913378.4294336746,
+                "50.0" : 2014392.494350763,
+                "90.0" : 2162799.391740815,
+                "95.0" : 2162799.391740815,
+                "99.0" : 2162799.391740815,
+                "99.9" : 2162799.391740815,
+                "99.99" : 2162799.391740815,
+                "99.999" : 2162799.391740815,
+                "99.9999" : 2162799.391740815,
+                "100.0" : 2162799.391740815
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    2162799.391740815,
+                    2014392.494350763,
+                    1913378.4294336746
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "github.hacimertgokhan.denis.bench.StorageBenchmark.putDurableConcurrent",
+        "mode" : "thrpt",
+        "threads" : 4,
+        "forks" : 1,
+        "jvm" : "C:\\Users\\YaskaGroup\\tools\\jdk-17.0.20.1+1\\bin\\java.exe",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "17.0.20.1",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "17.0.20.1+1",
+        "warmupIterations" : 1,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 3,
+        "measurementTime" : "2 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "fsync" : "everysec"
+        },
+        "primaryMetric" : {
+            "score" : 2241959.0525142825,
+            "scoreError" : 1492074.5707469208,
+            "scoreConfidence" : [
+                749884.4817673618,
+                3734033.623261203
+            ],
+            "scorePercentiles" : {
+                "0.0" : 2187426.3705721856,
+                "50.0" : 2202453.1598252426,
+                "90.0" : 2335997.627145419,
+                "95.0" : 2335997.627145419,
+                "99.0" : 2335997.627145419,
+                "99.9" : 2335997.627145419,
+                "99.99" : 2335997.627145419,
+                "99.999" : 2335997.627145419,
+                "99.9999" : 2335997.627145419,
+                "100.0" : 2335997.627145419
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    2202453.1598252426,
+                    2187426.3705721856,
+                    2335997.627145419
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    }
+]
+
+

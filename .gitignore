@@ -37,3 +37,12 @@ clients/node/*.tgz
 # OS
 .DS_Store
 Thumbs.db
+
+# Denis 0.1 runtime state and tool output
+/backups/
+/before-restore-*/
+database.bin.migrated
+benchmarks/target/
+studio/node_modules/
+studio/dist/
+java-driver/target/

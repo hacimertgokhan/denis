@@ -1,20 +1,47 @@
 #!/usr/bin/env sh
+# Denis Database launcher.
+#   denis init | server | backup ... | cli ...
+# Environment:
+#   DENIS_HOME       where config and data live (default: this installation)
+#   DENIS_JAVA_OPTS  extra JVM options, e.g. "-Xmx96m -XX:+UseSerialGC" on small devices
+#   JAVA_HOME        Java 17+ to use (default: java on PATH)
 set -eu
 
-SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-APP_HOME=$(cd "$SCRIPT_DIR/.." && pwd)
-JAR=""
+SCRIPT=$0
+# follow the symlink that install.sh puts on the PATH
+while [ -L "$SCRIPT" ]; do
+  LINK=$(readlink "$SCRIPT")
+  case $LINK in
+    /*) SCRIPT=$LINK ;;
+    *) SCRIPT=$(dirname "$SCRIPT")/$LINK ;;
+  esac
+done
+APP_HOME=$(CDPATH= cd -- "$(dirname -- "$SCRIPT")/.." && pwd)
 
-for candidate in "$APP_HOME"/denis-*.jar; do
+JAR=""
+for candidate in "$APP_HOME"/denis-*.jar "$APP_HOME"/lib/denis-*.jar; do
   if [ -f "$candidate" ]; then
-    JAR="$candidate"
+    JAR=$candidate
     break
   fi
 done
-
 if [ -z "$JAR" ]; then
   echo "Denis jar was not found in $APP_HOME" >&2
   exit 1
 fi
 
-exec java -Dfile.encoding=UTF-8 -jar "$JAR" "$@"
+if [ -n "${JAVA_HOME:-}" ]; then
+  JAVA="$JAVA_HOME/bin/java"
+else
+  JAVA=java
+fi
+if ! command -v "$JAVA" >/dev/null 2>&1; then
+  echo "Java 17 or newer is required (not found). Install it, e.g.:" >&2
+  echo "  Debian/Ubuntu/Raspberry Pi OS: sudo apt install openjdk-17-jre-headless" >&2
+  echo "  macOS: brew install openjdk@17      Other: https://adoptium.net" >&2
+  exit 1
+fi
+
+export DENIS_HOME="${DENIS_HOME:-$APP_HOME}"
+# shellcheck disable=SC2086
+exec "$JAVA" -XX:+ExitOnOutOfMemoryError -Dfile.encoding=UTF-8 ${DENIS_JAVA_OPTS:-} -jar "$JAR" "$@"

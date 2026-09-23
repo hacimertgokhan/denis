@@ -31,6 +31,7 @@ public class DenisProperties {
     private final Properties properties = new Properties();
     private final String fileName = "denis.properties";
     private final Path externalPath;
+    private final Path home;
     private final Map<String, String> environment;
 
     public DenisProperties() {
@@ -40,11 +41,16 @@ public class DenisProperties {
     /** For tests: resolve against a given environment instead of {@link System#getenv()}. */
     public DenisProperties(Map<String, String> environment) {
         this.environment = environment;
+        String homeSetting = System.getProperty("denis.home");
+        if (homeSetting == null || homeSetting.isBlank()) {
+            homeSetting = environment.getOrDefault("DENIS_HOME", "");
+        }
+        this.home = homeSetting.isBlank() ? Paths.get("") : Paths.get(homeSetting);
         String configured = System.getProperty("denis.config");
         if (configured == null || configured.isBlank()) {
             configured = environment.getOrDefault("DENIS_CONFIG", fileName);
         }
-        this.externalPath = Paths.get(configured);
+        this.externalPath = home.resolve(configured);
 
         try (InputStream input = DenisProperties.class.getClassLoader().getResourceAsStream(fileName)) {
             if (input != null) {
@@ -120,6 +126,22 @@ public class DenisProperties {
 
     public Path getExternalPath() {
         return externalPath;
+    }
+
+    /**
+     * The installation directory ({@code DENIS_HOME} or {@code -Ddenis.home}),
+     * against which relative paths in the configuration are resolved; the
+     * working directory when unset. The launchers set it, so {@code denis}
+     * finds its data from any current directory.
+     */
+    public Path home() {
+        return home;
+    }
+
+    /** A configured path, resolved against {@link #home()} when relative. */
+    public Path path(String key, String defaultValue) {
+        String value = getProperty(key, defaultValue);
+        return home.resolve(value);
     }
 
     /**

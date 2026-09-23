@@ -5,11 +5,11 @@ import github.hacimertgokhan.denis.storage.wal.FsyncPolicy;
 import github.hacimertgokhan.readers.DenisProperties;
 
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
 /**
  * Everything the server needs from {@code denis.properties} / the environment,
- * parsed and validated once at start-up. See the bundled
+ * parsed and validated once at start-up. Relative paths are resolved against
+ * {@code DENIS_HOME} (see {@link DenisProperties#home()}). See the bundled
  * {@code denis.properties} for documentation of every key.
  */
 public record ServerConfig(
@@ -39,7 +39,7 @@ public record ServerConfig(
 
     public static ServerConfig from(DenisProperties p) {
         int cores = Runtime.getRuntime().availableProcessors();
-        Path dataDir = Paths.get(p.getProperty("data-dir", "data"));
+        Path dataDir = p.path("data-dir", "data");
         boolean persistence = !p.getProperty("persistence", "on").trim().equalsIgnoreCase("off")
                 && !p.getProperty("persistence", "on").trim().equalsIgnoreCase("false");
         StorageConfig storage = new StorageConfig(
@@ -54,7 +54,7 @@ public record ServerConfig(
                 StorageConfig.Eviction.parse(p.getProperty("eviction-policy", "cache-lru")),
                 p.getProperty("recovery", "strict").trim().equalsIgnoreCase("lenient"),
                 p.getInt("wal-queue-size", 16_384),
-                Paths.get(p.getProperty("legacy-database-file", "database.bin")));
+                p.path("legacy-database-file", "database.bin"));
 
         int io = p.getInt("io-threads", 0);
         int workers = p.getInt("worker-threads", 0);
@@ -78,9 +78,9 @@ public record ServerConfig(
                 p.getBoolean("enforce-project-ownership", true),
                 p.getInt("max-result-rows", 100_000),
                 Math.max(1, p.getInt("keys-limit", 100_000)),
-                Paths.get(p.getProperty("groups-file", "denis.toml")),
-                Paths.get(p.getProperty("projects-file", "ddb.json")),
-                backupDir.isBlank() ? dataDir.resolve("backups") : Paths.get(backupDir),
+                p.path("groups-file", "denis.toml"),
+                p.path("projects-file", "ddb.json"),
+                backupDir.isBlank() ? dataDir.resolve("backups") : p.home().resolve(backupDir),
                 Math.max(0, p.getInt("backup-interval-minutes", 0)),
                 Math.max(0, p.getInt("backup-retention", 7)),
                 storage);

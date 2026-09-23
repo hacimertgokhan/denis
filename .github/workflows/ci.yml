@@ -5,36 +5,82 @@ on:
     branches: [master]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   server:
-    name: Server (Maven build + unit tests)
+    name: Server (Java ${{ matrix.java }})
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        java: ["17", "21"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: ${{ matrix.java }}
           cache: maven
-      - run: mvn -B package
+      - name: Build, unit and integration tests
+        run: mvn -B verify
+      - name: Benchmarks compile against this build
+        run: |
+          mvn -B -q -DskipTests install
+          mvn -B -q -f benchmarks/pom.xml -DskipTests package
       - uses: actions/upload-artifact@v4
+        if: matrix.java == '17'
         with:
-          name: denis-jar
-          path: target/denis-*-alpha.jar
+          name: denis-server
+          path: |
+            target/denis-*.jar
+            target/denis-*-project-bundle.*
           if-no-files-found: error
 
   java-driver:
-    name: Java driver (compile)
+    name: Java driver (Java ${{ matrix.java }})
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        java: ["11", "17", "21"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: ${{ matrix.java }}
           cache: maven
-      - run: mvn -B package
+      - run: mvn -B verify
         working-directory: java-driver
+
+  node-client:
+    name: Node client (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: ["18", "20", "22"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm test
+        working-directory: clients/node
+
+  studio:
+    name: Denis Studio (unit tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: studio/package-lock.json
+      - run: npm ci
+        working-directory: studio
+      - run: npm test
+        working-directory: studio
 
   docker:
     name: Docker image + client integration tests
@@ -55,7 +101,7 @@ jobs:
         run: |
           docker run -d --name denis -p 5142:5142 \
             -e DENIS_BOOTSTRAP_GROUP=ci -e DENIS_BOOTSTRAP_GROUP_PASSWORD=ci-password \
-            -e DENIS_LANGUAGE=en denis:ci
+            -e DENIS_PASSWORD_ITERATIONS=20000 denis:ci
           for i in $(seq 1 30); do
             status=$(docker inspect --format '{{.State.Health.Status}}' denis)
             [ "$status" = healthy ] && break
@@ -63,10 +109,12 @@ jobs:
           done
           docker logs denis
           [ "$status" = healthy ]
-      - name: Non-interactive CLI works inside the container
+      - name: CLI works inside the container
         run: |
-          docker exec denis /app/entrypoint.sh cli group list | grep -x ci
+          docker exec denis /app/entrypoint.sh cli group list | grep '^ci'
           docker exec denis /app/entrypoint.sh cli group test ci ci-password
+          docker exec denis /app/entrypoint.sh backup create -g ci -p ci-password
+          docker exec denis /app/entrypoint.sh backup list | grep 'denis-'
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
@@ -76,7 +124,7 @@ jobs:
           DENIS_INTEGRATION: "1"
           DENIS_GROUP: ci
           DENIS_PASSWORD: ci-password
-        run: node --test test/integration.test.js
+        run: npm run test:integration
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -89,6 +137,14 @@ jobs:
           DENIS_GROUP: ci
           DENIS_PASSWORD: ci-password
         run: mvn -B test
+      - name: Data survives a restart
+        run: |
+          docker exec denis /app/entrypoint.sh cli exec -g ci -p ci-password "AUTH CREATE" > created.json
+          token=$(sed -n 's/.*"token":"\([^"]*\)".*/\1/p' created.json)
+          docker exec denis /app/entrypoint.sh cli exec -g ci -p ci-password -t "$token" "SET survivor yes -&save"
+          docker restart denis
+          sleep 8
+          docker exec denis /app/entrypoint.sh cli exec -g ci -p ci-password -t "$token" "GET survivor" | grep '"data":"yes"'
       - name: Server logs
         if: always()
         run: docker logs denis || true

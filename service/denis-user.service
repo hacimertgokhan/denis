@@ -1,0 +1,17 @@
+# Per-user service installed by install.sh with DENIS_SERVICE=1 (@DENIS_HOME@ is filled in).
+#   systemctl --user status denis
+[Unit]
+Description=Denis Database
+Documentation=https://github.com/hacimertgokhan/denis
+
+[Service]
+Type=simple
+Environment=DENIS_HOME=@DENIS_HOME@
+Environment=DENIS_LOG_FILE=none
+ExecStart=@DENIS_HOME@/bin/denis server
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=90
+
+[Install]
+WantedBy=default.target

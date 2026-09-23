@@ -295,9 +295,9 @@ public class DenisMan implements Runnable {
                             System.out.println(new JSONObject().put("group", created.name()).put("password", created.password())
                                     .put("generated", created.generatedPassword()).put("admin", admin));
                         } else if (created.generatedPassword()) {
-                            System.out.printf("Group %s created%s.%n # Password: %s%n", created.name(), admin ? " (admin)" : "", created.password());
+                            System.out.printf(java.util.Locale.ROOT, "Group %s created%s.%n # Password: %s%n", created.name(), admin ? " (admin)" : "", created.password());
                         } else {
-                            System.out.printf("Group %s created%s.%n", created.name(), admin ? " (admin)" : "");
+                            System.out.printf(java.util.Locale.ROOT, "Group %s created%s.%n", created.name(), admin ? " (admin)" : "");
                         }
                         return 0;
                     }
@@ -464,14 +464,14 @@ public class DenisMan implements Runnable {
                     if (backups.isEmpty()) {
                         System.out.println("No backups in " + config.backupDir().toAbsolutePath());
                     }
-                    backups.forEach(b -> System.out.printf("%s  %,d bytes  %s%n", b.name(), b.bytes(), b.createdAt()));
+                    backups.forEach(b -> System.out.printf(java.util.Locale.ROOT, "%s  %,d bytes  %s%n", b.name(), b.bytes(), b.createdAt()));
                     return 0;
                 }
                 case "verify" -> {
                     Path zip = resolve(config);
                     BackupManager.Verification v = BackupManager.verify(zip);
                     if (v.ok()) {
-                        System.out.printf("OK: %s (snapshot %d records, log %d records, created %s)%n", zip.getFileName(),
+                        System.out.printf(java.util.Locale.ROOT, "OK: %s (snapshot %d records, log %d records, created %s)%n", zip.getFileName(),
                                 v.snapshotRecords(), v.walRecords(), v.manifest().optString("createdAt"));
                         return 0;
                     }
@@ -556,7 +556,7 @@ public class DenisMan implements Runnable {
                     if (Files.exists(snapshot)) {
                         try {
                             SnapshotFile.Info info = SnapshotFile.read(snapshot, m -> { });
-                            System.out.printf("snapshot.dat: OK, %d records, %,d bytes, log from segment %d%n",
+                            System.out.printf(java.util.Locale.ROOT, "snapshot.dat: OK, %d records, %,d bytes, log from segment %d%n",
                                     info.records(), info.fileBytes(), info.walStart());
                         } catch (IOException e) {
                             System.out.println("snapshot.dat: DAMAGED - " + e.getMessage());
@@ -582,12 +582,12 @@ public class DenisMan implements Runnable {
                         }
                         boolean last = i == segments.size() - 1;
                         if (problem == null) {
-                            System.out.printf("%s: OK, %d records%n", segment.getFileName(), records);
+                            System.out.printf(java.util.Locale.ROOT, "%s: OK, %d records%n", segment.getFileName(), records);
                         } else if (last) {
-                            System.out.printf("%s: %d records, incomplete last record (normal after a crash; cut on next start)%n",
+                            System.out.printf(java.util.Locale.ROOT, "%s: %d records, incomplete last record (normal after a crash; cut on next start)%n",
                                     segment.getFileName(), records);
                         } else {
-                            System.out.printf("%s: DAMAGED after %d records - %s%n", segment.getFileName(), records, problem);
+                            System.out.printf(java.util.Locale.ROOT, "%s: DAMAGED after %d records - %s%n", segment.getFileName(), records, problem);
                             ok = false;
                         }
                     }
@@ -603,7 +603,7 @@ public class DenisMan implements Runnable {
                     DenisLogger.configure("warn", null);
                     try (StorageEngine engine = new StorageEngine(config.storage()).open()) {
                         StorageEngine.CheckpointInfo info = engine.checkpoint();
-                        System.out.printf("Compacted: snapshot %,d bytes, %d records, log reset.%n", info.bytes(), info.records());
+                        System.out.printf(java.util.Locale.ROOT, "Compacted: snapshot %,d bytes, %d records, log reset.%n", info.bytes(), info.records());
                     }
                     return 0;
                 }

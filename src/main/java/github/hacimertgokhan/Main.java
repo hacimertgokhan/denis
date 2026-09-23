@@ -85,7 +85,9 @@ public class Main {
     /** Start the server and block until it is stopped. @return process exit code */
     public static int runServer() {
         DenisProperties properties = new DenisProperties();
-        DenisLogger.configure(properties.getProperty("log-level", "info"), properties.getProperty("log-file", "logs/denis.log"));
+        String logFile = properties.getProperty("log-file", "logs/denis.log");
+        DenisLogger.configure(properties.getProperty("log-level", "info"),
+                logFile.isBlank() || logFile.equalsIgnoreCase("none") ? null : properties.home().resolve(logFile).toString());
         DenisLogger log = new DenisLogger(Main.class);
         ServerConfig config;
         try {

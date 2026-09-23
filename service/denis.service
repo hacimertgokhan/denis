@@ -1,37 +1,46 @@
+# System-wide service for a Denis installation in /opt/denis with data in /var/lib/denis.
+#
+#   sudo useradd --system --home /var/lib/denis --shell /usr/sbin/nologin denis
+#   sudo mkdir -p /opt/denis /var/lib/denis && sudo chown denis:denis /var/lib/denis
+#   sudo cp -R denis-*.jar bin /opt/denis/
+#   sudo -u denis DENIS_HOME=/var/lib/denis /opt/denis/bin/denis init
+#   sudo cp service/denis.service /etc/systemd/system/ && sudo systemctl enable --now denis
 [Unit]
-Description=Denis Service
+Description=Denis Database
 Documentation=https://github.com/hacimertgokhan/denis
-After=network.target
+After=network-online.target
 Wants=network-online.target
-StartLimitIntervalSec=300
-StartLimitBurst=5
 
 [Service]
 Type=simple
-User=hacimertgokhan
-Group=hacimertgokhan
-WorkingDirectory=/opt/denis
-Environment=DISPLAY=:0
-Environment=SSH_ASKPASS=/usr/lib/ssh/ssh-askpass
-
-ExecStartPre=/bin/mkdir -p /opt/denis
-ExecStart=/usr/bin/sudo -A /opt/denis/ddb.sh -start
-ExecStop=/usr/bin/sudo -A /opt/denis/ddb.sh -stop
-
+User=denis
+Group=denis
+Environment=DENIS_HOME=/var/lib/denis
+# logs go to the journal (journalctl -u denis)
+Environment=DENIS_LOG_FILE=none
+# Small devices: Environment="DENIS_JAVA_OPTS=-Xmx96m -XX:+UseSerialGC -Xss256k"
+ExecStart=/opt/denis/bin/denis server
 Restart=on-failure
-RestartSec=30
-TimeoutStartSec=30
-TimeoutStopSec=30
+RestartSec=5
+# the server writes a final checkpoint on SIGTERM
+TimeoutStopSec=90
+LimitNOFILE=65536
 
-ProtectSystem=full
-ProtectHome=read-only
+# hardening
 NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/denis
+ProtectHome=true
 PrivateTmp=true
-MemoryLimit=2G
-CPUQuota=80%
-
-StandardOutput=journal
-StandardError=journal
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictNamespaces=true
+LockPersonality=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+SystemCallArchitectures=native
 
 [Install]
 WantedBy=multi-user.target

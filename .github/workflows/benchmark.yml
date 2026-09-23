@@ -1,0 +1,51 @@
+name: Benchmark
+
+# Tracks performance over time: the end-to-end matrix (benchmarks/run.sh) and
+# the JMH micro benchmarks. Results are uploaded as artifacts; commit notable
+# ones to benchmarks/results/ together with the change that caused them.
+on:
+  workflow_dispatch:
+    inputs:
+      duration:
+        description: Seconds per end-to-end run
+        default: "10"
+  schedule:
+    - cron: "0 3 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+      - name: End-to-end matrix
+        env:
+          BENCH_DURATION: ${{ github.event.inputs.duration || '10' }}
+          BENCH_COMPARE: benchmarks/results/0.1.0.jsonl
+        run: bash benchmarks/run.sh "ci-${GITHUB_SHA::7}" | tee e2e.txt
+      - name: JMH micro benchmarks
+        run: java -jar benchmarks/target/denis-benchmarks.jar -wi 2 -i 3 -f 1 -rf json -rff jmh.json | tee jmh.txt
+      - name: Summary
+        run: |
+          echo '### End-to-end' >> "$GITHUB_STEP_SUMMARY"
+          sed -n '/^| workload/,$p' e2e.txt >> "$GITHUB_STEP_SUMMARY" || true
+          echo '### JMH' >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          grep -E '^(Benchmark|[A-Z][A-Za-z]+Benchmark\.)' jmh.txt >> "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: |
+            benchmarks/results/ci-*.jsonl
+            jmh.json
+            e2e.txt

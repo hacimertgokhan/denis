@@ -20,7 +20,7 @@ RUN --mount=type=cache,target=/root/.m2 mvn -B -q package \
 FROM eclipse-temurin:17-jre-alpine
 LABEL org.opencontainers.image.source="https://github.com/hacimertgokhan/denis" \
       org.opencontainers.image.description="Denis Database — in-memory key-value and SQL database with a write-ahead log" \
-      org.opencontainers.image.licenses="MIT"
+      org.opencontainers.image.licenses="Apache-2.0"
 
 RUN addgroup -S -g 10001 denis && adduser -S -u 10001 -G denis -h /data denis \
  && mkdir -p /app /data && chown denis:denis /data

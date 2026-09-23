@@ -30,6 +30,7 @@ public class DenisLogger {
     private static final DateTimeFormatter TIME =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", Locale.ROOT).withZone(ZoneId.systemDefault());
     private static volatile boolean configured;
+    private static final Formatter FALLBACK = new LineFormatter();
 
     static {
         configure("info", null);
@@ -104,7 +105,7 @@ public class DenisLogger {
     }
 
     public void info(String msg) {
-        logger.info(msg);
+        log(Level.INFO, msg, null);
     }
 
     public void debug(String msg) {
@@ -116,15 +117,35 @@ public class DenisLogger {
     }
 
     public void warn(String msg) {
-        logger.warning(msg);
+        log(Level.WARNING, msg, null);
     }
 
     public void error(String msg) {
-        logger.severe(msg);
+        log(Level.SEVERE, msg, null);
     }
 
     public void error(String msg, Throwable error) {
-        logger.log(Level.SEVERE, msg, error);
+        log(Level.SEVERE, msg, error);
+    }
+
+    /**
+     * The JDK resets all logging handlers in its own shutdown hook, which can run
+     * before ours; messages logged while the server shuts down would vanish, so
+     * they go straight to the console once the handlers are gone.
+     */
+    private void log(Level level, String msg, Throwable error) {
+        if (!logger.isLoggable(level)) {
+            return;
+        }
+        if (Logger.getLogger(ROOT).getHandlers().length == 0 && configured) {
+            LogRecord record = new LogRecord(level, msg);
+            record.setLoggerName(logger.getName());
+            record.setThrown(error);
+            System.out.print(FALLBACK.format(record));
+            System.out.flush();
+            return;
+        }
+        logger.log(level, msg, error);
     }
 
     /** {@code 2026-09-23 20:06:19 INFO  [thread] Class - message} */

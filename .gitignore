@@ -58,3 +58,7 @@ examples/*/node_modules/
 
 # Cloud stack secrets
 /.env.cloud
+
+# Promo video
+promo/node_modules/
+promo/out/

@@ -11,8 +11,17 @@ platform (Denis Cloud).
 [![CI](https://github.com/hacimertgokhan/denis/actions/workflows/ci.yml/badge.svg)](https://github.com/hacimertgokhan/denis/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/hacimertgokhan/denis?include_prereleases)](https://github.com/hacimertgokhan/denis/releases)
 
-- **Fast**: ~1.5–1.9 M ops/s pipelined on one machine, sub-millisecond p99;
-  reads never touch the disk ([benchmarks](benchmarks/README.md)).
+<p align="center">
+  <a href="docs/assets/denis-promo.mp4" title="Watch the 20-second promo">
+    <img src="docs/assets/denis-promo-poster.png" alt="Denis in 20 seconds: keys and SQL from one CLI, 1.5 million ops/s, durable by design (click to watch the video)" width="860">
+  </a>
+  <br>
+  <sub>▶ 20-second promo (<a href="docs/assets/denis-promo.mp4">MP4</a>) · source in <a href="promo/">promo/</a></sub>
+</p>
+
+- **Fast**: 1.2–1.5 M ops/s pipelined on one machine (0.7.0: SET 1.51 M, GET
+  1.47 M, durable SET 1.38 M), p99 under 0.2 ms; reads never touch the disk
+  ([benchmarks](benchmarks/README.md)).
 - **Durable**: `fsync=always|everysec|no`, CRC-checked log, torn-write repair,
   checkpoints that never block writers, disk use bounded by the data size.
 - **SQL**: joins, GROUP BY/HAVING, ORDER BY/LIMIT, indexes, constraints,

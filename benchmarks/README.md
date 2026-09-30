@@ -26,43 +26,66 @@ Intel Core i9-13900K (32 threads), 64 GB, NVMe SSD, Windows 11, Temurin 17.0.20,
 loopback, 64-byte values, 10 s per run after 3 s warm-up, both with their
 default configuration (0.6.1: journal fsynced every second; 0.7: `fsync=everysec`).
 Files: [`results/0.6.1.jsonl`](results/0.6.1.jsonl) (release jar of master) and
-[`results/0.7.0-engine.jsonl`](results/0.7.0-engine.jsonl) (the 0.7 storage, network and SQL
-engine, measured before master's ADMIN/quota/QUERY features were merged into it; the
-merge adds a quota check of two volatile reads per write). Re-run with
-`benchmarks/run.sh 0.7.0` to record the release build.
+[`results/0.7.0.jsonl`](results/0.7.0.jsonl) (the 0.7.0 release jar, measured on
+2026-09-30 with `benchmarks/run.sh 0.7.0`; all runs 0 errors).
 
-| workload (connections, pipeline) | 0.6.1 ops/s | 0.7 ops/s | speed-up | p99 0.6.1 | p99 0.7 |
+| workload (connections, pipeline) | 0.6.1 ops/s | 0.7.0 ops/s | speed-up | p99 0.6.1 | p99 0.7.0 |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| SET, cache (8, 16) | 107,810 | 1,893,926 | 17.6× | 2,302 µs | 136 µs |
-| GET (8, 16) | 119,586 | 1,547,650 | 12.9× | 1,863 µs | 158 µs |
-| 80 % GET / 20 % SET (8, 16) | 99,183 | 1,568,176 | 15.8× | 2,379 µs | 152 µs |
-| 80 % GET / 20 % SET, no pipelining (32, 1) | 72,602 | 198,245 | 2.7× | 1,277 µs | 359 µs |
-| durable SET `-&save` (8, 16) | 47,330 | 1,314,868 | 27.8× | 1,750 µs | 204 µs |
-| durable SET `-&save` (1, 1) | 9,293 | 32,152 | 3.5× | 108 µs | 69 µs |
-| SQL `SELECT … WHERE id = ?`, 1000 rows (8, 16) | 127,690 | 218,001 | 1.7× | 1,625 µs | 752 µs |
-| same with an index / PRIMARY KEY (8, 16) | 130,096 | 251,672 | 1.9× | 1,641 µs | 709 µs |
+| SET, cache (8, 16) | 107,810 | 1,510,687 | 14.0× | 2,302 µs | 127 µs |
+| GET (8, 16) | 119,586 | 1,466,724 | 12.3× | 1,863 µs | 132 µs |
+| 80 % GET / 20 % SET (8, 16) | 99,183 | 1,198,173 | 12.1× | 2,379 µs | 152 µs |
+| 80 % GET / 20 % SET, no pipelining (32, 1) | 72,602 | 193,032 | 2.7× | 1,277 µs | 345 µs |
+| durable SET `-&save` (8, 16) | 47,330 | 1,375,478 | 29.1× | 1,750 µs | 167 µs |
+| durable SET `-&save` (1, 1) | 9,293 | 18,540 | 2.0× | 108 µs | 119 µs |
+| SQL `SELECT … WHERE id = ?`, 1000 rows (8, 16) | 127,690 | 192,537 | 1.5× | 1,625 µs | 786 µs |
+| same with an index / PRIMARY KEY (8, 16) | 130,096 | 205,385 | 1.6× | 1,641 µs | 784 µs |
 
 0.6.1 already had an in-memory store, a journal and hash-indexed SQL tables;
 the difference is the thread-per-connection server and synchronous per-command
 work against 0.7's event loops, group commit and pipelined reply batching.
 
-## 0.0.2.9 → 0.7 engine
+### 0.7 engine before the merge vs the 0.7.0 release
+
+The first 0.7 measurement ([`results/0.7.0-engine.jsonl`](results/0.7.0-engine.jsonl), same
+machine and settings) was taken on the new storage/network/SQL engine before master's
+ADMIN, quota and `QUERY` features were merged into it. The release build is slower on
+some workloads:
+
+| workload (connections, pipeline) | engine ops/s | 0.7.0 ops/s | change |
+| --- | ---: | ---: | ---: |
+| SET, cache (8, 16) | 1,893,926 | 1,510,687 | −20 % |
+| GET (8, 16) | 1,547,650 | 1,466,724 | −5 % |
+| 80 % GET / 20 % SET (8, 16) | 1,568,176 | 1,198,173 | −24 % |
+| 80 % GET / 20 % SET, no pipelining (32, 1) | 198,245 | 193,032 | −3 % |
+| durable SET `-&save` (8, 16) | 1,314,868 | 1,375,478 | +5 % |
+| durable SET `-&save` (1, 1) | 32,152 | 18,540 | −42 % |
+| SQL `SELECT … WHERE id = ?` (8, 16) | 218,001 | 192,537 | −12 % |
+| same with a PRIMARY KEY (8, 16) | 251,672 | 205,385 | −18 % |
+
+Each number is one 10 s run, so differences of a few percent are noise. The larger drops
+(cache SET, mixed, the single-connection durable SET, SQL) have not been investigated: the
+merge adds a quota check (two volatile reads per write) and new command paths, but no
+profile was taken to attribute them. The p99 latencies stay under 0.8 ms everywhere.
+Repeat with `benchmarks/run.sh` before drawing conclusions about a single row.
+
+## 0.0.2.9 → 0.7.0
 
 Intel Core i9-13900K (32 threads), 64 GB, NVMe SSD, Windows 11, Temurin 17.0.20,
 loopback, 64-byte values, 10 s per run after 3 s warm-up; 0.0.2.9 with its
-default configuration, the 0.7 engine with `fsync=everysec` (default). Files:
-[`results/0.0.2.9.jsonl`](results/0.0.2.9.jsonl), [`results/0.7.0-engine.jsonl`](results/0.7.0-engine.jsonl).
+default configuration, 0.7.0 with `fsync=everysec` (default). Files:
+[`results/0.0.2.9.jsonl`](results/0.0.2.9.jsonl) (measured 2026-09-23),
+[`results/0.7.0.jsonl`](results/0.7.0.jsonl) (2026-09-30).
 
-| workload (connections, pipeline) | 0.0.2.9 ops/s | 0.7 ops/s | speed-up | p99 0.0.2.9 | p99 0.7 |
+| workload (connections, pipeline) | 0.0.2.9 ops/s | 0.7.0 ops/s | speed-up | p99 0.0.2.9 | p99 0.7.0 |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| SET, cache (8, 16) | 80,511 | 1,893,926 | 23.5× | 2,324 µs | 136 µs |
-| GET, durable data on disk (8, 16) | 6,534 | 1,547,650 | 237× | 26,771 µs | 158 µs |
-| 80 % GET / 20 % SET (8, 16) | 80,236 | 1,568,176 | 19.5× | 2,323 µs | 152 µs |
-| 80 % GET / 20 % SET, no pipelining (32, 1) | 52,600 | 198,245 | 3.8× | 2,055 µs | 359 µs |
-| durable SET `-&save` (8, 16) | **every request failed**, `database.bin` corrupted | 1,314,868, 0 errors | — | — | 204 µs |
-| durable SET `-&save` (1, 1) | 437 | 32,152 | 73.6× | 6,461 µs | 69 µs |
-| SQL `SELECT … WHERE id = ?`, 1000 rows (8, 16) | 3,333 | 218,001 | 65× | 45,293 µs | 752 µs |
-| same with `id` as PRIMARY KEY (8, 16) | — | 251,672 | — | — | 709 µs |
+| SET, cache (8, 16) | 80,511 | 1,510,687 | 18.8× | 2,324 µs | 127 µs |
+| GET, durable data on disk (8, 16) | 6,534 | 1,466,724 | 224× | 26,771 µs | 132 µs |
+| 80 % GET / 20 % SET (8, 16) | 80,236 | 1,198,173 | 14.9× | 2,323 µs | 152 µs |
+| 80 % GET / 20 % SET, no pipelining (32, 1) | 52,600 | 193,032 | 3.7× | 2,055 µs | 345 µs |
+| durable SET `-&save` (8, 16) | **every request failed**, `database.bin` corrupted | 1,375,478, 0 errors | — | — | 167 µs |
+| durable SET `-&save` (1, 1) | 437 | 18,540 | 42.4× | 6,461 µs | 119 µs |
+| SQL `SELECT … WHERE id = ?`, 1000 rows (8, 16) | 3,333 | 192,537 | 57.8× | 45,293 µs | 786 µs |
+| same with `id` as PRIMARY KEY (8, 16) | — | 205,385 | — | — | 784 µs |
 
 Where the old numbers came from: every `GET` re-read and parsed the whole
 `database.bin`, every durable `SET` rewrote it (concurrent writers truncated

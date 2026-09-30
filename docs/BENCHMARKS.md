@@ -1,5 +1,7 @@
 # Benchmarks: Denis vs Redis and PostgreSQL
 
+> **Note:** the figures on this page were measured on Denis **0.4.0** (thread-per-connection server). Denis 0.7.0 has a different network and storage engine; its end-to-end numbers are in [benchmarks/README.md](../benchmarks/README.md). This comparison with Redis and PostgreSQL has not been re-run for 0.7.0.
+
 Measured on 21 September 2026 with the harness in [`bench/`](../bench) against
 **Denis 0.4.0**, **Redis 7.4** (`appendonly yes`, `appendfsync everysec`) and
 **PostgreSQL 16** (primary key on `id`, parameterised queries). Every system
